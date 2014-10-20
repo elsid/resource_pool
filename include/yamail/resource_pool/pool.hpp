@@ -26,7 +26,6 @@ public:
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
     typedef typename pool_impl::make_resource make_resource;
-    typedef typename pool_impl::resource_opt resource_opt;
     typedef object_factory<resource> resource_factory;
     typedef resource_pool::handle<pool> handle;
     typedef boost::shared_ptr<handle> handle_ptr;

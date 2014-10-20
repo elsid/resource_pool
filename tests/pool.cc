@@ -10,7 +10,6 @@ struct resource {};
 typedef boost::shared_ptr<resource> resource_ptr;
 typedef pool<resource_ptr> resource_pool;
 typedef resource_pool::handle_ptr resource_handle_ptr;
-typedef resource_pool::resource_opt resource_ptr_opt;
 
 class my_resource_handle : public handle_facade<resource_pool> {
 public:
@@ -106,7 +105,7 @@ TEST(resource_pool, get_auto_recycle_handle_and_recycle_recycled_expect_exceptio
 
 TEST(resource_pool, get_auto_recycle_handle_from_empty_pool_returns_empty_handle) {
     resource_pool pool(0, make_resource);
-    EXPECT_TRUE(pool.get_auto_recycle()->empty());
+    EXPECT_THROW(pool.get_auto_recycle(), get_resource_timeout);
 }
 
 TEST(resource_pool, dummy_create_my_resoure_handle) {

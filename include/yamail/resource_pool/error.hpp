@@ -20,6 +20,10 @@ struct empty_handle : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };
 
+struct get_resource_timeout : std::runtime_error {
+    get_resource_timeout() : std::runtime_error("get resource timeout") {}
+};
+
 }}
 
 #endif
