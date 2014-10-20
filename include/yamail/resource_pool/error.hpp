@@ -3,7 +3,8 @@
 
 #include <stdexcept>
 
-namespace yamail { namespace resource_pool {
+namespace yamail {
+namespace resource_pool {
 
 struct add_existing_resource : std::logic_error {
     add_existing_resource()

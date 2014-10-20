@@ -1,7 +1,8 @@
 #ifndef YAMAIL_RESOURCE_POOL_HANDLE_FACADE_HPP
 #define YAMAIL_RESOURCE_POOL_HANDLE_FACADE_HPP
 
-namespace yamail { namespace resource_pool {
+namespace yamail {
+namespace resource_pool {
 
 template <class ResourcePool>
 class handle_facade {

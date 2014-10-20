@@ -12,7 +12,9 @@
 
 #include <yamail/resource_pool/error.hpp>
 
-namespace yamail { namespace resource_pool { namespace detail {
+namespace yamail {
+namespace resource_pool {
+namespace detail {
 
 template <class Resource>
 class pool_impl : public boost::enable_shared_from_this<pool_impl<Resource> >,

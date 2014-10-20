@@ -5,7 +5,8 @@
 #include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-namespace yamail { namespace resource_pool {
+namespace yamail {
+namespace resource_pool {
 
 template <class ResourcePool>
 class handle : public boost::enable_shared_from_this<handle<ResourcePool> >,
