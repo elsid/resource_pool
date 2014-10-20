@@ -17,11 +17,16 @@ struct object_factory {
     T operator()() { return T(); }
 };
 
-template <class Resource>
+template <
+    class Resource,
+    class ResourceCompare = std::less<Resource>,
+    class ResourceAlloc = std::allocator<Resource> >
 class pool {
 public:
     typedef Resource resource;
-    typedef detail::pool_impl<resource> pool_impl;
+    typedef ResourceCompare resource_compare;
+    typedef ResourceAlloc resource_alloc;
+    typedef detail::pool_impl<resource, resource_compare, resource_alloc> pool_impl;
     typedef typename pool_impl::shared_ptr pool_impl_ptr;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
@@ -53,21 +58,21 @@ private:
     handle_ptr get_handle(strategy use_use_strategy, const time_duration& wait_duration);
 };
 
-template <class R>
-typename pool<R>::handle_ptr pool<R>::get_auto_waste(
+template <class R, class C, class A>
+typename pool<R, C, A>::handle_ptr pool<R, C, A>::get_auto_waste(
         const time_duration& wait_duration) {
     return get_handle(&handle::waste, wait_duration);
 }
 
-template <class R>
-typename pool<R>::handle_ptr pool<R>::get_auto_recycle(
+template <class R, class C, class A>
+typename pool<R, C, A>::handle_ptr pool<R, C, A>::get_auto_recycle(
         const time_duration& wait_duration) {
     return get_handle(&handle::recycle, wait_duration);
 }
 
-template <class R>
-typename pool<R>::handle_ptr pool<R>::get_handle(strategy use_use_strategy,
-        const time_duration& wait_duration) {
+template <class R, class C, class A>
+typename pool<R, C, A>::handle_ptr pool<R, C, A>::get_handle(
+        strategy use_use_strategy, const time_duration& wait_duration) {
     return handle_ptr(new handle(_impl, use_use_strategy, wait_duration));
 }
 

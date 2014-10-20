@@ -16,11 +16,16 @@ namespace yamail {
 namespace resource_pool {
 namespace detail {
 
-template <class Resource>
+template <
+    class Resource,
+    class ResourceCompare = std::less<Resource>,
+    class ResourceAlloc = std::allocator<Resource> >
 class pool_impl : public boost::enable_shared_from_this<pool_impl<Resource> >,
     boost::noncopyable {
 public:
     typedef Resource resource;
+    typedef ResourceCompare resource_compare;
+    typedef ResourceAlloc resource_alloc;
     typedef boost::shared_ptr<pool_impl> shared_ptr;
     typedef boost::shared_ptr<const pool_impl> shared_const_ptr;
     typedef boost::posix_time::time_duration time_duration;
@@ -51,7 +56,7 @@ public:
     void waste(resource res);
 
 private:
-    typedef std::set<resource> resource_set;
+    typedef std::set<resource, resource_compare, resource_alloc> resource_set;
     typedef typename resource_set::iterator resource_set_iterator;
     typedef boost::unique_lock<boost::mutex> unique_lock;
 
@@ -70,32 +75,32 @@ private:
     void remove_used(const resource& resource);
 };
 
-template <class R>
-std::size_t pool_impl<R>::capacity() const {
+template <class R, class C, class A>
+std::size_t pool_impl<R, C, A>::capacity() const {
     unique_lock lock(_mutex);
     return _capacity;
 }
 
-template <class R>
-std::size_t pool_impl<R>::size() const {
+template <class R, class C, class A>
+std::size_t pool_impl<R, C, A>::size() const {
     unique_lock lock(_mutex);
     return size_unsafe();
 }
 
-template <class R>
-std::size_t pool_impl<R>::available() const {
+template <class R, class C, class A>
+std::size_t pool_impl<R, C, A>::available() const {
     unique_lock lock(_mutex);
     return _available.size();
 }
 
-template <class R>
-std::size_t pool_impl<R>::used() const {
+template <class R, class C, class A>
+std::size_t pool_impl<R, C, A>::used() const {
     unique_lock lock(_mutex);
     return _used.size();
 }
 
-template <class R>
-void pool_impl<R>::fill() {
+template <class R, class C, class A>
+void pool_impl<R, C, A>::fill() {
     unique_lock lock(_mutex);
     while (fit_capacity()) {
         create();
@@ -103,29 +108,30 @@ void pool_impl<R>::fill() {
     }
 }
 
-template <class R>
-void pool_impl<R>::clear() {
+template <class R, class C, class A>
+void pool_impl<R, C, A>::clear() {
     unique_lock lock(_mutex);
     _available.clear();
 }
 
-template <class R>
-void pool_impl<R>::recycle(resource resource) {
+template <class R, class C, class A>
+void pool_impl<R, C, A>::recycle(resource resource) {
     unique_lock lock(_mutex);
     remove_used(resource);
     add_available(resource);
     _has_available.notify_one();
 }
 
-template <class R>
-void pool_impl<R>::waste(resource resource) {
+template <class R, class C, class A>
+void pool_impl<R, C, A>::waste(resource resource) {
     unique_lock lock(_mutex);
     remove_used(resource);
     _has_available.notify_one();
 }
 
-template <class R>
-typename pool_impl<R>::resource pool_impl<R>::get(const time_duration& wait_duration) {
+template <class R, class C, class A>
+typename pool_impl<R, C, A>::resource pool_impl<R, C, A>::get(
+        const time_duration& wait_duration) {
     unique_lock lock(_mutex);
     while (_available.empty()) {
         if (fit_capacity()) {
@@ -142,8 +148,9 @@ typename pool_impl<R>::resource pool_impl<R>::get(const time_duration& wait_dura
     return *used;
 }
 
-template <class R>
-typename pool_impl<R>::resource_set_iterator pool_impl<R>::add_available(const resource& res) {
+template <class R, class C, class A>
+typename pool_impl<R, C, A>::resource_set_iterator pool_impl<R, C, A>::add_available(
+        const resource& res) {
     std::pair<resource_set_iterator, bool> inserted = _available.insert(res);
     if (!inserted.second) {
         throw add_existing_resource();
@@ -151,8 +158,9 @@ typename pool_impl<R>::resource_set_iterator pool_impl<R>::add_available(const r
     return inserted.first;
 }
 
-template <class R>
-typename pool_impl<R>::resource_set_iterator pool_impl<R>::add_used(const resource& res) {
+template <class R, class C, class A>
+typename pool_impl<R, C, A>::resource_set_iterator pool_impl<R, C, A>::add_used(
+        const resource& res) {
     std::pair<resource_set_iterator, bool> inserted = _used.insert(res);
     if (!inserted.second) {
         throw add_existing_resource();
@@ -160,8 +168,8 @@ typename pool_impl<R>::resource_set_iterator pool_impl<R>::add_used(const resour
     return inserted.first;
 }
 
-template <class R>
-void pool_impl<R>::remove_used(const resource& resource) {
+template <class R, class C, class A>
+void pool_impl<R, C, A>::remove_used(const resource& resource) {
     resource_set_iterator it = _used.find(resource);
     if (it == _used.end()) {
         if (_available.find(resource) == _available.end()) {
