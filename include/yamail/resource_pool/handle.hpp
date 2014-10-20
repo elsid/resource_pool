@@ -11,16 +11,16 @@ template <class ResourcePool>
 class handle : public boost::enable_shared_from_this<handle<ResourcePool> >,
     boost::noncopyable {
 public:
-    typedef ResourcePool resource_pool;
-    typedef boost::shared_ptr<resource_pool> resource_pool_ptr;
-    typedef typename resource_pool::resource resource;
-    typedef boost::posix_time::time_duration duration;
+    typedef ResourcePool pool;
+    typedef typename pool::pool_impl_ptr pool_impl_ptr;
+    typedef typename pool::resource resource;
+    typedef typename pool::time_duration time_duration;
     typedef void (handle::*strategy)();
 
-    handle(resource_pool_ptr pool, strategy use_strategy,
-            const duration& wait_duration)
-            : _pool(pool), _use_strategy(use_strategy),
-              _resource(_pool->get(wait_duration))
+    handle(pool_impl_ptr pool_impl, strategy use_strategy,
+            const time_duration& wait_duration)
+            : _pool_impl(pool_impl), _use_strategy(use_strategy),
+              _resource(_pool_impl->get(wait_duration))
     {}
 
     ~handle();
@@ -37,7 +37,7 @@ public:
     void waste();
 
 private:
-    resource_pool_ptr _pool;
+    pool_impl_ptr _pool_impl;
     strategy _use_strategy;
     boost::optional<resource> _resource;
 
@@ -66,14 +66,14 @@ const typename handle<P>::resource& handle<P>::get() const {
 template <class P>
 void handle<P>::recycle() {
     assert_not_empty();
-    _pool->recycle(*_resource);
+    _pool_impl->recycle(*_resource);
     _resource.reset();
 }
 
 template <class P>
 void handle<P>::waste() {
     assert_not_empty();
-    _pool->waste(*_resource);
+    _pool_impl->waste(*_resource);
     _resource.reset();
 }
 

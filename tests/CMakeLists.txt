@@ -1,6 +1,7 @@
 set(SOURCES
     main.cc
     pool.cc
+    pool_impl.cc
 )
 
 add_executable(test EXCLUDE_FROM_ALL ${SOURCES})
