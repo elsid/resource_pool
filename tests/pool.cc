@@ -57,6 +57,42 @@ TEST(resource_pool, dummy_get_auto_waste_handle) {
     resource_handle_ptr handle = pool.get_auto_waste();
 }
 
+TEST(resource_pool, check_metrics_for_not_empty) {
+    const std::size_t capacity = 42;
+    resource_pool pool(capacity, make_resource);
+    EXPECT_EQ(pool.size(), 0);
+    EXPECT_EQ(pool.used(), 0);
+    EXPECT_EQ(pool.available(), 0);
+    {
+        resource_handle_ptr handle = pool.get_auto_recycle();
+        EXPECT_EQ(pool.size(), 1);
+        EXPECT_EQ(pool.used(), 1);
+        EXPECT_EQ(pool.available(), 0);
+    }
+    EXPECT_EQ(pool.size(), 1);
+    EXPECT_EQ(pool.used(), 0);
+    EXPECT_EQ(pool.available(), 1);
+    {
+        resource_handle_ptr handle1 = pool.get_auto_recycle();
+        resource_handle_ptr handle2 = pool.get_auto_recycle();
+        EXPECT_EQ(pool.size(), 2);
+        EXPECT_EQ(pool.used(), 2);
+        EXPECT_EQ(pool.available(), 0);
+    }
+    EXPECT_EQ(pool.size(), 2);
+    EXPECT_EQ(pool.used(), 0);
+    EXPECT_EQ(pool.available(), 2);
+    {
+        resource_handle_ptr handle = pool.get_auto_waste();
+        EXPECT_EQ(pool.size(), 2);
+        EXPECT_EQ(pool.used(), 1);
+        EXPECT_EQ(pool.available(), 1);
+    }
+    EXPECT_EQ(pool.size(), 1);
+    EXPECT_EQ(pool.used(), 0);
+    EXPECT_EQ(pool.available(), 1);
+}
+
 TEST(resource_pool, get_auto_recylce_handle_and_recycle) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
