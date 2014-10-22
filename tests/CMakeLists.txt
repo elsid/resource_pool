@@ -1,3 +1,5 @@
+find_package(Boost REQUIRED thread)
+
 set(SOURCES
     main.cc
     pool.cc
@@ -10,7 +12,6 @@ target_link_libraries(test
     -lgtest
     -lgmock
     -pthread
-    ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
 )
 
