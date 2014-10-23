@@ -5,6 +5,8 @@
 #include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <yamail/resource_pool/error.hpp>
+
 namespace yamail {
 namespace resource_pool {
 
@@ -13,19 +15,30 @@ class handle : public boost::enable_shared_from_this<handle<ResourcePool> >,
     boost::noncopyable {
 public:
     typedef ResourcePool pool;
+    typedef typename pool::pool_impl pool_impl;
     typedef typename pool::pool_impl_ptr pool_impl_ptr;
     typedef typename pool::resource resource;
     typedef typename pool::time_duration time_duration;
+    typedef typename pool_impl::resource_opt resource_opt;
+    typedef typename pool_impl::get_result get_result;
     typedef void (handle::*strategy)();
 
     handle(pool_impl_ptr pool_impl, strategy use_strategy,
             const time_duration& wait_duration)
             : _pool_impl(pool_impl), _use_strategy(use_strategy),
-              _resource(_pool_impl->get(wait_duration))
-    {}
+              _error(error::none)
+    {
+        const get_result result = _pool_impl->get(wait_duration);
+        if (result.first == error::none) {
+            _resource = result.second;
+        } else {
+            _error = result.first;
+        }
+    }
 
     ~handle();
 
+    error::code error() const { return _error; }
     bool empty() const { return !_resource.is_initialized(); }
     resource& get();
     const resource& get() const;
@@ -40,7 +53,8 @@ public:
 private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
-    boost::optional<resource> _resource;
+    resource_opt _resource;
+    error::code _error;
 
     void assert_not_empty() const;
 };

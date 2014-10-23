@@ -14,6 +14,7 @@ public:
     handle_facade(const handle_ptr& handle) : _handle(handle) {}
     virtual ~handle_facade() {}
 
+    error::code error() const { return _handle->error(); }
     bool empty() const { return _handle->empty(); }
     resource& get() { return _handle->get(); }
     const resource& get() const { return _handle->get(); }

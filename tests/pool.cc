@@ -141,7 +141,8 @@ TEST(resource_pool, get_auto_recycle_handle_and_recycle_recycled_expect_exceptio
 
 TEST(resource_pool, get_auto_recycle_handle_from_empty_pool_returns_empty_handle) {
     resource_pool pool(0, make_resource);
-    EXPECT_THROW(pool.get_auto_recycle(), error::get_resource_timeout);
+    resource_handle_ptr handle = pool.get_auto_recycle();
+    EXPECT_EQ(handle->error(), error::get_resource_timeout);
 }
 
 TEST(resource_pool, dummy_create_my_resoure_handle) {

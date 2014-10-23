@@ -2,6 +2,7 @@
 #define YAMAIL_RESOURCE_POOL_ERROR_HPP
 
 #include <stdexcept>
+#include <map>
 
 namespace yamail {
 namespace resource_pool {
@@ -21,8 +22,30 @@ struct empty_handle : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };
 
-struct get_resource_timeout : std::runtime_error {
-    get_resource_timeout() : std::runtime_error("get resource timeout") {}
+enum code_value {
+    none = 0,
+    get_resource_timeout
+};
+
+struct code {
+    code_value value;
+
+    code(code_value value) : value(value) {}
+
+    operator bool() const { return value != none; }
+
+    bool operator ==(code_value other) const { return value == other; }
+
+    std::string message() const {
+        switch (value) {
+            case none:
+                return "not an error";
+            case get_resource_timeout:
+                return "get resource timeout";
+            default:
+                return "unknown error";
+        }
+    }
 };
 
 }}}

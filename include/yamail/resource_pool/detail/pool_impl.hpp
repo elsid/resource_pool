@@ -31,6 +31,8 @@ public:
     typedef boost::posix_time::time_duration time_duration;
     typedef boost::posix_time::seconds seconds;
     typedef boost::function<resource ()> make_resource;
+    typedef boost::optional<resource> resource_opt;
+    typedef std::pair<error::code, resource_opt> get_result;
 
     pool_impl(std::size_t capacity, make_resource make_res)
             : _capacity(capacity), _make_resource(make_res)
@@ -51,7 +53,7 @@ public:
     void fill();
     void clear();
 
-    resource get(const time_duration& wait_duration = seconds(0));
+    get_result get(const time_duration& wait_duration = seconds(0));
     void recycle(resource res);
     void waste(resource res);
 
@@ -130,7 +132,7 @@ void pool_impl<R, C, A>::waste(resource resource) {
 }
 
 template <class R, class C, class A>
-typename pool_impl<R, C, A>::resource pool_impl<R, C, A>::get(
+typename pool_impl<R, C, A>::get_result pool_impl<R, C, A>::get(
         const time_duration& wait_duration) {
     unique_lock lock(_mutex);
     while (_available.empty()) {
@@ -139,13 +141,13 @@ typename pool_impl<R, C, A>::resource pool_impl<R, C, A>::get(
             break;
         }
         if (!_has_available.timed_wait(lock, wait_duration)) {
-            throw error::get_resource_timeout();
+            return std::make_pair(error::get_resource_timeout, boost::none);
         }
     }
     resource_set_iterator available = _available.begin();
     resource_set_iterator used = add_used(*available);
     _available.erase(available);
-    return *used;
+    return std::make_pair(error::none, *used);
 }
 
 template <class R, class C, class A>
