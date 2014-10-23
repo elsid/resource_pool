@@ -129,19 +129,19 @@ TEST(resource_pool, get_auto_recycle_handle_and_get_recycled_expect_exception) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
     handle->recycle();
-    EXPECT_THROW(handle->get(), empty_handle);
+    EXPECT_THROW(handle->get(), error::empty_handle);
 }
 
 TEST(resource_pool, get_auto_recycle_handle_and_recycle_recycled_expect_exception) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
     handle->recycle();
-    EXPECT_THROW(handle->recycle(), empty_handle);
+    EXPECT_THROW(handle->recycle(), error::empty_handle);
 }
 
 TEST(resource_pool, get_auto_recycle_handle_from_empty_pool_returns_empty_handle) {
     resource_pool pool(0, make_resource);
-    EXPECT_THROW(pool.get_auto_recycle(), get_resource_timeout);
+    EXPECT_THROW(pool.get_auto_recycle(), error::get_resource_timeout);
 }
 
 TEST(resource_pool, dummy_create_my_resoure_handle) {

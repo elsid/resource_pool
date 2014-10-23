@@ -81,7 +81,7 @@ void handle<P>::waste() {
 template <class P>
 void handle<P>::assert_not_empty() const {
     if (empty()) {
-        throw empty_handle();
+        throw error::empty_handle();
     }
 }
 

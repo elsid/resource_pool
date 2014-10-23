@@ -139,7 +139,7 @@ typename pool_impl<R, C, A>::resource pool_impl<R, C, A>::get(
             break;
         }
         if (!_has_available.timed_wait(lock, wait_duration)) {
-            throw get_resource_timeout();
+            throw error::get_resource_timeout();
         }
     }
     resource_set_iterator available = _available.begin();
@@ -153,7 +153,7 @@ typename pool_impl<R, C, A>::resource_set_iterator pool_impl<R, C, A>::add_avail
         const resource& res) {
     std::pair<resource_set_iterator, bool> inserted = _available.insert(res);
     if (!inserted.second) {
-        throw add_existing_resource();
+        throw error::add_existing_resource();
     }
     return inserted.first;
 }
@@ -163,7 +163,7 @@ typename pool_impl<R, C, A>::resource_set_iterator pool_impl<R, C, A>::add_used(
         const resource& res) {
     std::pair<resource_set_iterator, bool> inserted = _used.insert(res);
     if (!inserted.second) {
-        throw add_existing_resource();
+        throw error::add_existing_resource();
     }
     return inserted.first;
 }
@@ -173,9 +173,9 @@ void pool_impl<R, C, A>::remove_used(const resource& resource) {
     resource_set_iterator it = _used.find(resource);
     if (it == _used.end()) {
         if (_available.find(resource) == _available.end()) {
-            throw resource_not_from_pool();
+            throw error::resource_not_from_pool();
         } else {
-            throw add_existing_resource();
+            throw error::add_existing_resource();
         }
     }
     _used.erase(it);

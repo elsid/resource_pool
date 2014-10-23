@@ -5,6 +5,7 @@
 
 namespace yamail {
 namespace resource_pool {
+namespace error {
 
 struct add_existing_resource : std::logic_error {
     add_existing_resource()
@@ -24,6 +25,6 @@ struct get_resource_timeout : std::runtime_error {
     get_resource_timeout() : std::runtime_error("get resource timeout") {}
 };
 
-}}
+}}}
 
 #endif
