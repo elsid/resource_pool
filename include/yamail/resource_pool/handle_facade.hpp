@@ -1,6 +1,8 @@
 #ifndef YAMAIL_RESOURCE_POOL_HANDLE_FACADE_HPP
 #define YAMAIL_RESOURCE_POOL_HANDLE_FACADE_HPP
 
+#include <boost/shared_ptr.hpp>
+
 namespace yamail {
 namespace resource_pool {
 
@@ -9,11 +11,12 @@ class handle_facade {
 public:
     typedef ResourcePool resource_pool;
     typedef typename resource_pool::resource resource;
-    typedef typename resource_pool::handle_ptr handle_ptr;
+    typedef boost::shared_ptr<typename resource_pool::handle> handle_ptr;
 
     handle_facade(const handle_ptr& handle) : _handle(handle) {}
     virtual ~handle_facade() {}
 
+    handle_ptr handle() const { return _handle; }
     error::code error() const { return _handle->error(); }
     bool empty() const { return _handle->empty(); }
     resource& get() { return _handle->get(); }

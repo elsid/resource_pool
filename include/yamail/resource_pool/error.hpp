@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <map>
+#include <sstream>
 
 namespace yamail {
 namespace resource_pool {
@@ -24,28 +25,39 @@ struct empty_handle : std::logic_error {
 
 enum code_value {
     none = 0,
-    get_resource_timeout
+    get_resource_timeout,
+    request_queue_overflow,
+    request_queue_is_empty
 };
 
-struct code {
-    code_value value;
+class code {
+public:
+    code(code_value value = none) : _value(value) {}
 
-    code(code_value value) : value(value) {}
+    bool operator ==(code other) const { return _value == other._value; }
+    bool operator !=(code other) const { return !operator ==(other); }
+    bool operator ==(code_value other) const { return _value == other; }
+    bool operator !=(code_value other) const { return !operator ==(other); }
 
-    operator bool() const { return value != none; }
-
-    bool operator ==(code_value other) const { return value == other; }
+    code_value value() const { return _value; }
 
     std::string message() const {
-        switch (value) {
+        switch (_value) {
             case none:
                 return "not an error";
             case get_resource_timeout:
                 return "get resource timeout";
+            case request_queue_overflow:
+                return "request queue overflow";
+            case request_queue_is_empty:
+                return "request queue is empty";
             default:
                 return "unknown error";
         }
     }
+
+private:
+    code_value _value;
 };
 
 inline std::ostream& operator <<(std::ostream& stream, const code& c) {

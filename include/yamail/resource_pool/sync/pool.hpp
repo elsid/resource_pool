@@ -6,7 +6,7 @@
 #include <boost/make_shared.hpp>
 
 #include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/object_factory.hpp>
+#include <yamail/resource_pool/sync/object_factory.hpp>
 #include <yamail/resource_pool/sync/handle.hpp>
 #include <yamail/resource_pool/sync/detail/pool_impl.hpp>
 
