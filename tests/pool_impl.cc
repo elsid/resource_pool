@@ -1,9 +1,12 @@
+#include <boost/make_shared.hpp>
 #include <gtest/gtest.h>
 #include <yamail/resource_pool.hpp>
 
 namespace {
 
 using namespace yamail::resource_pool;
+
+using boost::make_shared;
 
 struct resource {};
 
@@ -12,9 +15,7 @@ typedef pool<resource_ptr> resource_pool;
 typedef resource_pool::pool_impl resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
 
-resource_ptr make_resource() {
-    return resource_ptr(new resource);
-}
+const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 TEST(resource_pool_impl, get_one_and_recycle_succeed) {
     resource_pool_impl pool_impl(1, make_resource);
