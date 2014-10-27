@@ -16,7 +16,7 @@ resource_ptr make_resource() {
     return resource_ptr(new resource);
 }
 
-TEST(resource_pool, get_one_and_recycle_succeed) {
+TEST(resource_pool_impl, get_one_and_recycle_succeed) {
     resource_pool_impl pool_impl(1, make_resource);
     get_result res = pool_impl.get();
     pool_impl.recycle(*res.second);
