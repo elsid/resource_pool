@@ -3,6 +3,7 @@
 
 #include <set>
 
+#include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
@@ -28,8 +29,8 @@ public:
     typedef ResourceAlloc resource_alloc;
     typedef boost::shared_ptr<pool_impl> shared_ptr;
     typedef boost::shared_ptr<const pool_impl> shared_const_ptr;
-    typedef boost::posix_time::time_duration time_duration;
-    typedef boost::posix_time::seconds seconds;
+    typedef boost::chrono::system_clock::duration time_duration;
+    typedef boost::chrono::seconds seconds;
     typedef boost::function<resource ()> make_resource;
     typedef boost::optional<resource> resource_opt;
     typedef std::pair<error::code, resource_opt> get_result;
@@ -75,6 +76,9 @@ private:
     resource_set_iterator add_available(const resource& resource);
     resource_set_iterator add_used(const resource& resource);
     void remove_used(const resource& resource);
+    bool has_available() const { return !_available.empty(); }
+    bool create_if_can();
+    bool wait_for(unique_lock& lock, const time_duration& wait_duration);
 };
 
 template <class R, class C, class A>
@@ -135,14 +139,8 @@ template <class R, class C, class A>
 typename pool_impl<R, C, A>::get_result pool_impl<R, C, A>::get(
         const time_duration& wait_duration) {
     unique_lock lock(_mutex);
-    while (_available.empty()) {
-        if (fit_capacity()) {
-            create();
-            break;
-        }
-        if (!_has_available.timed_wait(lock, wait_duration)) {
-            return std::make_pair(error::get_resource_timeout, boost::none);
-        }
+    if (!wait_for(lock, wait_duration)) {
+        return std::make_pair(error::get_resource_timeout, boost::none);
     }
     resource_set_iterator available = _available.begin();
     resource_set_iterator used = add_used(*available);
@@ -181,6 +179,24 @@ void pool_impl<R, C, A>::remove_used(const resource& resource) {
         }
     }
     _used.erase(it);
+}
+
+template <class R, class C, class A>
+bool pool_impl<R, C, A>::create_if_can() {
+    if (!fit_capacity()) {
+        return false;
+    }
+    create();
+    return true;
+}
+
+template <class R, class C, class A>
+bool pool_impl<R, C, A>::wait_for(unique_lock& lock,
+        const time_duration& wait_duration) {
+    using boost::bind;
+    return _has_available.wait_for(lock, wait_duration,
+        bind(&pool_impl::has_available, this) or
+        bind(&pool_impl::create_if_can, this));
 }
 
 }}}

@@ -1,4 +1,4 @@
-find_package(Boost REQUIRED thread)
+find_package(Boost REQUIRED thread chrono)
 
 set(SOURCES
     main.cc
@@ -13,6 +13,7 @@ target_link_libraries(test
     -lgmock
     -pthread
     ${Boost_THREAD_LIBRARY}
+    ${Boost_CHRONO_LIBRARY}
 )
 
 add_custom_target(check
