@@ -1,5 +1,5 @@
-#ifndef YAMAIL_RESOURCE_POOL_POOL_HPP
-#define YAMAIL_RESOURCE_POOL_POOL_HPP
+#ifndef YAMAIL_RESOURCE_POOL_SYNC_POOL_HPP
+#define YAMAIL_RESOURCE_POOL_SYNC_POOL_HPP
 
 #include <set>
 
@@ -17,6 +17,8 @@ struct object_factory {
     T operator()() { return T(); }
 };
 
+namespace sync {
+
 template <
     class Resource,
     class ResourceCompare = std::less<Resource>,
@@ -32,7 +34,7 @@ public:
     typedef typename pool_impl::seconds seconds;
     typedef typename pool_impl::make_resource make_resource;
     typedef object_factory<resource> resource_factory;
-    typedef resource_pool::handle<pool> handle;
+    typedef sync::handle<pool> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
     pool(std::size_t capacity = 0, make_resource make_res = resource_factory())
@@ -76,6 +78,6 @@ typename pool<R, C, A>::handle_ptr pool<R, C, A>::get_handle(
     return handle_ptr(new handle(_impl, use_strategy, wait_duration));
 }
 
-}}
+}}}
 
 #endif

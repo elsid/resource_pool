@@ -1,5 +1,5 @@
-#ifndef YAMAIL_RESOURCE_POOL_DETAIL_POOL_IMPL_HPP
-#define YAMAIL_RESOURCE_POOL_DETAIL_POOL_IMPL_HPP
+#ifndef YAMAIL_RESOURCE_POOL_SYNC_DETAIL_POOL_IMPL_HPP
+#define YAMAIL_RESOURCE_POOL_SYNC_DETAIL_POOL_IMPL_HPP
 
 #include <set>
 
@@ -15,6 +15,7 @@
 
 namespace yamail {
 namespace resource_pool {
+namespace sync {
 namespace detail {
 
 template <
@@ -199,6 +200,6 @@ bool pool_impl<R, C, A>::wait_for(unique_lock& lock,
         bind(&pool_impl::create_if_can, this));
 }
 
-}}}
+}}}}
 
 #endif

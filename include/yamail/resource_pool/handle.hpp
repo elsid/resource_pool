@@ -1,5 +1,5 @@
-#ifndef YAMAIL_RESOURCE_POOL_HANDLE_HPP
-#define YAMAIL_RESOURCE_POOL_HANDLE_HPP
+#ifndef YAMAIL_RESOURCE_POOL_SYNC_HANDLE_HPP
+#define YAMAIL_RESOURCE_POOL_SYNC_HANDLE_HPP
 
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
@@ -9,6 +9,7 @@
 
 namespace yamail {
 namespace resource_pool {
+namespace sync {
 
 template <class ResourcePool>
 class handle : public boost::enable_shared_from_this<handle<ResourcePool> >,
@@ -99,6 +100,6 @@ void handle<P>::assert_not_empty() const {
     }
 }
 
-}}
+}}}
 
 #endif

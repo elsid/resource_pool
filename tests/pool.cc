@@ -5,6 +5,7 @@
 namespace {
 
 using namespace yamail::resource_pool;
+using namespace yamail::resource_pool::sync;
 
 using boost::make_shared;
 
