@@ -6,17 +6,12 @@
 #include <boost/make_shared.hpp>
 
 #include <yamail/resource_pool/error.hpp>
+#include <yamail/resource_pool/object_factory.hpp>
 #include <yamail/resource_pool/handle.hpp>
 #include <yamail/resource_pool/detail/pool_impl.hpp>
 
 namespace yamail {
 namespace resource_pool {
-
-template <class T>
-struct object_factory {
-    T operator()() { return T(); }
-};
-
 namespace sync {
 
 template <
