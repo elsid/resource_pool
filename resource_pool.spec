@@ -46,6 +46,7 @@ cmake . -DCMAKE_INSTALL_PREFIX=/usr \
 %dir %{_includedir}/yamail
 %{_includedir}/yamail/*.hpp
 %{_includedir}/yamail/resource_pool/*.hpp
-%{_includedir}/yamail/resource_pool/detail/*.hpp
+%{_includedir}/yamail/resource_pool/sync/*.hpp
+%{_includedir}/yamail/resource_pool/sync/detail/*.hpp
 
 %changelog
