@@ -55,7 +55,7 @@ private:
 
     pool_impl_ptr _impl;
 
-    handle_ptr get_handle(strategy use_use_strategy, const time_duration& wait_duration);
+    handle_ptr get_handle(strategy use_strategy, const time_duration& wait_duration);
 };
 
 template <class R, class C, class A>
@@ -72,8 +72,8 @@ typename pool<R, C, A>::handle_ptr pool<R, C, A>::get_auto_recycle(
 
 template <class R, class C, class A>
 typename pool<R, C, A>::handle_ptr pool<R, C, A>::get_handle(
-        strategy use_use_strategy, const time_duration& wait_duration) {
-    return handle_ptr(new handle(_impl, use_use_strategy, wait_duration));
+        strategy use_strategy, const time_duration& wait_duration) {
+    return handle_ptr(new handle(_impl, use_strategy, wait_duration));
 }
 
 }}
