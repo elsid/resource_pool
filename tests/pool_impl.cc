@@ -5,14 +5,14 @@
 namespace {
 
 using namespace yamail::resource_pool;
+using namespace yamail::resource_pool::detail;
 
 using boost::make_shared;
 
 struct resource {};
 
 typedef boost::shared_ptr<resource> resource_ptr;
-typedef pool<resource_ptr> resource_pool;
-typedef resource_pool::pool_impl resource_pool_impl;
+typedef pool_impl<resource_ptr> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
