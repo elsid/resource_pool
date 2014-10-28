@@ -41,9 +41,6 @@ public:
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
 
-    void fill() { return _impl->fill(); }
-    void clear() { return _impl->clear(); }
-
     handle_ptr get_auto_waste(const time_duration& wait_duration = seconds(0));
     handle_ptr get_auto_recycle(const time_duration& wait_duration = seconds(0));
 

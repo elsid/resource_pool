@@ -52,9 +52,6 @@ public:
     std::size_t available() const;
     std::size_t used() const;
 
-    void fill();
-    void clear();
-
     get_result get(const time_duration& wait_duration = seconds(0));
     void recycle(resource res);
     void waste(resource res);
@@ -104,21 +101,6 @@ template <class R, class C, class A>
 std::size_t pool_impl<R, C, A>::used() const {
     unique_lock lock(_mutex);
     return _used.size();
-}
-
-template <class R, class C, class A>
-void pool_impl<R, C, A>::fill() {
-    unique_lock lock(_mutex);
-    while (fit_capacity()) {
-        create();
-        _has_available.notify_one();
-    }
-}
-
-template <class R, class C, class A>
-void pool_impl<R, C, A>::clear() {
-    unique_lock lock(_mutex);
-    _available.clear();
 }
 
 template <class R, class C, class A>

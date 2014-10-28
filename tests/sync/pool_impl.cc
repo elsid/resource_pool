@@ -29,27 +29,6 @@ TEST(resource_pool_impl, get_one_and_waste_succeed) {
     pool_impl.waste(*res.second);
 }
 
-TEST(resource_pool_impl, fill_and_check_metrics) {
-    const std::size_t capacity = 42;
-    resource_pool_impl pool_impl(capacity, make_resource);
-    pool_impl.fill();
-    EXPECT_EQ(pool_impl.capacity(), capacity);
-    EXPECT_EQ(pool_impl.size(), capacity);
-    EXPECT_EQ(pool_impl.available(), capacity);
-    EXPECT_EQ(pool_impl.used(), 0);
-}
-
-TEST(resource_pool_impl, fill_then_clear_and_check_metrics) {
-    const std::size_t capacity = 42;
-    resource_pool_impl pool_impl(capacity, make_resource);
-    pool_impl.fill();
-    pool_impl.clear();
-    EXPECT_EQ(pool_impl.capacity(), capacity);
-    EXPECT_EQ(pool_impl.size(), 0);
-    EXPECT_EQ(pool_impl.available(), 0);
-    EXPECT_EQ(pool_impl.used(), 0);
-}
-
 TEST(resource_pool_impl, get_more_than_capacity_returns_empty_resource) {
     resource_pool_impl pool_impl(1, make_resource);
     pool_impl.get();
