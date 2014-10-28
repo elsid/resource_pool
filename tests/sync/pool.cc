@@ -40,10 +40,10 @@ TEST(sync_resource_pool, dummy_create_not_empty_with_factory) {
 
 TEST(sync_resource_pool, check_metrics_for_empty) {
     resource_pool pool;
-    EXPECT_EQ(pool.capacity(), 0);
-    EXPECT_EQ(pool.size(), 0);
-    EXPECT_EQ(pool.used(), 0);
-    EXPECT_EQ(pool.available(), 0);
+    EXPECT_EQ(pool.capacity(), 0ul);
+    EXPECT_EQ(pool.size(), 0ul);
+    EXPECT_EQ(pool.used(), 0ul);
+    EXPECT_EQ(pool.available(), 0ul);
 }
 
 TEST(sync_resource_pool, check_capacity) {
@@ -65,37 +65,37 @@ TEST(sync_resource_pool, dummy_get_auto_waste_handle) {
 TEST(sync_resource_pool, check_metrics_for_not_empty) {
     const std::size_t capacity = 42;
     resource_pool pool(capacity, make_resource);
-    EXPECT_EQ(pool.size(), 0);
-    EXPECT_EQ(pool.used(), 0);
-    EXPECT_EQ(pool.available(), 0);
+    EXPECT_EQ(pool.size(), 0ul);
+    EXPECT_EQ(pool.used(), 0ul);
+    EXPECT_EQ(pool.available(), 0ul);
     {
         resource_handle_ptr handle = pool.get_auto_recycle();
-        EXPECT_EQ(pool.size(), 1);
-        EXPECT_EQ(pool.used(), 1);
-        EXPECT_EQ(pool.available(), 0);
+        EXPECT_EQ(pool.size(), 1ul);
+        EXPECT_EQ(pool.used(), 1ul);
+        EXPECT_EQ(pool.available(), 0ul);
     }
-    EXPECT_EQ(pool.size(), 1);
-    EXPECT_EQ(pool.used(), 0);
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.size(), 1ul);
+    EXPECT_EQ(pool.used(), 0ul);
+    EXPECT_EQ(pool.available(), 1ul);
     {
         resource_handle_ptr handle1 = pool.get_auto_recycle();
         resource_handle_ptr handle2 = pool.get_auto_recycle();
-        EXPECT_EQ(pool.size(), 2);
-        EXPECT_EQ(pool.used(), 2);
-        EXPECT_EQ(pool.available(), 0);
+        EXPECT_EQ(pool.size(), 2ul);
+        EXPECT_EQ(pool.used(), 2ul);
+        EXPECT_EQ(pool.available(), 0ul);
     }
-    EXPECT_EQ(pool.size(), 2);
-    EXPECT_EQ(pool.used(), 0);
-    EXPECT_EQ(pool.available(), 2);
+    EXPECT_EQ(pool.size(), 2ul);
+    EXPECT_EQ(pool.used(), 0ul);
+    EXPECT_EQ(pool.available(), 2ul);
     {
         resource_handle_ptr handle = pool.get_auto_waste();
-        EXPECT_EQ(pool.size(), 2);
-        EXPECT_EQ(pool.used(), 1);
-        EXPECT_EQ(pool.available(), 1);
+        EXPECT_EQ(pool.size(), 2ul);
+        EXPECT_EQ(pool.used(), 1ul);
+        EXPECT_EQ(pool.available(), 1ul);
     }
-    EXPECT_EQ(pool.size(), 1);
-    EXPECT_EQ(pool.used(), 0);
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.size(), 1ul);
+    EXPECT_EQ(pool.used(), 0ul);
+    EXPECT_EQ(pool.available(), 1ul);
 }
 
 TEST(sync_resource_pool, get_auto_recylce_handle_and_recycle) {
