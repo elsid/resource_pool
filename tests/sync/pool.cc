@@ -26,15 +26,15 @@ public:
 
 struct sync_resource_pool : Test {};
 
-TEST(sync_resource_pool, dummy_create) {
+TEST(sync_resource_pool, create_should_succeed) {
     resource_pool pool;
 }
 
-TEST(sync_resource_pool, dummy_create_not_empty) {
+TEST(sync_resource_pool, create_not_empty_should_succeed) {
     resource_pool pool(42);
 }
 
-TEST(sync_resource_pool, dummy_create_not_empty_with_factory) {
+TEST(sync_resource_pool, create_not_empty_with_factory_should_succeed) {
     resource_pool pool(42, make_resource);
 }
 
@@ -52,12 +52,12 @@ TEST(sync_resource_pool, check_capacity) {
     EXPECT_EQ(pool.capacity(), capacity);
 }
 
-TEST(sync_resource_pool, dummy_get_auto_recylce_handle) {
+TEST(sync_resource_pool, get_auto_recylce_handle_should_succeed) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
 }
 
-TEST(sync_resource_pool, dummy_get_auto_waste_handle) {
+TEST(sync_resource_pool, get_auto_waste_handle_should_succeed) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_waste();
 }
@@ -98,59 +98,55 @@ TEST(sync_resource_pool, check_metrics_for_not_empty) {
     EXPECT_EQ(pool.available(), 1ul);
 }
 
-TEST(sync_resource_pool, get_auto_recylce_handle_and_recycle) {
+TEST(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_succeed) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
     handle->recycle();
 }
 
-TEST(sync_resource_pool, get_auto_recylce_handle_and_waste) {
+TEST(sync_resource_pool, get_auto_recylce_handle_and_waste_should_succeed) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
     handle->waste();
 }
 
-TEST(sync_resource_pool, get_auto_waste_handle_and_recycle) {
+TEST(sync_resource_pool, get_auto_waste_handle_and_recycle_should_succeed) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_waste();
-    handle->recycle();
-}
-
-TEST(sync_resource_pool, get_auto_waste_handle_and_waste) {
-    resource_pool pool(1, make_resource);
-    resource_handle_ptr handle = pool.get_auto_waste();
-    handle->waste();
-}
-
-TEST(sync_resource_pool, get_auto_recycle_handle_check_empty) {
-    resource_pool pool(1, make_resource);
-    resource_handle_ptr handle = pool.get_auto_recycle();
     EXPECT_FALSE(handle->empty());
     handle->recycle();
     EXPECT_TRUE(handle->empty());
 }
 
-TEST(sync_resource_pool, get_auto_recycle_handle_and_get_recycled_expect_exception) {
+TEST(sync_resource_pool, get_auto_waste_handle_and_waste_should_succeed) {
+    resource_pool pool(1, make_resource);
+    resource_handle_ptr handle = pool.get_auto_waste();
+    EXPECT_FALSE(handle->empty());
+    handle->waste();
+    EXPECT_TRUE(handle->empty());
+}
+
+TEST(sync_resource_pool, get_auto_recycle_handle_and_get_recycled_should_throw_exception) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
     handle->recycle();
     EXPECT_THROW(handle->get(), error::empty_handle);
 }
 
-TEST(sync_resource_pool, get_auto_recycle_handle_and_recycle_recycled_expect_exception) {
+TEST(sync_resource_pool, get_auto_recycle_handle_and_recycle_recycled_should_throw_exception) {
     resource_pool pool(1, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
     handle->recycle();
     EXPECT_THROW(handle->recycle(), error::empty_handle);
 }
 
-TEST(sync_resource_pool, get_auto_recycle_handle_from_empty_pool_returns_empty_handle) {
+TEST(sync_resource_pool, get_auto_recycle_handle_from_empty_pool_should_return_error) {
     resource_pool pool(0, make_resource);
     resource_handle_ptr handle = pool.get_auto_recycle();
     EXPECT_EQ(handle->error(), error::get_resource_timeout);
 }
 
-TEST(sync_resource_pool, dummy_create_my_resoure_handle) {
+TEST(sync_resource_pool, create_my_resoure_handle_should_succeed) {
     resource_pool pool(1, make_resource);
     my_resource_handle handle(pool.get_auto_recycle());
 }

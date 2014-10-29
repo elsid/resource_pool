@@ -32,20 +32,20 @@ TEST(sync_resource_pool_impl, get_one_and_waste_succeed) {
     pool_impl.waste(*res.second);
 }
 
-TEST(sync_resource_pool_impl, get_more_than_capacity_returns_empty_resource) {
+TEST(sync_resource_pool_impl, get_more_than_capacity_should_throw_exception) {
     resource_pool_impl pool_impl(1, make_resource);
     pool_impl.get();
     EXPECT_EQ(pool_impl.get().first, error::get_resource_timeout);
 }
 
-TEST(sync_resource_pool_impl, put_resource_not_from_pool_expect_exception) {
+TEST(sync_resource_pool_impl, put_resource_not_from_pool_should_throw_exception) {
     resource_pool_impl pool_impl(1, make_resource);
     resource_ptr res = make_resource();
     EXPECT_THROW(pool_impl.recycle(res), error::resource_not_from_pool);
     EXPECT_THROW(pool_impl.waste(res), error::resource_not_from_pool);
 }
 
-TEST(sync_resource_pool_impl, return_recycled_resource_expect_exception) {
+TEST(sync_resource_pool_impl, return_recycled_resource_should_throw_exception) {
     resource_pool_impl pool_impl(1, make_resource);
     get_result res = pool_impl.get();
     pool_impl.recycle(*res.second);
@@ -53,7 +53,7 @@ TEST(sync_resource_pool_impl, return_recycled_resource_expect_exception) {
     EXPECT_THROW(pool_impl.waste(*res.second), error::add_existing_resource);
 }
 
-TEST(sync_resource_pool_impl, return_wasted_resource_expect_exception) {
+TEST(sync_resource_pool_impl, return_wasted_resource_should_throw_exception) {
     resource_pool_impl pool_impl(1, make_resource);
     get_result res = pool_impl.get();
     pool_impl.waste(*res.second);
