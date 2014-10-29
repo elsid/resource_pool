@@ -48,6 +48,10 @@ struct code {
     }
 };
 
+inline std::ostream& operator <<(std::ostream& stream, const code& c) {
+    return stream << c.message();
+}
+
 }}}
 
 #endif
