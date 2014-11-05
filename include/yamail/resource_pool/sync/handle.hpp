@@ -2,7 +2,6 @@
 #define YAMAIL_RESOURCE_POOL_SYNC_HANDLE_HPP
 
 #include <boost/noncopyable.hpp>
-#include <boost/optional.hpp>
 
 #include <yamail/resource_pool/error.hpp>
 
@@ -11,8 +10,7 @@ namespace resource_pool {
 namespace sync {
 
 template <class ResourcePool>
-class handle : public boost::enable_shared_from_this<handle<ResourcePool> >,
-    boost::noncopyable {
+class handle : boost::noncopyable {
 public:
     typedef ResourcePool pool;
     typedef typename pool::pool_impl pool_impl;
@@ -24,18 +22,7 @@ public:
     typedef void (handle::*strategy)();
 
     handle(pool_impl_ptr pool_impl, strategy use_strategy,
-            const time_duration& wait_duration)
-            : _pool_impl(pool_impl), _use_strategy(use_strategy),
-              _error(error::none)
-    {
-        const get_result result = _pool_impl->get(wait_duration);
-        if (result.first == error::none) {
-            _resource = result.second;
-        } else {
-            _error = result.first;
-        }
-    }
-
+            const time_duration& wait_duration);
     ~handle();
 
     error::code error() const { return _error; }
@@ -58,6 +45,19 @@ private:
 
     void assert_not_empty() const;
 };
+
+template <class P>
+handle<P>::handle(pool_impl_ptr pool_impl, strategy use_strategy,
+        const time_duration& wait_duration)
+        : _pool_impl(pool_impl), _use_strategy(use_strategy),
+          _error(error::none) {
+    const get_result result = _pool_impl->get(wait_duration);
+    if (result.first == error::none) {
+        _resource = result.second;
+    } else {
+        _error = result.first;
+    }
+}
 
 template <class P>
 handle<P>::~handle() {

@@ -4,10 +4,8 @@
 #include <set>
 
 #include <boost/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>
 
@@ -22,14 +20,11 @@ template <
     class Resource,
     class ResourceCompare = std::less<Resource>,
     class ResourceAlloc = std::allocator<Resource> >
-class pool_impl : public boost::enable_shared_from_this<pool_impl<Resource> >,
-    boost::noncopyable {
+class pool_impl : boost::noncopyable {
 public:
     typedef Resource resource;
     typedef ResourceCompare resource_compare;
     typedef ResourceAlloc resource_alloc;
-    typedef boost::shared_ptr<pool_impl> shared_ptr;
-    typedef boost::shared_ptr<const pool_impl> shared_const_ptr;
     typedef boost::chrono::system_clock::duration time_duration;
     typedef boost::chrono::seconds seconds;
     typedef boost::function<resource ()> make_resource;
@@ -39,13 +34,6 @@ public:
     pool_impl(std::size_t capacity, make_resource make_res)
             : _capacity(capacity), _make_resource(make_res)
     {}
-
-    shared_ptr shared_from_this() {
-        return boost::enable_shared_from_this<pool_impl>::shared_from_this();
-    }
-    shared_const_ptr shared_from_this() const {
-        return boost::enable_shared_from_this<pool_impl>::shared_from_this();
-    }
 
     std::size_t capacity() const;
     std::size_t size() const;
@@ -176,10 +164,9 @@ bool pool_impl<R, C, A>::create_if_can() {
 template <class R, class C, class A>
 bool pool_impl<R, C, A>::wait_for(unique_lock& lock,
         const time_duration& wait_duration) {
-    using boost::bind;
     return _has_available.wait_for(lock, wait_duration,
-        bind(&pool_impl::has_available, this) or
-        bind(&pool_impl::create_if_can, this));
+        boost::bind(&pool_impl::has_available, this) or
+        boost::bind(&pool_impl::create_if_can, this));
 }
 
 }}}}
