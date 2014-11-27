@@ -3,6 +3,7 @@
 
 #include <boost/function.hpp>
 
+#include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/async/make_handle.hpp>
 
 namespace yamail {
@@ -15,8 +16,15 @@ struct resource_factory {
     typedef async::make_handle<resource> make_handle;
     typedef boost::shared_ptr<make_handle> make_handle_ptr;
 
-    void operator()(make_handle_ptr handle) { handle->reset(T()); }
+    void operator()(make_handle_ptr handle);
 };
+
+template <class T>
+void resource_factory<T>::operator()(make_handle_ptr handle) {
+    try {
+        handle->set(T());
+    } catch (const error::add_existing_resource&) {}
+}
 
 }}}
 

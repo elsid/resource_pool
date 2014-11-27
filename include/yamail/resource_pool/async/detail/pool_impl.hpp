@@ -173,8 +173,8 @@ template <class R, class C, class A>
 void pool_impl<R, C, A>::async_create(unique_lock& lock) {
     ++_creating;
     lock.unlock();
-    const make_resource_callback_succeed succeed = _io_service.wrap(
-        bind(&pool_impl::add_new, shared_from_this(), _1));
+    const make_resource_callback_succeed succeed = bind(&pool_impl::add_new,
+        shared_from_this(), _1);
     const make_resource_callback_failed failed = _io_service.wrap(
         bind(&pool_impl::retry_create, shared_from_this()));
     async_call(bind(_make_resource, succeed, failed));

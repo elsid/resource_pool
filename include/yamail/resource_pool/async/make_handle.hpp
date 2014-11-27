@@ -18,18 +18,30 @@ public:
     typedef boost::optional<resource> resource_opt;
 
     make_handle(callback_succeed succeed, callback_failed failed)
-            : _succeed(succeed), _failed(failed) {}
+            : _succeed(succeed), _failed(failed), _created_one(false) {}
 
-    ~make_handle() { _resource ? _succeed(*_resource) : _failed(); }
+    ~make_handle();
 
-    void reset() { _resource.reset(); }
-    void reset(resource res) { _resource.reset(res); }
+    void set(resource res);
 
 private:
     callback_succeed _succeed;
     callback_failed _failed;
-    resource_opt _resource;
+    bool _created_one;
 };
+
+template <class T>
+make_handle<T>::~make_handle() {
+    if (!_created_one) {
+        _failed();
+    }
+}
+
+template <class T>
+void make_handle<T>::set(resource res) {
+    _succeed(res);
+    _created_one = true;
+}
 
 }}}
 

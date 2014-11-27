@@ -11,7 +11,7 @@ typedef resource_pool::make_handle_ptr make_resource_handle_ptr;
 
 inline void make_resource(make_resource_handle_ptr handle) {
     try {
-        handle->reset(make_shared<resource>());
+        handle->set(make_shared<resource>());
     } catch (const std::exception& e) {
         std::cerr << __func__ << " error: " << e.what() << std::endl;
     } catch (...) {
