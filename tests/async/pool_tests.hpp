@@ -9,16 +9,6 @@ typedef pool<resource_ptr> resource_pool;
 typedef boost::shared_ptr<resource_pool::handle> resource_handle_ptr;
 typedef resource_pool::make_handle_ptr make_resource_handle_ptr;
 
-inline void make_resource(make_resource_handle_ptr handle) {
-    try {
-        handle->set(make_shared<resource>());
-    } catch (const std::exception& e) {
-        std::cerr << __func__ << " error: " << e.what() << std::endl;
-    } catch (...) {
-        std::cerr << __func__ << " unknown error" << std::endl;
-    }
-}
-
 class callback : public base_callback {
 public:
     callback(boost::promise<void>& called) : base_callback(called) {}
@@ -27,6 +17,25 @@ public:
         _impl->call();
         _called.set_value();
     }
+};
+
+class reset_resource_if_need : public callback {
+public:
+    typedef boost::function<resource_ptr ()> make_resource;
+
+    reset_resource_if_need(make_resource res, boost::promise<void>& called)
+            : callback(called), _make_resource(res) {}
+
+    virtual void operator ()(resource_handle_ptr handle) const {
+        EXPECT_EQ(handle->error(), error::none);
+        if (handle->empty()) {
+            handle->reset(_make_resource());
+        }
+        callback::operator ()(handle);
+    }
+
+private:
+    make_resource _make_resource;
 };
 
 class use_handle : public callback {

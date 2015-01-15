@@ -14,6 +14,10 @@ struct add_existing_resource : std::logic_error {
             : std::logic_error("trying add existing resource") {}
 };
 
+struct pool_overflow : std::logic_error {
+    pool_overflow() : std::logic_error("pool capacity is reached") {}
+};
+
 struct empty_handle : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };

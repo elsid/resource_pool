@@ -15,25 +15,39 @@ struct resource {};
 typedef boost::shared_ptr<resource> resource_ptr;
 typedef pool_impl<resource_ptr> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
+typedef resource_pool_impl::resource_list_iterator resource_list_iterator;
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 struct sync_resource_pool_impl : Test {};
 
-TEST(sync_resource_pool_impl, get_one_and_recycle_succeed) {
-    resource_pool_impl pool_impl(1, make_resource);
-    get_result res = pool_impl.get();
-    pool_impl.recycle(*res.second);
+TEST(sync_resource_pool_impl, get_one_should_succeed) {
+    resource_pool_impl pool_impl(1);
+    const get_result res = pool_impl.get();
+    EXPECT_EQ(res.first, error::none);
+    EXPECT_EQ(res.second, boost::none);
 }
 
-TEST(sync_resource_pool_impl, get_one_and_waste_succeed) {
-    resource_pool_impl pool_impl(1, make_resource);
-    get_result res = pool_impl.get();
-    pool_impl.waste(*res.second);
+TEST(sync_resource_pool_impl, get_one_and_recycle_should_succeed) {
+    resource_pool_impl pool_impl(1);
+    const get_result res = pool_impl.get();
+    EXPECT_EQ(res.first, error::none);
+    EXPECT_EQ(res.second, boost::none);
+    const resource_list_iterator res_it = pool_impl.add(make_resource());
+    pool_impl.recycle(res_it);
+}
+
+TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
+    resource_pool_impl pool_impl(1);
+    const get_result res = pool_impl.get();
+    EXPECT_EQ(res.first, error::none);
+    EXPECT_EQ(res.second, boost::none);
+    const resource_list_iterator res_it = pool_impl.add(make_resource());
+    pool_impl.waste(res_it);
 }
 
 TEST(sync_resource_pool_impl, get_more_than_capacity_should_throw_exception) {
-    resource_pool_impl pool_impl(1, make_resource);
+    resource_pool_impl pool_impl(1);
     pool_impl.get();
     EXPECT_EQ(pool_impl.get().first, error::get_resource_timeout);
 }

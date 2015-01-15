@@ -26,10 +26,6 @@ public:
     typedef typename resource_list::iterator resource_list_iterator;
     typedef boost::optional<resource_list_iterator> resource_list_iterator_opt;
     typedef boost::chrono::seconds seconds;
-    typedef boost::function<void (resource)> make_resource_callback_succeed;
-    typedef boost::function<void ()> make_resource_callback_failed;
-    typedef boost::function<void (make_resource_callback_succeed,
-        make_resource_callback_failed)> make_resource;
     typedef boost::function<void (const error::code&,
         const resource_list_iterator_opt&)> callback;
     typedef detail::request_queue::queue<callback> callback_queue;
@@ -37,13 +33,12 @@ public:
     typedef boost::asio::io_service io_service;
 
     pool_impl(io_service& io_service, std::size_t capacity,
-            std::size_t queue_capacity, make_resource make_res)
+            std::size_t queue_capacity)
             : _io_service(io_service),
               _callbacks(boost::make_shared<callback_queue>(
                 boost::ref(io_service), queue_capacity)),
               _capacity(capacity),
-              _make_resource(make_res),
-              _creating(0),
+              _reserved(0),
               _available_size(0),
               _used_size(0)
     {}
@@ -52,7 +47,7 @@ public:
     std::size_t size() const;
     std::size_t available() const;
     std::size_t used() const;
-    std::size_t creating() const;
+    std::size_t reserved() const;
     std::size_t queue_capacity() const { return _callbacks->capacity(); }
     std::size_t queue_size() const { return _callbacks->size(); }
     bool queue_empty() const { return _callbacks->empty(); }
@@ -65,10 +60,13 @@ public:
     void get(callback call, const time_duration& wait_duration = seconds(0));
     void recycle(resource_list_iterator res_it);
     void waste(resource_list_iterator res_it);
+    resource_list_iterator add(resource res);
+    resource_list_iterator replace(resource_list_iterator res_it, resource res);
 
 private:
     typedef typename callback_queue::shared_ptr callback_queue_ptr;
     typedef boost::unique_lock<boost::mutex> unique_lock;
+    typedef boost::lock_guard<boost::mutex> lock_guard;
 
     mutable boost::mutex _mutex;
     resource_list _available;
@@ -76,23 +74,20 @@ private:
     io_service& _io_service;
     callback_queue_ptr _callbacks;
     const std::size_t _capacity;
-    make_resource _make_resource;
-    std::size_t _creating;
+    std::size_t _reserved;
     std::size_t _available_size;
     std::size_t _used_size;
 
     std::size_t size_unsafe() const { return _available_size + _used_size; }
-    bool fit_capacity() const { return size_unsafe() + _creating < _capacity; }
-    void async_create(unique_lock& lock);
+    bool fit_capacity() const { return size_unsafe() + _reserved < _capacity; }
+    void reserve_resource(unique_lock& lock, const callback& call);
     void alloc_resource(unique_lock& lock, const callback& call);
     void perform_one_request(unique_lock& lock);
-    void add_new(const resource& res);
-    void retry_create();
 };
 
 template <class R, class A>
 std::size_t pool_impl<R, A>::size() const {
-    const unique_lock lock(_mutex);
+    const lock_guard lock(_mutex);
     return size_unsafe();
 }
 
@@ -104,14 +99,14 @@ std::size_t pool_impl<R, A>::available() const {
 
 template <class R, class A>
 std::size_t pool_impl<R, A>::used() const {
-    const unique_lock lock(_mutex);
+    const lock_guard lock(_mutex);
     return _used_size;
 }
 
 template <class R, class A>
-std::size_t pool_impl<R, A>::creating() const {
-    const unique_lock lock(_mutex);
-    return _creating;
+std::size_t pool_impl<R, A>::reserved() const {
+    const lock_guard lock(_mutex);
+    return _reserved;
 }
 
 template <class R, class A>
@@ -131,9 +126,7 @@ void pool_impl<R, A>::waste(resource_list_iterator res_it) {
     if (_callbacks->empty()) {
         return;
     }
-    if (_available.empty()) {
-        async_create(lock);
-    } else {
+    if (!_available.empty()) {
         perform_one_request(lock);
     }
 }
@@ -143,6 +136,8 @@ void pool_impl<R, A>::get(callback call, const time_duration& wait_duration) {
     unique_lock lock(_mutex);
     if (!_available.empty()) {
         alloc_resource(lock, call);
+    } else if (fit_capacity()) {
+        reserve_resource(lock, call);
     } else {
         lock.unlock();
         if (wait_duration.count() == 0ll) {
@@ -152,16 +147,35 @@ void pool_impl<R, A>::get(callback call, const time_duration& wait_duration) {
             const error::code& push_result = _callbacks->push(call,
                 bind(call, error::get_resource_timeout, resource_list_iterator_opt()),
                 wait_duration);
-            if (push_result == error::none) {
-                unique_lock lock(_mutex);
-                if (fit_capacity()) {
-                    async_create(lock);
-                }
-            } else {
+            if (push_result != error::none) {
                 async_call(bind(call, push_result, resource_list_iterator_opt()));
             }
         }
     }
+}
+
+template <class R, class A>
+typename pool_impl<R, A>::resource_list_iterator pool_impl<R, A>::add(resource res) {
+    const lock_guard lock(_mutex);
+    if (_reserved == 0) {
+        if (!fit_capacity()) {
+            throw error::pool_overflow();
+        }
+    } else {
+        --_reserved;
+    }
+    const resource_list_iterator res_it = _used.insert(_used.end(), res);
+    ++_used_size;
+    return res_it;
+}
+
+template <class R, class A>
+typename pool_impl<R, A>::resource_list_iterator pool_impl<R, A>::replace(
+        resource_list_iterator res_it, resource res) {
+    const lock_guard lock(_mutex);
+    _used.erase(res_it);
+    const resource_list_iterator new_it = _used.insert(_used.end(), res);
+    return new_it;
 }
 
 template <class R, class A>
@@ -175,14 +189,10 @@ void pool_impl<R, A>::alloc_resource(unique_lock& lock, const callback& call) {
 }
 
 template <class R, class A>
-void pool_impl<R, A>::async_create(unique_lock& lock) {
-    ++_creating;
+void pool_impl<R, A>::reserve_resource(unique_lock& lock, const callback& call) {
+    ++_reserved;
     lock.unlock();
-    const make_resource_callback_succeed succeed = bind(&pool_impl::add_new,
-        shared_from_this(), _1);
-    const make_resource_callback_failed failed = _io_service.wrap(
-        bind(&pool_impl::retry_create, shared_from_this()));
-    async_call(bind(_make_resource, succeed, failed));
+    async_call(bind(call, error::none, boost::none));
 }
 
 template <class R, class A>
@@ -190,24 +200,6 @@ void pool_impl<R, A>::perform_one_request(unique_lock& lock) {
     const typename callback_queue::pop_result& result = _callbacks->pop();
     if (result == error::none) {
         alloc_resource(lock, *result.request);
-    }
-}
-
-template <class R, class A>
-void pool_impl<R, A>::add_new(const resource& res) {
-    unique_lock lock(_mutex);
-    --_creating;
-    _available.push_back(res);
-    ++_available_size;
-    perform_one_request(lock);
-}
-
-template <class R, class A>
-void pool_impl<R, A>::retry_create() {
-    unique_lock lock(_mutex);
-    --_creating;
-    if (fit_capacity() && !queue_empty()) {
-        async_create(lock);
     }
 }
 

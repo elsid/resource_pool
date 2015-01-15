@@ -49,6 +49,7 @@ public:
     void recycle();
     void waste();
     void request(callback call, const time_duration& wait_duration);
+    void reset(resource res);
 
 private:
     pool_impl_ptr _pool_impl;
@@ -99,6 +100,15 @@ template <class P>
 void handle<P>::request(callback call, const time_duration& wait_duration) {
     _pool_impl->get(bind(&handle::set, shared_from_this(), call, _1, _2),
         wait_duration);
+}
+
+template <class P>
+void handle<P>::reset(resource res) {
+    if (empty()) {
+        _resource_it.reset(_pool_impl->add(res));
+    } else {
+        _resource_it.reset(_pool_impl->replace(*_resource_it, res));
+    }
 }
 
 template <class P>

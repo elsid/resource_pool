@@ -1,6 +1,8 @@
 #include <boost/array.hpp>
 #include <boost/range/algorithm/transform.hpp>
 #include <boost/range/algorithm/for_each.hpp>
+#include <boost/lambda/bind.hpp>
+#include <boost/lambda/lambda.hpp>
 
 #include "pool_tests.hpp"
 
@@ -17,6 +19,8 @@ typedef yamail::resource_pool::async::detail::request_queue::clock_time_traits c
 typedef boost::asio::basic_deadline_timer<clock, clock_time_traits> timer;
 
 struct load_test_async_resource_pool : public async_test {};
+
+const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 class finite_pereodic_work {
 public:
@@ -71,10 +75,17 @@ public:
         if (_called_it == _called.end()) {
             throw std::logic_error("too many calls");
         }
-        boost::promise<void>& called = *_called_it;
+        boost::promise<void>& reset_called = *_called_it;
+        ++_called_it;
+        boost::promise<void>& check_called = *_called_it;
         ++_called_it;
         lock.unlock();
-        _pool.get_auto_recycle(check_error(error::none, called), _wait_duration);
+        const reset_resource_if_need reset(make_resource, reset_called);
+        const check_error check(error::none, check_called);
+        using namespace boost;
+        using namespace boost::lambda;
+        _pool.get_auto_recycle((lambda::bind(reset, lambda::_1),
+             lambda::bind(check, lambda::_1)), _wait_duration);
     }
 
     void wait() {
@@ -83,11 +94,13 @@ public:
     }
 
 private:
+    typedef boost::array<boost::promise<void>, 2 * count> called_array;
+
     resource_pool& _pool;
     time_duration _wait_duration;
     boost::mutex _mutex;
-    boost::array<boost::promise<void>, count> _called;
-    typename boost::array<boost::promise<void>, count>::iterator _called_it;
+    called_array _called;
+    typename called_array::iterator _called_it;
 };
 
 template <std::size_t count>
@@ -116,7 +129,7 @@ TEST_F(load_test_async_resource_pool, perform_many_get_auto_recycle_should_succe
     for (std::size_t n = 0; n < threads_count; ++n) {
         thread_pool.create_thread(bind(&io_service::run, ref(ios)));
     }
-    resource_pool pool(*_io_service, pool_capacity, pool_queue_capacity, make_resource);
+    resource_pool pool(*_io_service, pool_capacity, pool_queue_capacity);
     get_auto_recycle<load_count> do_load(pool, wait_duration);
     finite_pereodic_work load(ref(ios), do_load, load_interval);
     EXPECT_EQ(load.start(load_count).get(), boost::system::errc::success);

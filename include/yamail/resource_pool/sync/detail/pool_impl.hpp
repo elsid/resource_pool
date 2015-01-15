@@ -25,72 +25,76 @@ public:
     typedef ResourceAlloc resource_alloc;
     typedef boost::chrono::system_clock::duration time_duration;
     typedef boost::chrono::seconds seconds;
-    typedef boost::function<resource ()> make_resource;
     typedef std::list<resource, resource_alloc> resource_list;
     typedef typename resource_list::iterator resource_list_iterator;
     typedef boost::optional<resource_list_iterator> resource_list_iterator_opt;
     typedef std::pair<error::code, resource_list_iterator_opt> get_result;
 
-    pool_impl(std::size_t capacity, make_resource make_res)
-            : _capacity(capacity), _make_resource(make_res), _available_size(0),
-              _used_size(0)
+    pool_impl(std::size_t capacity)
+            : _capacity(capacity),
+              _available_size(0),
+              _used_size(0),
+              _reserved(0)
     {}
 
-    std::size_t capacity() const;
+    std::size_t capacity() const { return _capacity; }
     std::size_t size() const;
     std::size_t available() const;
     std::size_t used() const;
+    std::size_t reserved() const;
 
     get_result get(const time_duration& wait_duration = seconds(0));
     void recycle(resource_list_iterator res_it);
     void waste(resource_list_iterator res_it);
+    resource_list_iterator replace(resource_list_iterator res_it, resource res);
+    resource_list_iterator add(resource res);
 
 private:
+    typedef boost::lock_guard<boost::mutex> lock_guard;
     typedef boost::unique_lock<boost::mutex> unique_lock;
 
     mutable boost::mutex _mutex;
     boost::condition_variable _has_available;
     resource_list _available;
     resource_list _used;
-    std::size_t _capacity;
-    make_resource _make_resource;
+    const std::size_t _capacity;
     std::size_t _available_size;
     std::size_t _used_size;
+    std::size_t _reserved;
 
     std::size_t size_unsafe() const { return _available_size + _used_size; }
-    bool fit_capacity() const { return size_unsafe() < _capacity; }
+    bool fit_capacity() const { return size_unsafe() + _reserved < _capacity; }
     bool has_available() const { return !_available.empty(); }
-    bool create_if_can();
     bool wait_for(unique_lock& lock, const time_duration& wait_duration);
 };
 
 template <class R, class A>
-std::size_t pool_impl<R, A>::capacity() const {
-    unique_lock lock(_mutex);
-    return _capacity;
-}
-
-template <class R, class A>
 std::size_t pool_impl<R, A>::size() const {
-    const unique_lock lock(_mutex);
+    const lock_guard lock(_mutex);
     return size_unsafe();
 }
 
 template <class R, class A>
 std::size_t pool_impl<R, A>::available() const {
-    const unique_lock lock(_mutex);
-    return _available.size();
+    const lock_guard lock(_mutex);
+    return _available_size;
 }
 
 template <class R, class A>
 std::size_t pool_impl<R, A>::used() const {
-    const unique_lock lock(_mutex);
-    return _used.size();
+    const lock_guard lock(_mutex);
+    return _used_size;
+}
+
+template <class R, class A>
+std::size_t pool_impl<R, A>::reserved() const {
+    const lock_guard lock(_mutex);
+    return _reserved;
 }
 
 template <class R, class A>
 void pool_impl<R, A>::recycle(resource_list_iterator res_it) {
-    const unique_lock lock(_mutex);
+    const lock_guard lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
     --_used_size;
     ++_available_size;
@@ -99,7 +103,7 @@ void pool_impl<R, A>::recycle(resource_list_iterator res_it) {
 
 template <class R, class A>
 void pool_impl<R, A>::waste(resource_list_iterator res_it) {
-    const unique_lock lock(_mutex);
+    const lock_guard lock(_mutex);
     _used.erase(res_it);
     --_used_size;
     _has_available.notify_one();
@@ -109,6 +113,10 @@ template <class R, class A>
 typename pool_impl<R, A>::get_result pool_impl<R, A>::get(
         const time_duration& wait_duration) {
     unique_lock lock(_mutex);
+    if (_available_size == 0 && fit_capacity()) {
+        ++_reserved;
+        return std::make_pair(error::none, boost::none);
+    }
     if (!wait_for(lock, wait_duration)) {
         return std::make_pair(error::get_resource_timeout, boost::none);
     }
@@ -120,21 +128,34 @@ typename pool_impl<R, A>::get_result pool_impl<R, A>::get(
 }
 
 template <class R, class A>
-bool pool_impl<R, A>::create_if_can() {
-    if (!fit_capacity()) {
-        return false;
+typename pool_impl<R, A>::resource_list_iterator pool_impl<R, A>::add(resource res) {
+    const lock_guard lock(_mutex);
+    if (_reserved == 0) {
+        if (!fit_capacity()) {
+            throw error::pool_overflow();
+        }
+    } else {
+        --_reserved;
     }
-    _available.push_back(_make_resource());
-    ++_available_size;
-    return true;
+    const resource_list_iterator res_it = _used.insert(_used.end(), res);
+    ++_used_size;
+    return res_it;
+}
+
+template <class R, class A>
+typename pool_impl<R, A>::resource_list_iterator pool_impl<R, A>::replace(
+        resource_list_iterator res_it, resource res) {
+    const lock_guard lock(_mutex);
+    _used.erase(res_it);
+    const resource_list_iterator it = _used.insert(_used.end(), res);
+    return it;
 }
 
 template <class R, class A>
 bool pool_impl<R, A>::wait_for(unique_lock& lock,
         const time_duration& wait_duration) {
     return _has_available.wait_for(lock, wait_duration,
-        boost::bind(&pool_impl::has_available, this) or
-        boost::bind(&pool_impl::create_if_can, this));
+        boost::bind(&pool_impl::has_available, this));
 }
 
 }}}}

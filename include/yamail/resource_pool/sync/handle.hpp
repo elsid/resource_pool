@@ -36,6 +36,7 @@ public:
 
     void recycle();
     void waste();
+    void reset(resource res);
 
 private:
     pool_impl_ptr _pool_impl;
@@ -90,6 +91,15 @@ void handle<P>::waste() {
     assert_not_empty();
     _pool_impl->waste(*_resource_it);
     _resource_it.reset();
+}
+
+template <class P>
+void handle<P>::reset(resource res) {
+    if (empty()) {
+        _resource_it.reset(_pool_impl->add(res));
+    } else {
+        _resource_it.reset(_pool_impl->replace(*_resource_it, res));
+    }
 }
 
 template <class P>
