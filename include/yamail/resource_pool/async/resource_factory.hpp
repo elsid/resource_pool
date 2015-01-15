@@ -16,15 +16,8 @@ struct resource_factory {
     typedef async::make_handle<resource> make_handle;
     typedef boost::shared_ptr<make_handle> make_handle_ptr;
 
-    void operator()(make_handle_ptr handle);
+    void operator()(make_handle_ptr handle) { handle->set(T()); }
 };
-
-template <class T>
-void resource_factory<T>::operator()(make_handle_ptr handle) {
-    try {
-        handle->set(T());
-    } catch (const error::add_existing_resource&) {}
-}
 
 }}}
 

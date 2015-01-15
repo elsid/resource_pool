@@ -1,8 +1,6 @@
 #ifndef YAMAIL_RESOURCE_POOL_SYNC_POOL_HPP
 #define YAMAIL_RESOURCE_POOL_SYNC_POOL_HPP
 
-#include <set>
-
 #include <boost/make_shared.hpp>
 
 #include <yamail/resource_pool/error.hpp>
@@ -16,14 +14,12 @@ namespace sync {
 
 template <
     class Resource,
-    class ResourceCompare = std::less<Resource>,
     class ResourceAlloc = std::allocator<Resource> >
 class pool {
 public:
     typedef Resource resource;
-    typedef ResourceCompare resource_compare;
     typedef ResourceAlloc resource_alloc;
-    typedef detail::pool_impl<resource, resource_compare, resource_alloc> pool_impl;
+    typedef detail::pool_impl<resource, resource_alloc> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
     typedef typename pool_impl::make_resource make_resource;

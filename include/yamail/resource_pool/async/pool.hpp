@@ -1,7 +1,7 @@
 #ifndef YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 #define YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 
-#include <set>
+#include <list>
 
 #include <boost/make_shared.hpp>
 
@@ -16,14 +16,12 @@ namespace async {
 
 template <
     class Resource,
-    class ResourceCompare = std::less<Resource>,
     class ResourceAlloc = std::allocator<Resource> >
 class pool {
 public:
     typedef Resource resource;
-    typedef ResourceCompare resource_compare;
     typedef ResourceAlloc resource_alloc;
-    typedef detail::pool_impl<resource, resource_compare, resource_alloc> pool_impl;
+    typedef detail::pool_impl<resource, resource_alloc> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
     typedef typename pool_impl::io_service io_service;

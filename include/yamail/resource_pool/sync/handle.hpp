@@ -17,7 +17,7 @@ public:
     typedef typename pool::pool_impl_ptr pool_impl_ptr;
     typedef typename pool::resource resource;
     typedef typename pool::time_duration time_duration;
-    typedef typename pool_impl::resource_opt resource_opt;
+    typedef typename pool_impl::resource_list_iterator_opt resource_list_iterator_opt;
     typedef typename pool_impl::get_result get_result;
     typedef void (handle::*strategy)();
 
@@ -26,7 +26,7 @@ public:
     ~handle();
 
     error::code error() const { return _error; }
-    bool empty() const { return !_resource.is_initialized(); }
+    bool empty() const { return !_resource_it.is_initialized(); }
     resource& get();
     const resource& get() const;
     resource *operator ->() { return &get(); }
@@ -40,7 +40,7 @@ public:
 private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
-    resource_opt _resource;
+    resource_list_iterator_opt _resource_it;
     error::code _error;
 
     void assert_not_empty() const;
@@ -53,7 +53,7 @@ handle<P>::handle(pool_impl_ptr pool_impl, strategy use_strategy,
           _error(error::none) {
     const get_result result = _pool_impl->get(wait_duration);
     if (result.first == error::none) {
-        _resource = result.second;
+        _resource_it = result.second;
     } else {
         _error = result.first;
     }
@@ -69,27 +69,27 @@ handle<P>::~handle() {
 template <class P>
 typename handle<P>::resource& handle<P>::get() {
     assert_not_empty();
-    return *_resource;
+    return **_resource_it;
 }
 
 template <class P>
 const typename handle<P>::resource& handle<P>::get() const {
     assert_not_empty();
-    return *_resource;
+    return **_resource_it;
 }
 
 template <class P>
 void handle<P>::recycle() {
     assert_not_empty();
-    _pool_impl->recycle(*_resource);
-    _resource.reset();
+    _pool_impl->recycle(*_resource_it);
+    _resource_it.reset();
 }
 
 template <class P>
 void handle<P>::waste() {
     assert_not_empty();
-    _pool_impl->waste(*_resource);
-    _resource.reset();
+    _pool_impl->waste(*_resource_it);
+    _resource_it.reset();
 }
 
 template <class P>

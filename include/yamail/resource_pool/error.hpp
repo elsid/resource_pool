@@ -14,11 +14,6 @@ struct add_existing_resource : std::logic_error {
             : std::logic_error("trying add existing resource") {}
 };
 
-struct resource_not_from_pool : std::logic_error {
-    resource_not_from_pool()
-            : std::logic_error("trying add resource not from current pool") {}
-};
-
 struct empty_handle : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };
