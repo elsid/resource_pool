@@ -56,10 +56,10 @@ private:
 
     handle(pool_impl_ptr pool_impl,
             strategy use_strategy,
-            const list_iterator_opt& _resource_it,
-            const error::code& _error)
+            const list_iterator_opt& resource_it,
+            const error::code& error)
             : _pool_impl(pool_impl), _use_strategy(use_strategy),
-              _resource_it(_resource_it), _error(_error) {}
+              _resource_it(resource_it), _error(error) {}
 
     void assert_not_empty() const;
 };

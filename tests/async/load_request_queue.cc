@@ -11,7 +11,7 @@ using namespace tests;
 using namespace yamail::resource_pool::async::detail::request_queue;
 
 typedef queue<request> request_queue;
-typedef request_queue::shared_ptr request_queue_ptr;
+typedef boost::shared_ptr<request_queue> request_queue_ptr;
 
 struct load_test_async_request_queue : async_test {};
 

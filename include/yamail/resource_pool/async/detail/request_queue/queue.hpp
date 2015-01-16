@@ -32,11 +32,9 @@ class queue : public boost::enable_shared_from_this<queue<T> >,
     boost::noncopyable {
 public:
     typedef T value_type;
-    typedef boost::shared_ptr<queue> shared_ptr;
     typedef boost::function<void ()> callback;
     typedef clock::duration time_duration;
     typedef clock::time_point time_point;
-    typedef boost::asio::io_service io_service;
     typedef boost::optional<value_type> value_type_opt;
 
     struct pop_result {
@@ -51,10 +49,10 @@ public:
         }
     };
 
-    queue(io_service& io_service, std::size_t capacity = 0)
+    queue(boost::asio::io_service& io_service, std::size_t capacity = 0)
             : _io_service(io_service), _capacity(capacity), _timer(io_service) {}
 
-    shared_ptr shared_from_this() {
+    boost::shared_ptr<queue> shared_from_this() {
         return boost::enable_shared_from_this<queue>::shared_from_this();
     }
 
@@ -91,7 +89,7 @@ private:
     mutable boost::mutex _mutex;
     request_list _ordered_requests;
     request_multimap _expires_at_requests;
-    io_service& _io_service;
+    boost::asio::io_service& _io_service;
     const std::size_t _capacity;
     timer _timer;
 

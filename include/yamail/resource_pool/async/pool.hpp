@@ -20,13 +20,11 @@ public:
     typedef detail::pool_impl<value_type> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
-    typedef typename pool_impl::io_service io_service;
-    typedef typename pool_impl::shared_ptr pool_impl_ptr;
     typedef resource_pool::handle<pool_impl> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
     typedef boost::function<void (handle_ptr)> callback;
 
-    pool(io_service& io_service, std::size_t capacity = 0,
+    pool(boost::asio::io_service& io_service, std::size_t capacity = 0,
             std::size_t queue_capacity = 0)
             : _impl(boost::make_shared<pool_impl>(
                 boost::ref(io_service),
@@ -56,6 +54,7 @@ public:
 private:
     typedef typename pool_impl::list_iterator_opt list_iterator_opt;
     typedef typename handle::strategy strategy;
+    typedef typename boost::shared_ptr<pool_impl> pool_impl_ptr;
 
     pool_impl_ptr _impl;
 

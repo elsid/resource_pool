@@ -19,7 +19,6 @@ class pool_impl : boost::noncopyable,
 public:
     typedef T value_type;
     typedef boost::shared_ptr<value_type> pointer;
-    typedef boost::shared_ptr<pool_impl> shared_ptr;
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
     typedef boost::optional<list_iterator> list_iterator_opt;
@@ -28,9 +27,8 @@ public:
         const list_iterator_opt&)> callback;
     typedef detail::request_queue::queue<callback> callback_queue;
     typedef typename callback_queue::time_duration time_duration;
-    typedef boost::asio::io_service io_service;
 
-    pool_impl(io_service& io_service, std::size_t capacity,
+    pool_impl(boost::asio::io_service& io_service, std::size_t capacity,
             std::size_t queue_capacity)
             : _io_service(io_service),
               _callbacks(boost::make_shared<callback_queue>(
@@ -51,7 +49,7 @@ public:
     bool queue_empty() const { return _callbacks->empty(); }
     void async_call(boost::function<void ()> call) { _io_service.post(call); }
 
-    shared_ptr shared_from_this() {
+    boost::shared_ptr<pool_impl> shared_from_this() {
         return boost::enable_shared_from_this<pool_impl>::shared_from_this();
     }
 
@@ -62,14 +60,14 @@ public:
     list_iterator replace(list_iterator res_it, pointer res);
 
 private:
-    typedef typename callback_queue::shared_ptr callback_queue_ptr;
+    typedef typename boost::shared_ptr<callback_queue> callback_queue_ptr;
     typedef boost::unique_lock<boost::mutex> unique_lock;
     typedef boost::lock_guard<boost::mutex> lock_guard;
 
     mutable boost::mutex _mutex;
     list _available;
     list _used;
-    io_service& _io_service;
+    boost::asio::io_service& _io_service;
     callback_queue_ptr _callbacks;
     const std::size_t _capacity;
     std::size_t _reserved;
