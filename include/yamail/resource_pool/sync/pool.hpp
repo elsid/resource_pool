@@ -18,11 +18,10 @@ class pool {
 public:
     typedef Resource resource;
     typedef ResourceAlloc resource_alloc;
-    typedef detail::pool_impl<resource, resource_alloc> pool_impl;
+    typedef detail::pool_impl<resource> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
-    typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
-    typedef sync::handle<pool> handle;
+    typedef sync::handle<resource, resource_alloc> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
     pool(std::size_t capacity = 0)
@@ -44,12 +43,14 @@ public:
     }
 
 private:
+    typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
     typedef void (handle::*strategy)();
 
     pool_impl_ptr _impl;
 
     handle_ptr get_handle(strategy use_strategy, const time_duration& wait_duration) {
-        return boost::make_shared<handle>(_impl, use_strategy, wait_duration);
+        const typename pool_impl::get_result& res = _impl->get(wait_duration);
+        return handle_ptr(new handle(_impl, use_strategy, res.second, res.first));
     }
 };
 

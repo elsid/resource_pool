@@ -7,7 +7,6 @@ using namespace yamail::resource_pool::async;
 
 typedef pool<resource_ptr> resource_pool;
 typedef boost::shared_ptr<resource_pool::handle> resource_handle_ptr;
-typedef resource_pool::make_handle_ptr make_resource_handle_ptr;
 
 class callback : public base_callback {
 public:

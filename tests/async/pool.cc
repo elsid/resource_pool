@@ -9,7 +9,6 @@ using namespace pool_tests;
 
 typedef pool<resource_ptr> resource_pool;
 typedef boost::shared_ptr<resource_pool::handle> resource_handle_ptr;
-typedef resource_pool::make_handle_ptr make_resource_handle_ptr;
 
 struct async_resource_pool_simple : public Test {};
 

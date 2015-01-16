@@ -25,12 +25,9 @@ public:
     typedef typename pool_impl::seconds seconds;
     typedef typename pool_impl::io_service io_service;
     typedef typename pool_impl::shared_ptr pool_impl_ptr;
-    typedef async::handle<pool> handle;
-    typedef typename handle::callback callback;
-    typedef async::make_handle<resource> make_handle;
-    typedef typename make_handle::callback_succeed make_resource_callback_succeed;
-    typedef typename make_handle::callback_failed make_resource_callback_failed;
-    typedef boost::shared_ptr<make_handle> make_handle_ptr;
+    typedef async::handle<resource, resource_alloc> handle;
+    typedef boost::shared_ptr<handle> handle_ptr;
+    typedef boost::function<void (handle_ptr)> callback;
 
     pool(io_service& io_service, std::size_t capacity = 0,
             std::size_t queue_capacity = 0)
@@ -60,13 +57,26 @@ public:
     }
 
 private:
+    typedef typename pool_impl::resource_list_iterator_opt resource_list_iterator_opt;
     typedef typename handle::strategy strategy;
 
     pool_impl_ptr _impl;
 
     void get(callback call, strategy use_strategy,
             const time_duration& wait_duration) {
-        boost::make_shared<handle>(_impl, use_strategy)->request(call, wait_duration);
+        _impl->get(bind(make_handle, _impl, call, use_strategy, _1, _2),
+            wait_duration);
+    }
+
+    static void make_handle(pool_impl_ptr impl, callback call,
+            strategy use_strategy, const error::code& err,
+            const resource_list_iterator_opt& res) {
+        try {
+            impl->async_call(bind(call,
+                handle_ptr(new handle(impl, use_strategy, res, err))));
+        } catch (...) {
+            impl->async_call(bind(call, handle_ptr()));
+        }
     }
 };
 
