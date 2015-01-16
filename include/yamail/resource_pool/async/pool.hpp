@@ -6,7 +6,7 @@
 #include <boost/make_shared.hpp>
 
 #include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/async/handle.hpp>
+#include <yamail/resource_pool/handle.hpp>
 #include <yamail/resource_pool/async/detail/pool_impl.hpp>
 
 namespace yamail {
@@ -22,7 +22,7 @@ public:
     typedef typename pool_impl::seconds seconds;
     typedef typename pool_impl::io_service io_service;
     typedef typename pool_impl::shared_ptr pool_impl_ptr;
-    typedef async::handle<value_type> handle;
+    typedef resource_pool::handle<pool_impl> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
     typedef boost::function<void (handle_ptr)> callback;
 

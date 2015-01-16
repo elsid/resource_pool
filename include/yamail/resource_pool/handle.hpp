@@ -1,31 +1,33 @@
-#ifndef YAMAIL_RESOURCE_POOL_ASYNC_HANDLE_HPP
-#define YAMAIL_RESOURCE_POOL_ASYNC_HANDLE_HPP
+#ifndef YAMAIL_RESOURCE_POOL_HANDLE_HPP
+#define YAMAIL_RESOURCE_POOL_HANDLE_HPP
 
-#include <boost/bind.hpp>
-#include <boost/function.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/noncopyable.hpp>
 
 #include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/async/detail/pool_impl.hpp>
+#include <yamail/resource_pool/sync/detail/pool_impl.hpp>
 
 namespace yamail {
 namespace resource_pool {
-namespace async {
 
+namespace sync {
 template <class T>
 class pool;
+}
 
+namespace async {
 template <class T>
+class pool;
+}
+
+template <class ResourcePoolImpl>
 class handle : boost::noncopyable {
 public:
-    typedef T value_type;
-    typedef typename detail::pool_impl<value_type> pool_impl;
-    typedef typename pool_impl::shared_ptr pool_impl_ptr;
+    typedef ResourcePoolImpl pool_impl;
+    typedef typename pool_impl::value_type value_type;
     typedef typename pool_impl::pointer pointer;
-    typedef typename pool_impl::list_iterator_opt list_iterator_opt;
     typedef void (handle::*strategy)();
 
+    friend class sync::pool<value_type>;
     friend class async::pool<value_type>;
 
     ~handle();
@@ -44,6 +46,9 @@ public:
     void reset(pointer res);
 
 private:
+    typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
+    typedef typename pool_impl::list_iterator_opt list_iterator_opt;
+
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
     list_iterator_opt _resource_it;
@@ -108,6 +113,7 @@ void handle<R>::assert_not_empty() const {
     }
 }
 
-}}}
+}
+}
 
 #endif
