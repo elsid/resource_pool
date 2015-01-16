@@ -5,6 +5,7 @@
 #include <map>
 
 #include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/bind.hpp>
 #include <boost/chrono.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -25,33 +26,6 @@ namespace detail {
 namespace request_queue {
 
 typedef boost::chrono::steady_clock clock;
-
-struct clock_time_traits {
-    typedef clock::time_point time_type;
-    typedef clock::duration duration_type;
-
-    static time_type now() {
-        return clock::now();
-    }
-
-    static time_type add(const time_type& t, const duration_type& d) {
-        return t + d;
-    }
-
-    static duration_type subtract(const time_type& t1, const time_type& t2) {
-        return t1 - t2;
-    }
-
-    static bool less_than(const time_type& t1, const time_type& t2) {
-        return t1 < t2;
-    }
-
-    static boost::posix_time::time_duration to_posix_duration(const duration_type& d){
-        using boost::chrono::microseconds;
-        using boost::chrono::duration_cast;
-        return boost::posix_time::microseconds(duration_cast<microseconds>(d).count());
-    }
-};
 
 template <class Request>
 class queue : public boost::enable_shared_from_this<queue<Request> >,
@@ -94,7 +68,7 @@ public:
 
 private:
     typedef boost::lock_guard<boost::mutex> lock_guard;
-    typedef boost::asio::basic_deadline_timer<clock, clock_time_traits> timer;
+    typedef boost::asio::steady_timer timer;
     struct expiring_request;
     typedef boost::shared_ptr<expiring_request> expiring_request_ptr;
     typedef std::list<expiring_request_ptr> request_list;

@@ -1,4 +1,5 @@
 #include <boost/array.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/range/algorithm/transform.hpp>
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/lambda/bind.hpp>
@@ -15,8 +16,7 @@ using boost::range::for_each;
 using boost::chrono::duration_cast;
 
 typedef yamail::resource_pool::async::detail::request_queue::clock clock;
-typedef yamail::resource_pool::async::detail::request_queue::clock_time_traits clock_time_traits;
-typedef boost::asio::basic_deadline_timer<clock, clock_time_traits> timer;
+typedef boost::asio::steady_timer timer;
 
 struct load_test_async_resource_pool : public async_test {};
 

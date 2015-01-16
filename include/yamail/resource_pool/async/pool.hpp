@@ -31,8 +31,8 @@ public:
 
     pool(io_service& io_service, std::size_t capacity = 0,
             std::size_t queue_capacity = 0)
-            : _impl(
-                boost::make_shared<pool_impl>(boost::ref(io_service),
+            : _impl(boost::make_shared<pool_impl>(
+                boost::ref(io_service),
                 capacity,
                 queue_capacity)) {}
 
