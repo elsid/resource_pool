@@ -13,9 +13,9 @@ using boost::make_shared;
 struct resource {};
 
 typedef boost::shared_ptr<resource> resource_ptr;
-typedef pool_impl<resource_ptr> resource_pool_impl;
+typedef pool_impl<resource> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
-typedef resource_pool_impl::resource_list_iterator resource_list_iterator;
+typedef resource_pool_impl::resource_ptr_list_iterator resource_ptr_list_iterator;
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
@@ -33,7 +33,7 @@ TEST(sync_resource_pool_impl, get_one_and_recycle_should_succeed) {
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, error::none);
     EXPECT_EQ(res.second, boost::none);
-    const resource_list_iterator res_it = pool_impl.add(make_resource());
+    const resource_ptr_list_iterator res_it = pool_impl.add(make_resource());
     pool_impl.recycle(res_it);
 }
 
@@ -42,7 +42,7 @@ TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, error::none);
     EXPECT_EQ(res.second, boost::none);
-    const resource_list_iterator res_it = pool_impl.add(make_resource());
+    const resource_ptr_list_iterator res_it = pool_impl.add(make_resource());
     pool_impl.waste(res_it);
 }
 

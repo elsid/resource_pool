@@ -5,9 +5,9 @@ namespace {
 using namespace tests;
 using namespace yamail::resource_pool::async::detail;
 
-typedef pool_impl<resource_ptr> resource_pool_impl;
-typedef resource_pool_impl::resource_list_iterator resource_list_iterator;
-typedef resource_pool_impl::resource_list_iterator_opt resource_list_iterator_opt;
+typedef pool_impl<resource> resource_pool_impl;
+typedef resource_pool_impl::resource_ptr_list_iterator resource_ptr_list_iterator;
+typedef resource_pool_impl::resource_ptr_list_iterator_opt resource_ptr_list_iterator_opt;
 typedef boost::shared_ptr<resource_pool_impl> resource_pool_impl_ptr;
 
 struct async_resource_pool_impl_simple : Test {};
@@ -31,7 +31,7 @@ struct async_resource_pool_impl_complex : public async_test {
 struct callback : base_callback {
     callback(boost::promise<void>& called) : base_callback(called) {}
 
-    void operator ()(const error::code& /*err*/, const resource_list_iterator_opt& /*res*/) const {
+    void operator ()(const error::code& /*err*/, const resource_ptr_list_iterator_opt& /*res*/) const {
         _impl->call();
         _called.set_value();
     }
@@ -39,14 +39,14 @@ struct callback : base_callback {
 
 class use_resource : protected callback {
 public:
-    typedef void ((use_resource::*strategy)(resource_list_iterator) const);
+    typedef void ((use_resource::*strategy)(resource_ptr_list_iterator) const);
 
     use_resource(resource_pool_impl_ptr pool_impl,
             strategy use_strategy, boost::promise<void>& called)
             : callback(called), _pool_impl(pool_impl),
               _use_strategy(use_strategy) {}
 
-    void operator ()(const error::code& err, const resource_list_iterator_opt& res) const {
+    void operator ()(const error::code& err, const resource_ptr_list_iterator_opt& res) const {
         EXPECT_EQ(err, error::none);
         EXPECT_TRUE(res);
         if (res) {
@@ -55,9 +55,9 @@ public:
         callback::operator ()(err, res);
     }
 
-    void use(resource_list_iterator res) const { (this->*_use_strategy)(res); }
-    void recycle(resource_list_iterator res) const { _pool_impl->recycle(res); }
-    void waste(resource_list_iterator res) const { _pool_impl->waste(res); }
+    void use(resource_ptr_list_iterator res) const { (this->*_use_strategy)(res); }
+    void recycle(resource_ptr_list_iterator res) const { _pool_impl->recycle(res); }
+    void waste(resource_ptr_list_iterator res) const { _pool_impl->waste(res); }
 
 protected:
     resource_pool_impl_ptr _pool_impl;
@@ -72,7 +72,7 @@ public:
             resource_ptr res, strategy use_strategy, boost::promise<void>& called)
             : use_resource(pool_impl, use_strategy, called), _resource(res) {}
 
-    void operator ()(const error::code& err, const resource_list_iterator_opt& res) const {
+    void operator ()(const error::code& err, const resource_ptr_list_iterator_opt& res) const {
         EXPECT_EQ(err, error::none);
         EXPECT_FALSE(res);
         use_resource::operator ()(err, _pool_impl->add(_resource));
@@ -104,7 +104,7 @@ struct check_get_resource_timeout : callback {
     check_get_resource_timeout(boost::promise<void>& called)
             : callback(called) {}
 
-    void operator ()(const error::code& err, const resource_list_iterator_opt& res) const {
+    void operator ()(const error::code& err, const resource_ptr_list_iterator_opt& res) const {
         EXPECT_EQ(err, error::get_resource_timeout);
         EXPECT_FALSE(res);
         callback::operator ()(err, res);

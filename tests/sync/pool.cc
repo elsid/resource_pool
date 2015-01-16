@@ -13,7 +13,7 @@ using boost::make_shared;
 struct resource {};
 
 typedef boost::shared_ptr<resource> resource_ptr;
-typedef pool<resource_ptr> resource_pool;
+typedef pool<resource> resource_pool;
 typedef resource_pool::handle_ptr resource_handle_ptr;
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;

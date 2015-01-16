@@ -10,22 +10,22 @@ namespace yamail {
 namespace resource_pool {
 namespace sync {
 
-template <class Resource, class ResourceAlloc>
+template <class Resource>
 class pool;
 
-template <class Resource, class ResourceAlloc>
+template <class Resource>
 class handle : boost::noncopyable {
 public:
     typedef Resource resource;
-    typedef ResourceAlloc resource_alloc;
-    typedef typename detail::pool_impl<resource, resource_alloc> pool_impl;
+    typedef typename detail::pool_impl<resource> pool_impl;
+    typedef typename pool_impl::resource_ptr resource_ptr;
     typedef typename pool_impl::time_duration time_duration;
-    typedef typename pool_impl::resource_list_iterator_opt resource_list_iterator_opt;
+    typedef typename pool_impl::resource_ptr_list_iterator_opt resource_ptr_list_iterator_opt;
     typedef typename pool_impl::get_result get_result;
     typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
     typedef void (handle::*strategy)();
 
-    friend class pool<resource, resource_alloc>;
+    friend class pool<resource>;
 
     ~handle();
 
@@ -40,12 +40,12 @@ public:
 
     void recycle();
     void waste();
-    void reset(resource res);
+    void reset(resource_ptr res);
 
 private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
-    resource_list_iterator_opt _resource_it;
+    resource_ptr_list_iterator_opt _resource_it;
     error::code _error;
 
     handle(pool_impl_ptr pool_impl,
@@ -58,41 +58,41 @@ private:
     void assert_not_empty() const;
 };
 
-template <class R, class A>
-handle<R, A>::~handle() {
+template <class R>
+handle<R>::~handle() {
     if (!empty()) {
         (this->*_use_strategy)();
     }
 }
 
-template <class R, class A>
-typename handle<R, A>::resource& handle<R, A>::get() {
+template <class R>
+typename handle<R>::resource& handle<R>::get() {
     assert_not_empty();
-    return **_resource_it;
+    return ***_resource_it;
 }
 
-template <class R, class A>
-const typename handle<R, A>::resource& handle<R, A>::get() const {
+template <class R>
+const typename handle<R>::resource& handle<R>::get() const {
     assert_not_empty();
-    return **_resource_it;
+    return ***_resource_it;
 }
 
-template <class R, class A>
-void handle<R, A>::recycle() {
+template <class R>
+void handle<R>::recycle() {
     assert_not_empty();
     _pool_impl->recycle(*_resource_it);
     _resource_it.reset();
 }
 
-template <class R, class A>
-void handle<R, A>::waste() {
+template <class R>
+void handle<R>::waste() {
     assert_not_empty();
     _pool_impl->waste(*_resource_it);
     _resource_it.reset();
 }
 
-template <class R, class A>
-void handle<R, A>::reset(resource res) {
+template <class R>
+void handle<R>::reset(resource_ptr res) {
     if (empty()) {
         _resource_it.reset(_pool_impl->add(res));
     } else {
@@ -100,8 +100,8 @@ void handle<R, A>::reset(resource res) {
     }
 }
 
-template <class R, class A>
-void handle<R, A>::assert_not_empty() const {
+template <class R>
+void handle<R>::assert_not_empty() const {
     if (empty()) {
         throw error::empty_handle();
     }

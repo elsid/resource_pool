@@ -5,7 +5,7 @@ namespace pool_tests {
 using namespace tests;
 using namespace yamail::resource_pool::async;
 
-typedef pool<resource_ptr> resource_pool;
+typedef pool<resource> resource_pool;
 typedef boost::shared_ptr<resource_pool::handle> resource_handle_ptr;
 
 class callback : public base_callback {
