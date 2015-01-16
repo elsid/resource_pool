@@ -11,14 +11,14 @@ namespace yamail {
 namespace resource_pool {
 namespace sync {
 
-template <class Resource>
+template <class T>
 class pool {
 public:
-    typedef Resource resource;
-    typedef detail::pool_impl<resource> pool_impl;
+    typedef T value_type;
+    typedef detail::pool_impl<value_type> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
-    typedef sync::handle<resource> handle;
+    typedef sync::handle<value_type> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
     pool(std::size_t capacity = 0)

@@ -10,47 +10,47 @@ namespace yamail {
 namespace resource_pool {
 namespace sync {
 
-template <class Resource>
+template <class T>
 class pool;
 
-template <class Resource>
+template <class T>
 class handle : boost::noncopyable {
 public:
-    typedef Resource resource;
-    typedef typename detail::pool_impl<resource> pool_impl;
-    typedef typename pool_impl::resource_ptr resource_ptr;
+    typedef T value_type;
+    typedef typename detail::pool_impl<value_type> pool_impl;
+    typedef typename pool_impl::pointer pointer;
     typedef typename pool_impl::time_duration time_duration;
-    typedef typename pool_impl::resource_ptr_list_iterator_opt resource_ptr_list_iterator_opt;
+    typedef typename pool_impl::list_iterator_opt list_iterator_opt;
     typedef typename pool_impl::get_result get_result;
     typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
     typedef void (handle::*strategy)();
 
-    friend class pool<resource>;
+    friend class pool<value_type>;
 
     ~handle();
 
     error::code error() const { return _error; }
     bool empty() const { return !_resource_it.is_initialized(); }
-    resource& get();
-    const resource& get() const;
-    resource *operator ->() { return &get(); }
-    const resource *operator ->() const { return &get(); }
-    resource &operator *() { return get(); }
-    const resource &operator *() const { return get(); }
+    value_type& get();
+    const value_type& get() const;
+    value_type *operator ->() { return &get(); }
+    const value_type *operator ->() const { return &get(); }
+    value_type &operator *() { return get(); }
+    const value_type &operator *() const { return get(); }
 
     void recycle();
     void waste();
-    void reset(resource_ptr res);
+    void reset(pointer res);
 
 private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
-    resource_ptr_list_iterator_opt _resource_it;
+    list_iterator_opt _resource_it;
     error::code _error;
 
     handle(pool_impl_ptr pool_impl,
             strategy use_strategy,
-            const resource_list_iterator_opt& _resource_it,
+            const list_iterator_opt& _resource_it,
             const error::code& _error)
             : _pool_impl(pool_impl), _use_strategy(use_strategy),
               _resource_it(_resource_it), _error(_error) {}
@@ -66,13 +66,13 @@ handle<R>::~handle() {
 }
 
 template <class R>
-typename handle<R>::resource& handle<R>::get() {
+typename handle<R>::value_type& handle<R>::get() {
     assert_not_empty();
     return ***_resource_it;
 }
 
 template <class R>
-const typename handle<R>::resource& handle<R>::get() const {
+const typename handle<R>::value_type& handle<R>::get() const {
     assert_not_empty();
     return ***_resource_it;
 }
@@ -92,7 +92,7 @@ void handle<R>::waste() {
 }
 
 template <class R>
-void handle<R>::reset(resource_ptr res) {
+void handle<R>::reset(pointer res) {
     if (empty()) {
         _resource_it.reset(_pool_impl->add(res));
     } else {

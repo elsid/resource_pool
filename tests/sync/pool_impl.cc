@@ -15,7 +15,7 @@ struct resource {};
 typedef boost::shared_ptr<resource> resource_ptr;
 typedef pool_impl<resource> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
-typedef resource_pool_impl::resource_ptr_list_iterator resource_ptr_list_iterator;
+typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 

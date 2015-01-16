@@ -6,8 +6,8 @@ using namespace tests;
 using namespace yamail::resource_pool::async::detail;
 
 typedef pool_impl<resource> resource_pool_impl;
-typedef resource_pool_impl::resource_ptr_list_iterator resource_ptr_list_iterator;
-typedef resource_pool_impl::resource_ptr_list_iterator_opt resource_ptr_list_iterator_opt;
+typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
+typedef resource_pool_impl::list_iterator_opt resource_ptr_list_iterator_opt;
 typedef boost::shared_ptr<resource_pool_impl> resource_pool_impl_ptr;
 
 struct async_resource_pool_impl_simple : Test {};

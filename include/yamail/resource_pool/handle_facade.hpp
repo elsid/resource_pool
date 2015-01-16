@@ -10,7 +10,7 @@ template <class ResourcePool>
 class handle_facade {
 public:
     typedef ResourcePool resource_pool;
-    typedef typename resource_pool::resource resource;
+    typedef typename resource_pool::value_type value_type;
     typedef boost::shared_ptr<typename resource_pool::handle> handle_ptr;
 
     handle_facade(const handle_ptr& handle) : _handle(handle) {}
@@ -19,12 +19,12 @@ public:
     handle_ptr handle() const { return _handle; }
     error::code error() const { return _handle->error(); }
     bool empty() const { return _handle->empty(); }
-    resource& get() { return _handle->get(); }
-    const resource& get() const { return _handle->get(); }
-    resource *operator ->() { return &get(); }
-    const resource *operator ->() const { return &get(); }
-    resource &operator *() { return get(); }
-    const resource &operator *() const { return get(); }
+    value_type& get() { return _handle->get(); }
+    const value_type& get() const { return _handle->get(); }
+    value_type *operator ->() { return &get(); }
+    const value_type *operator ->() const { return &get(); }
+    value_type &operator *() { return get(); }
+    const value_type &operator *() const { return get(); }
 
     void recycle();
     void waste();

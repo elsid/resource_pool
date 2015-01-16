@@ -27,24 +27,24 @@ namespace request_queue {
 
 typedef boost::chrono::steady_clock clock;
 
-template <class Request>
-class queue : public boost::enable_shared_from_this<queue<Request> >,
+template <class T>
+class queue : public boost::enable_shared_from_this<queue<T> >,
     boost::noncopyable {
 public:
-    typedef Request request;
+    typedef T value_type;
     typedef boost::shared_ptr<queue> shared_ptr;
     typedef boost::function<void ()> callback;
     typedef clock::duration time_duration;
     typedef clock::time_point time_point;
     typedef boost::asio::io_service io_service;
-    typedef boost::optional<request> resource_opt;
+    typedef boost::optional<value_type> value_type_opt;
 
     struct pop_result {
         error::code error;
-        resource_opt request;
+        value_type_opt request;
 
         pop_result(const error::code_value& error) : error(error) {}
-        pop_result(const queue::request& request) : request(request) {}
+        pop_result(const queue::value_type& request) : request(request) {}
 
         bool operator ==(const error::code& error) const {
             return this->error == error;
@@ -62,7 +62,7 @@ public:
     std::size_t size() const;
     bool empty() const;
 
-    error::code push(request req, callback req_expired,
+    error::code push(value_type req, callback req_expired,
             const time_duration& wait_duration);
     pop_result pop();
 
@@ -79,12 +79,12 @@ private:
     typedef typename request_multimap::value_type request_multimap_value;
 
     struct expiring_request {
-        queue::request request;
+        queue::value_type request;
         callback expired;
         request_list_it order_it;
         request_multimap_it expires_at_it;
 
-        expiring_request(const queue::request& request, const callback& expired)
+        expiring_request(const queue::value_type& request, const callback& expired)
                 : request(request), expired(expired) {}
     };
 
@@ -114,7 +114,7 @@ bool queue<R>::empty() const {
 }
 
 template <class R>
-error::code queue<R>::push(request req_data, callback req_expired,
+error::code queue<R>::push(value_type req_data, callback req_expired,
         const time_duration& wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {

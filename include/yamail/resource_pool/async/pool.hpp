@@ -13,16 +13,16 @@ namespace yamail {
 namespace resource_pool {
 namespace async {
 
-template <class Resource>
+template <class T>
 class pool {
 public:
-    typedef Resource resource;
-    typedef detail::pool_impl<resource> pool_impl;
+    typedef T value_type;
+    typedef detail::pool_impl<value_type> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
     typedef typename pool_impl::io_service io_service;
     typedef typename pool_impl::shared_ptr pool_impl_ptr;
-    typedef async::handle<resource> handle;
+    typedef async::handle<value_type> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
     typedef boost::function<void (handle_ptr)> callback;
 
@@ -54,7 +54,7 @@ public:
     }
 
 private:
-    typedef typename pool_impl::resource_ptr_list_iterator_opt resource_ptr_list_iterator_opt;
+    typedef typename pool_impl::list_iterator_opt list_iterator_opt;
     typedef typename handle::strategy strategy;
 
     pool_impl_ptr _impl;
@@ -67,7 +67,7 @@ private:
 
     static void make_handle(pool_impl_ptr impl, callback call,
             strategy use_strategy, const error::code& err,
-            const resource_ptr_list_iterator_opt& res) {
+            const list_iterator_opt& res) {
         try {
             impl->async_call(bind(call,
                 handle_ptr(new handle(impl, use_strategy, res, err))));

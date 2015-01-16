@@ -13,19 +13,19 @@ namespace resource_pool {
 namespace async {
 namespace detail {
 
-template <class Resource>
+template <class T>
 class pool_impl : boost::noncopyable,
-    public boost::enable_shared_from_this<pool_impl<Resource> > {
+    public boost::enable_shared_from_this<pool_impl<T> > {
 public:
-    typedef Resource resource;
-    typedef boost::shared_ptr<resource> resource_ptr;
+    typedef T value_type;
+    typedef boost::shared_ptr<value_type> pointer;
     typedef boost::shared_ptr<pool_impl> shared_ptr;
-    typedef std::list<resource_ptr> resource_list;
-    typedef typename resource_list::iterator resource_ptr_list_iterator;
-    typedef boost::optional<resource_ptr_list_iterator> resource_ptr_list_iterator_opt;
+    typedef std::list<pointer> list;
+    typedef typename list::iterator list_iterator;
+    typedef boost::optional<list_iterator> list_iterator_opt;
     typedef boost::chrono::seconds seconds;
     typedef boost::function<void (const error::code&,
-        const resource_ptr_list_iterator_opt&)> callback;
+        const list_iterator_opt&)> callback;
     typedef detail::request_queue::queue<callback> callback_queue;
     typedef typename callback_queue::time_duration time_duration;
     typedef boost::asio::io_service io_service;
@@ -56,10 +56,10 @@ public:
     }
 
     void get(callback call, const time_duration& wait_duration = seconds(0));
-    void recycle(resource_ptr_list_iterator res_it);
-    void waste(resource_ptr_list_iterator res_it);
-    resource_ptr_list_iterator add(resource_ptr res);
-    resource_ptr_list_iterator replace(resource_ptr_list_iterator res_it, resource_ptr res);
+    void recycle(list_iterator res_it);
+    void waste(list_iterator res_it);
+    list_iterator add(pointer res);
+    list_iterator replace(list_iterator res_it, pointer res);
 
 private:
     typedef typename callback_queue::shared_ptr callback_queue_ptr;
@@ -67,8 +67,8 @@ private:
     typedef boost::lock_guard<boost::mutex> lock_guard;
 
     mutable boost::mutex _mutex;
-    resource_list _available;
-    resource_list _used;
+    list _available;
+    list _used;
     io_service& _io_service;
     callback_queue_ptr _callbacks;
     const std::size_t _capacity;
@@ -108,7 +108,7 @@ std::size_t pool_impl<R>::reserved() const {
 }
 
 template <class R>
-void pool_impl<R>::recycle(resource_ptr_list_iterator res_it) {
+void pool_impl<R>::recycle(list_iterator res_it) {
     unique_lock lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
     --_used_size;
@@ -117,7 +117,7 @@ void pool_impl<R>::recycle(resource_ptr_list_iterator res_it) {
 }
 
 template <class R>
-void pool_impl<R>::waste(resource_ptr_list_iterator res_it) {
+void pool_impl<R>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
     _used.erase(res_it);
     --_used_size;
@@ -140,20 +140,20 @@ void pool_impl<R>::get(callback call, const time_duration& wait_duration) {
         lock.unlock();
         if (wait_duration.count() == 0ll) {
             async_call(bind(call, error::get_resource_timeout,
-                resource_ptr_list_iterator_opt()));
+                list_iterator_opt()));
         } else {
             const error::code& push_result = _callbacks->push(call,
-                bind(call, error::get_resource_timeout, resource_ptr_list_iterator_opt()),
+                bind(call, error::get_resource_timeout, list_iterator_opt()),
                 wait_duration);
             if (push_result != error::none) {
-                async_call(bind(call, push_result, resource_ptr_list_iterator_opt()));
+                async_call(bind(call, push_result, list_iterator_opt()));
             }
         }
     }
 }
 
 template <class R>
-typename pool_impl<R>::resource_ptr_list_iterator pool_impl<R>::add(resource_ptr res) {
+typename pool_impl<R>::list_iterator pool_impl<R>::add(pointer res) {
     const lock_guard lock(_mutex);
     if (_reserved == 0) {
         if (!fit_capacity()) {
@@ -162,23 +162,23 @@ typename pool_impl<R>::resource_ptr_list_iterator pool_impl<R>::add(resource_ptr
     } else {
         --_reserved;
     }
-    const resource_ptr_list_iterator res_it = _used.insert(_used.end(), res);
+    const list_iterator res_it = _used.insert(_used.end(), res);
     ++_used_size;
     return res_it;
 }
 
 template <class R>
-typename pool_impl<R>::resource_ptr_list_iterator pool_impl<R>::replace(
-        resource_ptr_list_iterator res_it, resource_ptr res) {
+typename pool_impl<R>::list_iterator pool_impl<R>::replace(
+        list_iterator res_it, pointer res) {
     const lock_guard lock(_mutex);
     _used.erase(res_it);
-    const resource_ptr_list_iterator new_it = _used.insert(_used.end(), res);
+    const list_iterator new_it = _used.insert(_used.end(), res);
     return new_it;
 }
 
 template <class R>
 void pool_impl<R>::alloc_resource(unique_lock& lock, const callback& call) {
-    const resource_ptr_list_iterator res_it = _available.begin();
+    const list_iterator res_it = _available.begin();
     _available.splice(_used.end(), _used, res_it);
     --_available_size;
     ++_used_size;

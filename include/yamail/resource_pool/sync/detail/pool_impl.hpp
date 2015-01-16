@@ -16,17 +16,17 @@ namespace resource_pool {
 namespace sync {
 namespace detail {
 
-template <class Resource>
+template <class T>
 class pool_impl : boost::noncopyable {
 public:
-    typedef Resource resource;
-    typedef boost::shared_ptr<resource> resource_ptr;
+    typedef T value_type;
+    typedef boost::shared_ptr<value_type> pointer;
     typedef boost::chrono::system_clock::duration time_duration;
     typedef boost::chrono::seconds seconds;
-    typedef std::list<resource_ptr> resource_ptr_list;
-    typedef typename resource_ptr_list::iterator resource_ptr_list_iterator;
-    typedef boost::optional<resource_ptr_list_iterator> resource_ptr_list_iterator_opt;
-    typedef std::pair<error::code, resource_ptr_list_iterator_opt> get_result;
+    typedef std::list<pointer> list;
+    typedef typename list::iterator list_iterator;
+    typedef boost::optional<list_iterator> list_iterator_opt;
+    typedef std::pair<error::code, list_iterator_opt> get_result;
 
     pool_impl(std::size_t capacity)
             : _capacity(capacity),
@@ -42,11 +42,11 @@ public:
     std::size_t reserved() const;
 
     get_result get(const time_duration& wait_duration = seconds(0));
-    void recycle(resource_ptr_list_iterator res_it);
-    void waste(resource_ptr_list_iterator res_it);
-    resource_ptr_list_iterator add(resource_ptr res);
-    resource_ptr_list_iterator replace(resource_ptr_list_iterator res_it,
-        resource_ptr res);
+    void recycle(list_iterator res_it);
+    void waste(list_iterator res_it);
+    list_iterator add(pointer res);
+    list_iterator replace(list_iterator res_it,
+        pointer res);
 
 private:
     typedef boost::lock_guard<boost::mutex> lock_guard;
@@ -54,8 +54,8 @@ private:
 
     mutable boost::mutex _mutex;
     boost::condition_variable _has_available;
-    resource_ptr_list _available;
-    resource_ptr_list _used;
+    list _available;
+    list _used;
     const std::size_t _capacity;
     std::size_t _available_size;
     std::size_t _used_size;
@@ -92,7 +92,7 @@ std::size_t pool_impl<R>::reserved() const {
 }
 
 template <class R>
-void pool_impl<R>::recycle(resource_ptr_list_iterator res_it) {
+void pool_impl<R>::recycle(list_iterator res_it) {
     const lock_guard lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
     --_used_size;
@@ -101,7 +101,7 @@ void pool_impl<R>::recycle(resource_ptr_list_iterator res_it) {
 }
 
 template <class R>
-void pool_impl<R>::waste(resource_ptr_list_iterator res_it) {
+void pool_impl<R>::waste(list_iterator res_it) {
     const lock_guard lock(_mutex);
     _used.erase(res_it);
     --_used_size;
@@ -119,7 +119,7 @@ typename pool_impl<R>::get_result pool_impl<R>::get(
     if (!wait_for(lock, wait_duration)) {
         return std::make_pair(error::get_resource_timeout, boost::none);
     }
-    const resource_ptr_list_iterator res_it = _available.begin();
+    const list_iterator res_it = _available.begin();
     _available.splice(_used.end(), _used, res_it);
     --_available_size;
     ++_used_size;
@@ -127,7 +127,7 @@ typename pool_impl<R>::get_result pool_impl<R>::get(
 }
 
 template <class R>
-typename pool_impl<R>::resource_ptr_list_iterator pool_impl<R>::add(resource_ptr res) {
+typename pool_impl<R>::list_iterator pool_impl<R>::add(pointer res) {
     const lock_guard lock(_mutex);
     if (_reserved == 0) {
         if (!fit_capacity()) {
@@ -136,17 +136,17 @@ typename pool_impl<R>::resource_ptr_list_iterator pool_impl<R>::add(resource_ptr
     } else {
         --_reserved;
     }
-    const resource_ptr_list_iterator res_it = _used.insert(_used.end(), res);
+    const list_iterator res_it = _used.insert(_used.end(), res);
     ++_used_size;
     return res_it;
 }
 
 template <class R>
-typename pool_impl<R>::resource_ptr_list_iterator pool_impl<R>::replace(
-        resource_ptr_list_iterator res_it, resource_ptr res) {
+typename pool_impl<R>::list_iterator pool_impl<R>::replace(
+        list_iterator res_it, pointer res) {
     const lock_guard lock(_mutex);
     _used.erase(res_it);
-    const resource_ptr_list_iterator it = _used.insert(_used.end(), res);
+    const list_iterator it = _used.insert(_used.end(), res);
     return it;
 }
 
