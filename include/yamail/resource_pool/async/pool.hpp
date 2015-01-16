@@ -72,11 +72,14 @@ private:
             impl->async_call(bind(call, ec,
                 handle_ptr(new handle(impl, use_strategy, res))));
         } catch (...) {
-            impl->async_call(bind(call, make_error_code(error::exception), handle_ptr()));
+            impl->async_call(bind(call,
+                make_error_code(error::exception), handle_ptr()));
         }
     }
 };
 
-}}}
+}
+}
+}
 
 #endif

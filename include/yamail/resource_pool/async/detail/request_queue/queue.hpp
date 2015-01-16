@@ -170,6 +170,10 @@ void queue<R>::update_timer() {
     _timer.async_wait(bind(&queue::cancel, shared_from_this(), _1));
 }
 
-}}}}}
+}
+}
+}
+}
+}
 
 #endif

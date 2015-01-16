@@ -200,6 +200,9 @@ void pool_impl<R>::perform_one_request(unique_lock& lock) {
     }
 }
 
-}}}}
+}
+}
+}
+}
 
 #endif

@@ -49,6 +49,7 @@ void handle_facade<P>::waste() {
     _handle->waste();
 }
 
-}}
+}
+}
 
 #endif

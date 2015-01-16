@@ -117,7 +117,8 @@ typename pool_impl<R>::get_result pool_impl<R>::get(
         return std::make_pair(boost::system::error_code(), boost::none);
     }
     if (!wait_for(lock, wait_duration)) {
-        return std::make_pair(make_error_code(error::get_resource_timeout), boost::none);
+        return std::make_pair(make_error_code(error::get_resource_timeout),
+            boost::none);
     }
     const list_iterator res_it = _available.begin();
     _available.splice(_used.end(), _used, res_it);
@@ -157,6 +158,9 @@ bool pool_impl<R>::wait_for(unique_lock& lock,
         boost::bind(&pool_impl::has_available, this));
 }
 
-}}}}
+}
+}
+}
+}
 
 #endif
