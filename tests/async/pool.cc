@@ -68,7 +68,8 @@ TEST_F(async_resource_pool_complex, get_auto_recylce_handle_and_recycle_should_s
     resource_pool pool(*_io_service, 1, 1);
     const reset_resource_if_need reset_res(make_resource, reset_res_called);
     const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_recycle((lambda::bind(reset_res, lambda::_1), lambda::bind(use, lambda::_1)), seconds(1));
+    pool.get_auto_recycle((lambda::bind(reset_res, lambda::_1, lambda::_2),
+        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
     reset_res_called.get_future().get();
     use_called.get_future().get();
 }
@@ -81,7 +82,8 @@ TEST_F(async_resource_pool_complex, get_auto_recylce_handle_and_waste_should_suc
     resource_pool pool(*_io_service, 1, 1);
     const reset_resource_if_need reset_res(make_resource, reset_res_called);
     const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_recycle((lambda::bind(reset_res, lambda::_1), lambda::bind(use, lambda::_1)), seconds(1));
+    pool.get_auto_recycle((lambda::bind(reset_res, lambda::_1, lambda::_2),
+        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
     reset_res_called.get_future().get();
     use_called.get_future().get();
 }
@@ -94,7 +96,8 @@ TEST_F(async_resource_pool_complex, get_auto_waste_handle_and_recycle_should_suc
     resource_pool pool(*_io_service, 1, 1);
     const reset_resource_if_need reset_res(make_resource, reset_res_called);
     const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_waste((lambda::bind(reset_res, lambda::_1), lambda::bind(use, lambda::_1)), seconds(1));
+    pool.get_auto_waste((lambda::bind(reset_res, lambda::_1, lambda::_2),
+        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
     reset_res_called.get_future().get();
     use_called.get_future().get();
 }
@@ -107,7 +110,8 @@ TEST_F(async_resource_pool_complex, get_auto_waste_handle_and_waste_should_succe
     resource_pool pool(*_io_service, 1, 1);
     const reset_resource_if_need reset_res(make_resource, reset_res_called);
     const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_waste((lambda::bind(reset_res, lambda::_1), lambda::bind(use, lambda::_1)), seconds(1));
+    pool.get_auto_waste((lambda::bind(reset_res, lambda::_1, lambda::_2),
+        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
     reset_res_called.get_future().get();
     use_called.get_future().get();
 }
@@ -124,8 +128,10 @@ TEST_F(async_resource_pool_complex, get_two_and_use_queue_to_wait_create_should_
     const reset_resource_if_need second_reset_res(make_resource, second_reset_res_called);
     const check_error first_check(boost::system::error_code(), first_check_called);
     const check_error second_check(boost::system::error_code(), second_check_called);
-    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1), lambda::bind(first_check, lambda::_1)), seconds(1));
-    pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1), lambda::bind(second_check, lambda::_1)), seconds(1));
+    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1, lambda::_2),
+        lambda::bind(first_check, lambda::_1, lambda::_2)), seconds(1));
+    pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1, lambda::_2),
+        lambda::bind(second_check, lambda::_1, lambda::_2)), seconds(1));
     first_reset_res_called.get_future().get();
     second_reset_res_called.get_future().get();
     first_check_called.get_future().get();
@@ -144,8 +150,10 @@ TEST_F(async_resource_pool_complex, get_two_and_use_queue_to_wait_recycle_should
     const reset_resource_if_need second_reset_res(make_resource, second_reset_res_called);
     const check_error first_check(boost::system::error_code(), first_check_called);
     const check_error second_check(boost::system::error_code(), second_check_called);
-    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1), lambda::bind(first_check, lambda::_1)), seconds(1));
-    pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1), lambda::bind(second_check, lambda::_1)), seconds(1));
+    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1, lambda::_2),
+        lambda::bind(first_check, lambda::_1, lambda::_2)), seconds(1));
+    pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1, lambda::_2),
+        lambda::bind(second_check, lambda::_1, lambda::_2)), seconds(1));
     first_reset_res_called.get_future().get();
     second_reset_res_called.get_future().get();
     first_check_called.get_future().get();
@@ -162,7 +170,8 @@ TEST_F(async_resource_pool_complex, get_two_and_use_queue_should_return_get_reso
     const reset_resource_if_need first_reset_res(make_resource, first_reset_res_called);
     const check_error first_check(boost::system::error_code(), first_called);
     const check_error second_check(make_error_code(error::get_resource_timeout), second_called);
-    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1), lambda::bind(first_check, lambda::_1)), seconds(1));
+    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1, lambda::_2),
+        lambda::bind(first_check, lambda::_1, lambda::_2)), seconds(1));
     pool.get_auto_recycle(second_check);
     first_reset_res_called.get_future().get();
     first_called.get_future().get();

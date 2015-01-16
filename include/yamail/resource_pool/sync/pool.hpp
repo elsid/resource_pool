@@ -4,7 +4,7 @@
 #include <boost/make_shared.hpp>
 
 #include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/handle.hpp>
+#include <yamail/resource_pool/sync/handle.hpp>
 #include <yamail/resource_pool/sync/detail/pool_impl.hpp>
 
 namespace yamail {
@@ -18,7 +18,7 @@ public:
     typedef detail::pool_impl<value_type> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
-    typedef resource_pool::handle<pool_impl> handle;
+    typedef sync::handle<value_type> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
     pool(std::size_t capacity = 0)
@@ -41,7 +41,7 @@ public:
 
 private:
     typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
-    typedef void (handle::*strategy)();
+    typedef void (handle::base::*strategy)();
 
     pool_impl_ptr _impl;
 

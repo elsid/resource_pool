@@ -18,7 +18,8 @@ struct empty_handle : std::logic_error {
 enum code {
     get_resource_timeout = 1,
     request_queue_overflow,
-    request_queue_is_empty
+    request_queue_is_empty,
+    exception
 };
 
 namespace detail {
@@ -35,6 +36,8 @@ public:
                 return "request queue overflow";
             case request_queue_is_empty:
                 return "request queue is empty";
+            case exception:
+                return "exception";
             default:
                 return "resource_pool error";
         }

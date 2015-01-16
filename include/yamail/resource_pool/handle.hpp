@@ -2,9 +2,9 @@
 #define YAMAIL_RESOURCE_POOL_HANDLE_HPP
 
 #include <boost/noncopyable.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/sync/detail/pool_impl.hpp>
 
 namespace yamail {
 namespace resource_pool {
@@ -30,9 +30,8 @@ public:
     friend class sync::pool<value_type>;
     friend class async::pool<value_type>;
 
-    ~handle();
+    virtual ~handle();
 
-    boost::system::error_code error() const { return _error; }
     bool empty() const { return !_resource_it.is_initialized(); }
     value_type& get();
     const value_type& get() const;
@@ -45,21 +44,20 @@ public:
     void waste();
     void reset(pointer res);
 
-private:
+protected:
     typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
     typedef typename pool_impl::list_iterator_opt list_iterator_opt;
 
+    handle(pool_impl_ptr pool_impl,
+            strategy use_strategy,
+            const list_iterator_opt& resource_it)
+            : _pool_impl(pool_impl), _use_strategy(use_strategy),
+              _resource_it(resource_it) {}
+
+private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
     list_iterator_opt _resource_it;
-    boost::system::error_code _error;
-
-    handle(pool_impl_ptr pool_impl,
-            strategy use_strategy,
-            const list_iterator_opt& resource_it,
-            const boost::system::error_code& error)
-            : _pool_impl(pool_impl), _use_strategy(use_strategy),
-              _resource_it(resource_it), _error(error) {}
 
     void assert_not_empty() const;
 };

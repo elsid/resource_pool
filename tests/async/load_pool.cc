@@ -84,8 +84,8 @@ public:
         const check_error check(boost::system::error_code(), check_called);
         using namespace boost;
         using namespace boost::lambda;
-        _pool.get_auto_recycle((lambda::bind(reset, lambda::_1),
-             lambda::bind(check, lambda::_1)), _wait_duration);
+        _pool.get_auto_recycle((lambda::bind(reset, lambda::_1, lambda::_2),
+             lambda::bind(check, lambda::_1, lambda::_2)), _wait_duration);
     }
 
     void wait() {
