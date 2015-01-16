@@ -122,8 +122,8 @@ TEST_F(async_resource_pool_complex, get_two_and_use_queue_to_wait_create_should_
     resource_pool pool(*_io_service, 2, 2);
     const reset_resource_if_need first_reset_res(make_resource, first_reset_res_called);
     const reset_resource_if_need second_reset_res(make_resource, second_reset_res_called);
-    const check_error first_check(error::none, first_check_called);
-    const check_error second_check(error::none, second_check_called);
+    const check_error first_check(boost::system::error_code(), first_check_called);
+    const check_error second_check(boost::system::error_code(), second_check_called);
     pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1), lambda::bind(first_check, lambda::_1)), seconds(1));
     pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1), lambda::bind(second_check, lambda::_1)), seconds(1));
     first_reset_res_called.get_future().get();
@@ -142,8 +142,8 @@ TEST_F(async_resource_pool_complex, get_two_and_use_queue_to_wait_recycle_should
     resource_pool pool(*_io_service, 1, 2);
     const reset_resource_if_need first_reset_res(make_resource, first_reset_res_called);
     const reset_resource_if_need second_reset_res(make_resource, second_reset_res_called);
-    const check_error first_check(error::none, first_check_called);
-    const check_error second_check(error::none, second_check_called);
+    const check_error first_check(boost::system::error_code(), first_check_called);
+    const check_error second_check(boost::system::error_code(), second_check_called);
     pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1), lambda::bind(first_check, lambda::_1)), seconds(1));
     pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1), lambda::bind(second_check, lambda::_1)), seconds(1));
     first_reset_res_called.get_future().get();
@@ -160,8 +160,8 @@ TEST_F(async_resource_pool_complex, get_two_and_use_queue_should_return_get_reso
     boost::promise<void> second_called;
     resource_pool pool(*_io_service, 1, 1);
     const reset_resource_if_need first_reset_res(make_resource, first_reset_res_called);
-    const check_error first_check(error::none, first_called);
-    const check_error second_check(error::get_resource_timeout, second_called);
+    const check_error first_check(boost::system::error_code(), first_called);
+    const check_error second_check(make_error_code(error::get_resource_timeout), second_called);
     pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1), lambda::bind(first_check, lambda::_1)), seconds(1));
     pool.get_auto_recycle(second_check);
     first_reset_res_called.get_future().get();
@@ -172,7 +172,7 @@ TEST_F(async_resource_pool_complex, get_two_and_use_queue_should_return_get_reso
 TEST_F(async_resource_pool_complex, get_auto_recycle_handle_from_empty_pool_should_return_error) {
     boost::promise<void> called;
     resource_pool pool(*_io_service, 0, 0);
-    const check_error check(error::get_resource_timeout, called);
+    const check_error check(make_error_code(error::get_resource_timeout), called);
     pool.get_auto_recycle(check);
     called.get_future().get();
 }

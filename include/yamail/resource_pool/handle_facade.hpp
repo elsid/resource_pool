@@ -17,7 +17,7 @@ public:
     virtual ~handle_facade() {}
 
     handle_ptr handle() const { return _handle; }
-    error::code error() const { return _handle->error(); }
+    boost::system::error_code error() const { return _handle->error(); }
     bool empty() const { return _handle->empty(); }
     value_type& get() { return _handle->get(); }
     const value_type& get() const { return _handle->get(); }

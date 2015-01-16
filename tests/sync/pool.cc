@@ -52,14 +52,14 @@ TEST(sync_resource_pool, get_auto_recylce_handle_should_succeed) {
     resource_pool pool(1);
     resource_handle_ptr handle = pool.get_auto_recycle();
     EXPECT_TRUE(handle->empty());
-    EXPECT_EQ(handle->error(), error::none);
+    EXPECT_EQ(handle->error(), boost::system::error_code());
 }
 
 TEST(sync_resource_pool, get_auto_recylce_handle_and_reset_should_succeed) {
     resource_pool pool(1);
     resource_handle_ptr handle = pool.get_auto_recycle();
     EXPECT_TRUE(handle->empty());
-    EXPECT_EQ(handle->error(), error::none);
+    EXPECT_EQ(handle->error(), boost::system::error_code());
     handle->reset(make_resource());
     EXPECT_FALSE(handle->empty());
 }
@@ -68,7 +68,7 @@ TEST(sync_resource_pool, get_auto_waste_handle_should_succeed) {
     resource_pool pool(1);
     resource_handle_ptr handle = pool.get_auto_waste();
     EXPECT_TRUE(handle->empty());
-    EXPECT_EQ(handle->error(), error::none);
+    EXPECT_EQ(handle->error(), boost::system::error_code());
     handle->reset(make_resource());
     EXPECT_FALSE(handle->empty());
 }
@@ -83,7 +83,7 @@ TEST(sync_resource_pool, check_metrics_for_not_empty) {
     {
         resource_handle_ptr handle = pool.get_auto_recycle();
         EXPECT_TRUE(handle->empty());
-        EXPECT_EQ(handle->error(), error::none);
+        EXPECT_EQ(handle->error(), boost::system::error_code());
         EXPECT_EQ(pool.reserved(), 1ul);
         EXPECT_EQ(pool.size(), 0ul);
         EXPECT_EQ(pool.used(), 0ul);
@@ -177,7 +177,7 @@ TEST(sync_resource_pool, get_auto_recycle_handle_and_recycle_recycled_should_thr
 TEST(sync_resource_pool, get_auto_recycle_handle_from_empty_pool_should_return_error) {
     resource_pool pool(0);
     resource_handle_ptr handle = pool.get_auto_recycle();
-    EXPECT_EQ(handle->error(), error::get_resource_timeout);
+    EXPECT_EQ(handle->error(), make_error_code(error::get_resource_timeout));
 }
 
 TEST(sync_resource_pool, create_my_resoure_handle_should_succeed) {

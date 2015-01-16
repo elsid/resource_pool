@@ -65,7 +65,7 @@ private:
     }
 
     static void make_handle(pool_impl_ptr impl, callback call,
-            strategy use_strategy, const error::code& err,
+            strategy use_strategy, const boost::system::error_code& err,
             const list_iterator_opt& res) {
         try {
             impl->async_call(bind(call,

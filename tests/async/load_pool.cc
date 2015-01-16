@@ -81,7 +81,7 @@ public:
         ++_called_it;
         lock.unlock();
         const reset_resource_if_need reset(make_resource, reset_called);
-        const check_error check(error::none, check_called);
+        const check_error check(boost::system::error_code(), check_called);
         using namespace boost;
         using namespace boost::lambda;
         _pool.get_auto_recycle((lambda::bind(reset, lambda::_1),
@@ -132,7 +132,7 @@ TEST_F(load_test_async_resource_pool, perform_many_get_auto_recycle_should_succe
     resource_pool pool(*_io_service, pool_capacity, pool_queue_capacity);
     get_auto_recycle<load_count> do_load(pool, wait_duration);
     finite_pereodic_work load(ref(ios), do_load, load_interval);
-    EXPECT_EQ(load.start(load_count).get(), boost::system::errc::success);
+    EXPECT_EQ(load.start(load_count).get(), boost::system::error_code());
     do_load.wait();
     ios.stop();
     thread_pool.join_all();

@@ -26,7 +26,7 @@ public:
             : callback(called), _make_resource(res) {}
 
     virtual void operator ()(resource_handle_ptr handle) const {
-        EXPECT_EQ(handle->error(), error::none);
+        EXPECT_EQ(handle->error(), boost::system::error_code());
         if (handle->empty()) {
             handle->reset(_make_resource());
         }
@@ -45,7 +45,7 @@ public:
             : callback(called), _use_strategy(use_strategy) {}
 
     virtual void operator ()(resource_handle_ptr handle) const {
-        EXPECT_EQ(handle->error(), error::none);
+        EXPECT_EQ(handle->error(), boost::system::error_code());
         EXPECT_FALSE(handle->empty());
         if (!handle->empty()) {
             use(handle);
@@ -65,17 +65,17 @@ private:
 
 class check_error : public callback {
 public:
-    check_error(const error::code& error, boost::promise<void>& called)
+    check_error(const boost::system::error_code& error, boost::promise<void>& called)
             : callback(called), _error(error) {}
 
     virtual void operator ()(resource_handle_ptr handle) const {
         EXPECT_EQ(handle->error(), _error);
-        EXPECT_EQ(handle->empty(), _error != error::none);
+        EXPECT_EQ(handle->empty(), _error != boost::system::error_code());
         callback::operator ()(handle);
     }
 
 private:
-    error::code _error;
+    boost::system::error_code _error;
 };
 
 class my_resource_handle : public handle_facade<resource_pool> {

@@ -23,7 +23,7 @@ public:
     typedef typename list::iterator list_iterator;
     typedef boost::optional<list_iterator> list_iterator_opt;
     typedef boost::chrono::seconds seconds;
-    typedef boost::function<void (const error::code&,
+    typedef boost::function<void (const boost::system::error_code&,
         const list_iterator_opt&)> callback;
     typedef detail::request_queue::queue<callback> callback_queue;
     typedef typename callback_queue::time_duration time_duration;
@@ -137,13 +137,14 @@ void pool_impl<R>::get(callback call, const time_duration& wait_duration) {
     } else {
         lock.unlock();
         if (wait_duration.count() == 0ll) {
-            async_call(bind(call, error::get_resource_timeout,
+            async_call(bind(call, make_error_code(error::get_resource_timeout),
                 list_iterator_opt()));
         } else {
-            const error::code& push_result = _callbacks->push(call,
-                bind(call, error::get_resource_timeout, list_iterator_opt()),
+            const boost::system::error_code& push_result = _callbacks->push(call,
+                bind(call, make_error_code(error::get_resource_timeout),
+                    list_iterator_opt()),
                 wait_duration);
-            if (push_result != error::none) {
+            if (push_result != boost::system::error_code()) {
                 async_call(bind(call, push_result, list_iterator_opt()));
             }
         }
@@ -181,20 +182,20 @@ void pool_impl<R>::alloc_resource(unique_lock& lock, const callback& call) {
     --_available_size;
     ++_used_size;
     lock.unlock();
-    async_call(bind(call, error::none, res_it));
+    async_call(bind(call, boost::system::error_code(), res_it));
 }
 
 template <class R>
 void pool_impl<R>::reserve_resource(unique_lock& lock, const callback& call) {
     ++_reserved;
     lock.unlock();
-    async_call(bind(call, error::none, boost::none));
+    async_call(bind(call, boost::system::error_code(), boost::none));
 }
 
 template <class R>
 void pool_impl<R>::perform_one_request(unique_lock& lock) {
     const typename callback_queue::pop_result& result = _callbacks->pop();
-    if (result == error::none) {
+    if (result == boost::system::error_code()) {
         alloc_resource(lock, *result.request);
     }
 }

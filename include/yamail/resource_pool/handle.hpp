@@ -32,7 +32,7 @@ public:
 
     ~handle();
 
-    error::code error() const { return _error; }
+    boost::system::error_code error() const { return _error; }
     bool empty() const { return !_resource_it.is_initialized(); }
     value_type& get();
     const value_type& get() const;
@@ -52,12 +52,12 @@ private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
     list_iterator_opt _resource_it;
-    error::code _error;
+    boost::system::error_code _error;
 
     handle(pool_impl_ptr pool_impl,
             strategy use_strategy,
             const list_iterator_opt& resource_it,
-            const error::code& error)
+            const boost::system::error_code& error)
             : _pool_impl(pool_impl), _use_strategy(use_strategy),
               _resource_it(resource_it), _error(error) {}
 

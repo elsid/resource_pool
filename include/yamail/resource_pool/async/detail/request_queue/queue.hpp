@@ -38,13 +38,13 @@ public:
     typedef boost::optional<value_type> value_type_opt;
 
     struct pop_result {
-        error::code error;
+        boost::system::error_code error;
         value_type_opt request;
 
-        pop_result(const error::code_value& error) : error(error) {}
+        pop_result(const boost::system::error_code& error) : error(error) {}
         pop_result(const queue::value_type& request) : request(request) {}
 
-        bool operator ==(const error::code& error) const {
+        bool operator ==(const boost::system::error_code& error) const {
             return this->error == error;
         }
     };
@@ -60,7 +60,7 @@ public:
     std::size_t size() const;
     bool empty() const;
 
-    error::code push(value_type req, callback req_expired,
+    boost::system::error_code push(value_type req, callback req_expired,
             const time_duration& wait_duration);
     pop_result pop();
 
@@ -112,11 +112,11 @@ bool queue<R>::empty() const {
 }
 
 template <class R>
-error::code queue<R>::push(value_type req_data, callback req_expired,
+boost::system::error_code queue<R>::push(value_type req_data, callback req_expired,
         const time_duration& wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
-        return error::request_queue_overflow;
+        return make_error_code(error::request_queue_overflow);
     }
     const expiring_request_ptr req = boost::make_shared<expiring_request>(
         req_data, req_expired);
@@ -124,14 +124,14 @@ error::code queue<R>::push(value_type req_data, callback req_expired,
     req->expires_at_it = _expires_at_requests.insert(std::make_pair(
         clock::now() + wait_duration, req));
     update_timer();
-    return error::none;
+    return boost::system::error_code();
 }
 
 template <class R>
 typename queue<R>::pop_result queue<R>::pop() {
     const lock_guard lock(_mutex);
     if (_ordered_requests.empty()) {
-        return error::request_queue_is_empty;
+        return make_error_code(error::request_queue_is_empty);
     }
     const expiring_request_ptr req = _ordered_requests.front();
     _ordered_requests.pop_front();

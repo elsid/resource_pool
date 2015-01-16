@@ -19,7 +19,7 @@ TEST_F(load_test_async_request_queue, push_many_should_pop_all_not_empty) {
     const std::size_t count = 1000;
     request_queue_ptr queue = make_shared<request_queue>(ref(*_io_service), count);
     for (std::size_t n = 0; n < count; ++n) {
-        EXPECT_EQ(queue->push(request(), throw_on_call, seconds(count - n)), error::none);
+        EXPECT_EQ(queue->push(request(), throw_on_call, seconds(count - n)), boost::system::error_code());
     }
     EXPECT_EQ(queue->size(), count);
     for (std::size_t n = 0; n < count; ++n) {
@@ -35,7 +35,7 @@ void do_nothing(boost::promise<void>& called) {
 }
 
 void push_request(request_queue_ptr queue, const time_duration& wait_duration, boost::promise<void>& called) {
-    EXPECT_EQ(queue->push(request(), bind(do_nothing, ref(called)), wait_duration), error::none);
+    EXPECT_EQ(queue->push(request(), bind(do_nothing, ref(called)), wait_duration), boost::system::error_code());
 }
 
 void get_result(boost::promise<void>& called) {
@@ -51,7 +51,7 @@ TEST_F(load_test_async_request_queue, push_many_and_sleep_should_pop_empty) {
     for_each(called, bind(get_result, _1));
     EXPECT_TRUE(queue->empty());
     const request_queue::pop_result& result = queue->pop();
-    EXPECT_EQ(result.error, error::request_queue_is_empty);
+    EXPECT_EQ(result.error, make_error_code(error::request_queue_is_empty));
 }
 
 }

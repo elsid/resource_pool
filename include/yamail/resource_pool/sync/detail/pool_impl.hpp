@@ -26,7 +26,7 @@ public:
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
     typedef boost::optional<list_iterator> list_iterator_opt;
-    typedef std::pair<error::code, list_iterator_opt> get_result;
+    typedef std::pair<boost::system::error_code, list_iterator_opt> get_result;
 
     pool_impl(std::size_t capacity)
             : _capacity(capacity),
@@ -114,16 +114,16 @@ typename pool_impl<R>::get_result pool_impl<R>::get(
     unique_lock lock(_mutex);
     if (_available_size == 0 && fit_capacity()) {
         ++_reserved;
-        return std::make_pair(error::none, boost::none);
+        return std::make_pair(boost::system::error_code(), boost::none);
     }
     if (!wait_for(lock, wait_duration)) {
-        return std::make_pair(error::get_resource_timeout, boost::none);
+        return std::make_pair(make_error_code(error::get_resource_timeout), boost::none);
     }
     const list_iterator res_it = _available.begin();
     _available.splice(_used.end(), _used, res_it);
     --_available_size;
     ++_used_size;
-    return std::make_pair(error::none, res_it);
+    return std::make_pair(boost::system::error_code(), res_it);
 }
 
 template <class R>

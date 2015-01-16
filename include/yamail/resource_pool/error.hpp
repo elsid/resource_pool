@@ -1,18 +1,11 @@
 #ifndef YAMAIL_RESOURCE_POOL_ERROR_HPP
 #define YAMAIL_RESOURCE_POOL_ERROR_HPP
 
-#include <stdexcept>
-#include <map>
-#include <sstream>
+#include <boost/system/error_code.hpp>
 
 namespace yamail {
 namespace resource_pool {
 namespace error {
-
-struct add_existing_resource : std::logic_error {
-    add_existing_resource()
-            : std::logic_error("trying add existing resource") {}
-};
 
 struct pool_overflow : std::logic_error {
     pool_overflow() : std::logic_error("pool capacity is reached") {}
@@ -22,28 +15,20 @@ struct empty_handle : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };
 
-enum code_value {
-    none = 0,
-    get_resource_timeout,
+enum code {
+    get_resource_timeout = 1,
     request_queue_overflow,
     request_queue_is_empty
 };
 
-class code {
+namespace detail {
+
+class category : public boost::system::error_category {
 public:
-    code(code_value value = none) : _value(value) {}
+    const char* name() const throw() { return "resource_pool"; }
 
-    bool operator ==(code other) const { return _value == other._value; }
-    bool operator !=(code other) const { return !operator ==(other); }
-    bool operator ==(code_value other) const { return _value == other; }
-    bool operator !=(code_value other) const { return !operator ==(other); }
-
-    code_value value() const { return _value; }
-
-    std::string message() const {
-        switch (_value) {
-            case none:
-                return "not an error";
+    std::string message(int value) const {
+        switch (value) {
             case get_resource_timeout:
                 return "get resource timeout";
             case request_queue_overflow:
@@ -51,18 +36,41 @@ public:
             case request_queue_is_empty:
                 return "request queue is empty";
             default:
-                return "unknown error";
+                return "resource_pool error";
         }
     }
-
-private:
-    code_value _value;
 };
 
-inline std::ostream& operator <<(std::ostream& stream, const code& c) {
-    return stream << c.message();
 }
 
-}}}
+inline const boost::system::error_category& get_category() {
+    static detail::category instance;
+    return instance;
+}
+
+}
+}
+}
+
+namespace boost {
+namespace system {
+
+template <>
+struct is_error_code_enum<yamail::resource_pool::error::code> {
+    static const bool value = true;
+};
+
+}
+}
+
+namespace yamail {
+namespace resource_pool {
+
+inline boost::system::error_code make_error_code(const error::code e) {
+    return boost::system::error_code(static_cast<int>(e), error::get_category());
+}
+
+}
+}
 
 #endif

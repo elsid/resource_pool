@@ -31,7 +31,7 @@ struct async_resource_pool_impl_complex : public async_test {
 struct callback : base_callback {
     callback(boost::promise<void>& called) : base_callback(called) {}
 
-    void operator ()(const error::code& /*err*/, const resource_ptr_list_iterator_opt& /*res*/) const {
+    void operator ()(const boost::system::error_code& /*err*/, const resource_ptr_list_iterator_opt& /*res*/) const {
         _impl->call();
         _called.set_value();
     }
@@ -46,8 +46,8 @@ public:
             : callback(called), _pool_impl(pool_impl),
               _use_strategy(use_strategy) {}
 
-    void operator ()(const error::code& err, const resource_ptr_list_iterator_opt& res) const {
-        EXPECT_EQ(err, error::none);
+    void operator ()(const boost::system::error_code& err, const resource_ptr_list_iterator_opt& res) const {
+        EXPECT_EQ(err, boost::system::error_code());
         EXPECT_TRUE(res);
         if (res) {
             use(*res);
@@ -72,8 +72,8 @@ public:
             resource_ptr res, strategy use_strategy, boost::promise<void>& called)
             : use_resource(pool_impl, use_strategy, called), _resource(res) {}
 
-    void operator ()(const error::code& err, const resource_ptr_list_iterator_opt& res) const {
-        EXPECT_EQ(err, error::none);
+    void operator ()(const boost::system::error_code& err, const resource_ptr_list_iterator_opt& res) const {
+        EXPECT_EQ(err, boost::system::error_code());
         EXPECT_FALSE(res);
         use_resource::operator ()(err, _pool_impl->add(_resource));
     }
@@ -104,8 +104,8 @@ struct check_get_resource_timeout : callback {
     check_get_resource_timeout(boost::promise<void>& called)
             : callback(called) {}
 
-    void operator ()(const error::code& err, const resource_ptr_list_iterator_opt& res) const {
-        EXPECT_EQ(err, error::get_resource_timeout);
+    void operator ()(const boost::system::error_code& err, const resource_ptr_list_iterator_opt& res) const {
+        EXPECT_EQ(err, make_error_code(error::get_resource_timeout));
         EXPECT_FALSE(res);
         callback::operator ()(err, res);
     }
