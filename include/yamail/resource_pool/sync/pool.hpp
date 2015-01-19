@@ -29,7 +29,6 @@ public:
     std::size_t size() const { return _impl->size(); }
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
-    std::size_t reserved() const { return _impl->reserved(); }
 
     handle_ptr get_auto_waste(const time_duration& wait_duration = seconds(0)) {
         return get_handle(&handle::waste, wait_duration);

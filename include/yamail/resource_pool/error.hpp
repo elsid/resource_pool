@@ -15,6 +15,10 @@ struct empty_handle : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };
 
+struct unusable_handle : std::logic_error {
+    unusable_handle() : std::logic_error("handle is unusable") {}
+};
+
 enum code {
     get_resource_timeout = 1,
     request_queue_overflow,

@@ -36,7 +36,6 @@ public:
     std::size_t size() const { return _impl->size(); }
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
-    std::size_t reserved() const { return _impl->reserved(); }
 
     std::size_t queue_capacity() const { return _impl->queue_capacity(); }
     std::size_t queue_size() const { return _impl->queue_size(); }

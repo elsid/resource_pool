@@ -32,7 +32,8 @@ public:
 
     virtual ~handle();
 
-    bool empty() const { return !_resource_it.is_initialized(); }
+    bool unusable() const { return !_resource_it; }
+    bool empty() const { return unusable() || !**_resource_it; }
     value_type& get();
     const value_type& get() const;
     value_type *operator ->() { return &get(); }
@@ -60,11 +61,12 @@ private:
     list_iterator_opt _resource_it;
 
     void assert_not_empty() const;
+    void assert_not_unusable() const;
 };
 
 template <class R>
 handle<R>::~handle() {
-    if (!empty()) {
+    if (!unusable()) {
         (this->*_use_strategy)();
     }
 }
@@ -83,31 +85,35 @@ const typename handle<R>::value_type& handle<R>::get() const {
 
 template <class R>
 void handle<R>::recycle() {
-    assert_not_empty();
+    assert_not_unusable();
     _pool_impl->recycle(*_resource_it);
     _resource_it.reset();
 }
 
 template <class R>
 void handle<R>::waste() {
-    assert_not_empty();
+    assert_not_unusable();
     _pool_impl->waste(*_resource_it);
     _resource_it.reset();
 }
 
 template <class R>
 void handle<R>::reset(pointer res) {
-    if (empty()) {
-        _resource_it.reset(_pool_impl->add(res));
-    } else {
-        _resource_it.reset(_pool_impl->replace(*_resource_it, res));
-    }
+    assert_not_unusable();
+    **_resource_it = res;
 }
 
 template <class R>
 void handle<R>::assert_not_empty() const {
     if (empty()) {
         throw error::empty_handle();
+    }
+}
+
+template <class R>
+void handle<R>::assert_not_unusable() const {
+    if (unusable()) {
+        throw error::unusable_handle();
     }
 }
 

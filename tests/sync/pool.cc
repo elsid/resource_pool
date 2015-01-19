@@ -76,21 +76,20 @@ TEST(sync_resource_pool, get_auto_waste_handle_should_succeed) {
 TEST(sync_resource_pool, check_metrics_for_not_empty) {
     const std::size_t capacity = 42;
     resource_pool pool(capacity);
-    EXPECT_EQ(pool.reserved(), 0ul);
     EXPECT_EQ(pool.size(), 0ul);
     EXPECT_EQ(pool.used(), 0ul);
     EXPECT_EQ(pool.available(), 0ul);
     {
         resource_handle_ptr handle = pool.get_auto_recycle();
+        EXPECT_FALSE(handle->unusable());
         EXPECT_TRUE(handle->empty());
         EXPECT_EQ(handle->error(), boost::system::error_code());
-        EXPECT_EQ(pool.reserved(), 1ul);
-        EXPECT_EQ(pool.size(), 0ul);
-        EXPECT_EQ(pool.used(), 0ul);
+        EXPECT_EQ(pool.size(), 1ul);
+        EXPECT_EQ(pool.used(), 1ul);
         EXPECT_EQ(pool.available(), 0ul);
         handle->reset(make_resource());
+        EXPECT_FALSE(handle->unusable());
         EXPECT_FALSE(handle->empty());
-        EXPECT_EQ(pool.reserved(), 0ul);
         EXPECT_EQ(pool.size(), 1ul);
         EXPECT_EQ(pool.used(), 1ul);
         EXPECT_EQ(pool.available(), 0ul);
@@ -101,13 +100,12 @@ TEST(sync_resource_pool, check_metrics_for_not_empty) {
     {
         resource_handle_ptr handle1 = pool.get_auto_recycle();
         resource_handle_ptr handle2 = pool.get_auto_recycle();
-        EXPECT_EQ(pool.reserved(), 1ul);
-        EXPECT_EQ(pool.size(), 1ul);
-        EXPECT_EQ(pool.used(), 1ul);
+        EXPECT_EQ(pool.size(), 2ul);
+        EXPECT_EQ(pool.used(), 2ul);
         EXPECT_EQ(pool.available(), 0ul);
         handle2->reset(make_resource());
+        EXPECT_FALSE(handle2->unusable());
         EXPECT_FALSE(handle2->empty());
-        EXPECT_EQ(pool.reserved(), 0ul);
         EXPECT_EQ(pool.size(), 2ul);
         EXPECT_EQ(pool.used(), 2ul);
         EXPECT_EQ(pool.available(), 0ul);
@@ -171,7 +169,7 @@ TEST(sync_resource_pool, get_auto_recycle_handle_and_recycle_recycled_should_thr
     resource_handle_ptr handle = pool.get_auto_recycle();
     handle->reset(make_resource());
     handle->recycle();
-    EXPECT_THROW(handle->recycle(), error::empty_handle);
+    EXPECT_THROW(handle->recycle(), error::unusable_handle);
 }
 
 TEST(sync_resource_pool, get_auto_recycle_handle_from_empty_pool_should_return_error) {
