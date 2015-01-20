@@ -7,10 +7,6 @@ namespace yamail {
 namespace resource_pool {
 namespace error {
 
-struct pool_overflow : std::logic_error {
-    pool_overflow() : std::logic_error("pool capacity is reached") {}
-};
-
 struct empty_handle : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };
