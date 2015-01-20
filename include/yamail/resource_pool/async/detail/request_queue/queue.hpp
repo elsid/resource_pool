@@ -99,20 +99,20 @@ private:
     void update_timer();
 };
 
-template <class R>
-std::size_t queue<R>::size() const {
+template <class T>
+std::size_t queue<T>::size() const {
     const lock_guard lock(_mutex);
     return _expires_at_requests.size();
 }
 
-template <class R>
-bool queue<R>::empty() const {
+template <class T>
+bool queue<T>::empty() const {
     const lock_guard lock(_mutex);
     return _ordered_requests.empty();
 }
 
-template <class R>
-boost::system::error_code queue<R>::push(value_type req_data, callback req_expired,
+template <class T>
+boost::system::error_code queue<T>::push(value_type req_data, callback req_expired,
         const time_duration& wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
@@ -127,8 +127,8 @@ boost::system::error_code queue<R>::push(value_type req_data, callback req_expir
     return boost::system::error_code();
 }
 
-template <class R>
-typename queue<R>::pop_result queue<R>::pop() {
+template <class T>
+typename queue<T>::pop_result queue<T>::pop() {
     const lock_guard lock(_mutex);
     if (_ordered_requests.empty()) {
         return make_error_code(error::request_queue_is_empty);
@@ -140,8 +140,8 @@ typename queue<R>::pop_result queue<R>::pop() {
     return req->request;
 }
 
-template <class R>
-void queue<R>::cancel(const boost::system::error_code& ec) {
+template <class T>
+void queue<T>::cancel(const boost::system::error_code& ec) {
     if (ec != boost::system::errc::success) {
         return;
     }
@@ -153,15 +153,15 @@ void queue<R>::cancel(const boost::system::error_code& ec) {
     update_timer();
 }
 
-template <class R>
-void queue<R>::cancel_one(const request_multimap_value &pair) {
+template <class T>
+void queue<T>::cancel_one(const request_multimap_value &pair) {
     const expiring_request_ptr req = pair.second;
     _ordered_requests.erase(req->order_it);
     _io_service.post(req->expired);
 }
 
-template <class R>
-void queue<R>::update_timer() {
+template <class T>
+void queue<T>::update_timer() {
     if (_expires_at_requests.empty()) {
         return;
     }
