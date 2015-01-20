@@ -46,7 +46,9 @@ public:
     std::size_t queue_capacity() const { return _callbacks->capacity(); }
     std::size_t queue_size() const { return _callbacks->size(); }
     bool queue_empty() const { return _callbacks->empty(); }
-    void async_call(boost::function<void ()> call) { _io_service.post(call); }
+    void async_call(boost::function<void ()> call) {
+        _io_service.post(bind(call_and_abort_on_catch_exception, call));
+    }
 
     boost::shared_ptr<pool_impl> shared_from_this() {
         return boost::enable_shared_from_this<pool_impl>::shared_from_this();
@@ -77,6 +79,7 @@ private:
     void reserve_resource(unique_lock& lock, const callback& call);
     void alloc_resource(unique_lock& lock, const callback& call);
     void perform_one_request(unique_lock& lock);
+    static void call_and_abort_on_catch_exception(const boost::function<void ()>& call);
 };
 
 template <class T>
@@ -187,6 +190,16 @@ void pool_impl<T>::perform_one_request(unique_lock& lock) {
     const typename callback_queue::pop_result& result = _callbacks->pop();
     if (result == boost::system::error_code()) {
         alloc_resource(lock, *result.request);
+    }
+}
+
+template <class T>
+void pool_impl<T>::call_and_abort_on_catch_exception(const boost::function<void ()>& call) {
+    try {
+        call();
+    } catch (...) {
+        assert(false && "resource_pool callbacks must not throw exceptions");
+        abort();
     }
 }
 
