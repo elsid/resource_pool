@@ -35,7 +35,9 @@ public:
     void SetUp() {
         _io_service = make_shared<io_service>();
         _work = make_shared<io_service::work>(ref(*_io_service));
-        _thread_pool.create_thread(bind(&io_service::run, _io_service));
+        for (unsigned i = 0; i < 2; ++i) {
+            _thread_pool.create_thread(bind(&io_service::run, _io_service));
+        }
     }
 
     void TearDown() {

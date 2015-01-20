@@ -27,7 +27,7 @@ public:
 
     virtual void operator ()(const boost::system::error_code& ec, resource_handle_ptr handle) const {
         EXPECT_EQ(ec, boost::system::error_code());
-        if (handle->empty()) {
+        if (ec == boost::system::error_code() && handle->empty()) {
             handle->reset(_make_resource());
         }
         callback::operator ()(ec, handle);

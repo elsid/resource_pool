@@ -14,7 +14,7 @@ namespace resource_pool {
 namespace async {
 
 template <class T>
-class pool {
+class pool : boost::noncopyable {
 public:
     typedef T value_type;
     typedef detail::pool_impl<value_type> pool_impl;
@@ -31,6 +31,8 @@ public:
                 boost::ref(io_service),
                 capacity,
                 queue_capacity)) {}
+
+    ~pool() { _impl->disable(); }
 
     std::size_t capacity() const { return _impl->capacity(); }
     std::size_t size() const { return _impl->size(); }

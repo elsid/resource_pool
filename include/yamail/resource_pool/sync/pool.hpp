@@ -25,6 +25,8 @@ public:
             : _impl(boost::make_shared<pool_impl>(capacity))
     {}
 
+    ~pool() { _impl->disable(); }
+
     std::size_t capacity() const { return _impl->capacity(); }
     std::size_t size() const { return _impl->size(); }
     std::size_t available() const { return _impl->available(); }

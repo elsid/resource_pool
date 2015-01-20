@@ -105,15 +105,20 @@ TEST_F(async_resource_pool_impl_complex, get_one_and_waste_succeed) {
     called.get_future().get();
 }
 
-struct check_get_resource_timeout : callback {
-    check_get_resource_timeout(boost::promise<void>& called)
-            : callback(called) {}
+class check_error : callback {
+public:
+    check_error(boost::promise<void>& called,
+            const boost::system::error_code& error)
+            : callback(called), _error(error) {}
 
     void operator ()(const boost::system::error_code& err, const resource_ptr_list_iterator_opt& res) const {
-        EXPECT_EQ(err, make_error_code(error::get_resource_timeout));
-        EXPECT_FALSE(res);
+        EXPECT_EQ(err, _error);
+        EXPECT_EQ(res.is_initialized(), _error == boost::system::error_code());
         callback::operator ()(err, res);
     }
+
+private:
+    boost::system::error_code _error;
 };
 
 TEST_F(async_resource_pool_impl_complex, get_more_than_capacity_returns_error) {
@@ -121,11 +126,51 @@ TEST_F(async_resource_pool_impl_complex, get_more_than_capacity_returns_error) {
     boost::promise<void> second_called;
     resource_pool_impl_ptr pool_impl = make_resource_pool_impl(1, 1);
     const callback do_nothing(first_called);
-    const check_get_resource_timeout use(second_called);
+    const check_error check(second_called, make_error_code(error::get_resource_timeout));
     pool_impl->get(do_nothing);
     first_called.get_future().get();
-    pool_impl->get(use);
+    pool_impl->get(check);
     second_called.get_future().get();
+}
+
+TEST_F(async_resource_pool_impl_complex, get_after_disable_returns_error) {
+    boost::promise<void> called;
+    resource_pool_impl_ptr pool_impl = make_resource_pool_impl(1, 1);
+    const check_error check(called, make_error_code(error::disabled));
+    pool_impl->disable();
+    pool_impl->get(check);
+    called.get_future().get();
+}
+
+struct get_disable_and_use : use_resource {
+    get_disable_and_use(resource_pool_impl_ptr pool_impl,
+            use_resource::strategy use_strategy, boost::promise<void>& called)
+            : use_resource(pool_impl, use_strategy, called) {}
+
+    void operator ()(const boost::system::error_code& err, const resource_ptr_list_iterator_opt& res) const {
+        boost::promise<void> called;
+        const check_error check(called, make_error_code(error::disabled));
+        _pool_impl->get(check, seconds(1));
+        _pool_impl->disable();
+        use_resource::operator ()(err, res);
+        called.get_future().get();
+    }
+};
+
+TEST_F(async_resource_pool_impl_complex, get_recycled_after_disable_returns_error) {
+    boost::promise<void> called;
+    resource_pool_impl_ptr pool_impl = make_resource_pool_impl(1, 1);
+    const get_disable_and_use use(pool_impl, &use_resource::recycle, called);
+    pool_impl->get(use);
+    called.get_future().get();
+}
+
+TEST_F(async_resource_pool_impl_complex, get_new_after_disable_returns_error) {
+    boost::promise<void> called;
+    resource_pool_impl_ptr pool_impl = make_resource_pool_impl(1, 1);
+    const get_disable_and_use use(pool_impl, &use_resource::waste, called);
+    pool_impl->get(use);
+    called.get_future().get();
 }
 
 }

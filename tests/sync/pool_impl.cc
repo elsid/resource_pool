@@ -44,10 +44,16 @@ TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
     pool_impl.waste(*res.second);
 }
 
-TEST(sync_resource_pool_impl, get_more_than_capacity_should_throw_exception) {
+TEST(sync_resource_pool_impl, get_more_than_capacity_returns_error) {
     resource_pool_impl pool_impl(1);
     pool_impl.get();
     EXPECT_EQ(pool_impl.get().first, make_error_code(error::get_resource_timeout));
+}
+
+TEST(sync_resource_pool_impl, get_after_disable_capacity_returns_error) {
+    resource_pool_impl pool_impl(1);
+    pool_impl.disable();
+    EXPECT_EQ(pool_impl.get().first, make_error_code(error::disabled));
 }
 
 }
