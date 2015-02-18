@@ -1,4 +1,4 @@
-find_package(Boost REQUIRED thread chrono)
+find_package(Boost REQUIRED system thread chrono)
 
 add_executable(test
     main.cc
@@ -12,6 +12,7 @@ target_link_libraries(test
     -lgtest
     -lgmock
     -pthread
+    ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
 )
@@ -22,6 +23,7 @@ target_link_libraries(load_test_async_pool
     -lgtest
     -lgmock
     -pthread
+    ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
 )
@@ -32,6 +34,7 @@ target_link_libraries(load_test_async_request_queue
     -lgtest
     -lgmock
     -pthread
+    ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
 )
