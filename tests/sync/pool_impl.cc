@@ -25,14 +25,14 @@ TEST(sync_resource_pool_impl, get_one_should_succeed) {
     resource_pool_impl pool_impl(1);
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
-    EXPECT_TRUE(res.second);
+    EXPECT_TRUE(res.second.is_initialized());
 }
 
 TEST(sync_resource_pool_impl, get_one_and_recycle_should_succeed) {
     resource_pool_impl pool_impl(1);
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
-    EXPECT_TRUE(res.second);
+    EXPECT_TRUE(res.second.is_initialized());
     pool_impl.recycle(*res.second);
 }
 
@@ -40,7 +40,7 @@ TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
     resource_pool_impl pool_impl(1);
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
-    EXPECT_TRUE(res.second);
+    EXPECT_TRUE(res.second.is_initialized());
     pool_impl.waste(*res.second);
 }
 

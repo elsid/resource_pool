@@ -66,7 +66,7 @@ public:
 
 private:
     typedef boost::lock_guard<boost::mutex> lock_guard;
-    typedef boost::asio::steady_timer timer;
+    typedef boost::asio::basic_waitable_timer<clock> timer;
     struct expiring_request;
     typedef boost::shared_ptr<expiring_request> expiring_request_ptr;
     typedef std::list<expiring_request_ptr> request_list;
