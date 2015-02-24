@@ -8,36 +8,24 @@ add_executable(test
     async/pool_impl.cc
     async/request_queue.cc)
 
-target_link_libraries(test
+set(LIBRARIES
     -lgtest
     -lgmock
     -pthread
+    -lrt
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
-    ${Boost_CHRONO_LIBRARY}
-)
+    ${Boost_CHRONO_LIBRARY})
+
+target_link_libraries(test ${LIBRARIES})
 
 add_executable(load_test_async_pool main.cc async/load_pool.cc)
 
-target_link_libraries(load_test_async_pool
-    -lgtest
-    -lgmock
-    -pthread
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${Boost_CHRONO_LIBRARY}
-)
+target_link_libraries(load_test_async_pool ${LIBRARIES})
 
 add_executable(load_test_async_request_queue main.cc async/load_request_queue.cc)
 
-target_link_libraries(load_test_async_request_queue
-    -lgtest
-    -lgmock
-    -pthread
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${Boost_CHRONO_LIBRARY}
-)
+target_link_libraries(load_test_async_request_queue ${LIBRARIES})
 
 add_custom_target(check
     COMMAND test
