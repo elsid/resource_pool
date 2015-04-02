@@ -48,7 +48,7 @@ public:
 
     void operator ()(const boost::system::error_code& err, const resource_ptr_list_iterator_opt& res) const {
         EXPECT_EQ(err, boost::system::error_code());
-        EXPECT_TRUE(res);
+        EXPECT_TRUE(res.is_initialized());
         if (res) {
             use(*res);
         }
@@ -78,7 +78,7 @@ public:
 
     void operator ()(const boost::system::error_code& err, const resource_ptr_list_iterator_opt& res) const {
         EXPECT_EQ(err, boost::system::error_code());
-        EXPECT_TRUE(res);
+        EXPECT_TRUE(res.is_initialized());
         **res = _make_resource();
         use_resource::operator ()(err, res);
     }
