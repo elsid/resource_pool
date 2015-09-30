@@ -1,12 +1,11 @@
-find_package(Boost REQUIRED system thread chrono)
-
 add_executable(test
     main.cc
     sync/pool.cc
     sync/pool_impl.cc
     async/pool.cc
     async/pool_impl.cc
-    async/request_queue.cc)
+    async/request_queue.cc
+)
 
 set(LIBRARIES
     -lgtest
@@ -15,7 +14,8 @@ set(LIBRARIES
     -lrt
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
-    ${Boost_CHRONO_LIBRARY})
+    ${Boost_CHRONO_LIBRARY}
+)
 
 target_link_libraries(test ${LIBRARIES})
 
