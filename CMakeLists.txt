@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
-set(YAMAIL_CMAKE_MODULES ${CMAKE_INSTALL_PREFIX}/share/cmake_helpers)
-include(${YAMAIL_CMAKE_MODULES}/yamail.cmake)
+find_path(CMAKE_MODULE_PATH yamail.cmake
+  HINTS ${CMAKE_INSTALL_PREFIX}/share/cmake_helpers
+  /usr/share/cmake_helpers)
+include(yamail)
 
 yamail_project(resource_pool)
 
