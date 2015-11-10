@@ -33,7 +33,7 @@ TEST_F(async_request_queue_complex, push_and_wait_queue_should_call_expired) {
     callback expired(called);
     request_queue_ptr queue = make_shared<request_queue>(ref(*_io_service), 1);
     EXPECT_EQ(queue->push(request(), expired, seconds(0)), boost::system::error_code());
-    called.get_future().get();
+    assert_get_nothrow(called);
     EXPECT_TRUE(queue->empty());
     const request_queue::pop_result& result = queue->pop();
     EXPECT_EQ(result.error, make_error_code(error::request_queue_is_empty));

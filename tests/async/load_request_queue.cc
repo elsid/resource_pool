@@ -39,7 +39,7 @@ void push_request(request_queue_ptr queue, const time_duration& wait_duration, b
 }
 
 void get_result(boost::promise<void>& called) {
-    called.get_future().get();
+    assert_get_nothrow(called);
 }
 
 TEST_F(load_test_async_request_queue, push_many_and_sleep_should_pop_empty) {

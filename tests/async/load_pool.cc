@@ -60,7 +60,7 @@ private:
 };
 
 void get_result(boost::promise<void>& called) {
-    called.get_future().get();
+    assert_get_nothrow(called);
 }
 
 template <std::size_t count>
@@ -132,7 +132,9 @@ TEST_F(load_test_async_resource_pool, perform_many_get_auto_recycle_should_succe
     resource_pool pool(*_io_service, pool_capacity, pool_queue_capacity);
     get_auto_recycle<load_count> do_load(pool, wait_duration);
     finite_pereodic_work load(ref(ios), do_load, load_interval);
-    EXPECT_EQ(load.start(load_count).get(), boost::system::error_code());
+    boost::unique_future<boost::system::error_code> started = load.start(load_count);
+    assert_ready(started);
+    EXPECT_EQ(started.get(), boost::system::error_code());
     do_load.wait();
     ios.stop();
     thread_pool.join_all();

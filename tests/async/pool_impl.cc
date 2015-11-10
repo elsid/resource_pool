@@ -93,7 +93,7 @@ TEST_F(async_resource_pool_impl_complex, get_one_and_recycle_succeed) {
     const set_and_use_resource add_and_recycle(pool_impl, make_resource,
         &use_resource::recycle, called);
     pool_impl->get(add_and_recycle, seconds(1));
-    called.get_future().get();
+    assert_get_nothrow(called);
 }
 
 TEST_F(async_resource_pool_impl_complex, get_one_and_waste_succeed) {
@@ -102,7 +102,7 @@ TEST_F(async_resource_pool_impl_complex, get_one_and_waste_succeed) {
     const set_and_use_resource add_and_waste(pool_impl, make_resource,
         &use_resource::waste, called);
     pool_impl->get(add_and_waste, seconds(1));
-    called.get_future().get();
+    assert_get_nothrow(called);
 }
 
 class check_error : callback {
@@ -128,9 +128,9 @@ TEST_F(async_resource_pool_impl_complex, get_more_than_capacity_returns_error) {
     const callback do_nothing(first_called);
     const check_error check(second_called, make_error_code(error::get_resource_timeout));
     pool_impl->get(do_nothing);
-    first_called.get_future().get();
+    assert_get_nothrow(first_called);
     pool_impl->get(check);
-    second_called.get_future().get();
+    assert_get_nothrow(second_called);
 }
 
 TEST_F(async_resource_pool_impl_complex, get_after_disable_returns_error) {
@@ -139,7 +139,7 @@ TEST_F(async_resource_pool_impl_complex, get_after_disable_returns_error) {
     const check_error check(called, make_error_code(error::disabled));
     pool_impl->disable();
     pool_impl->get(check);
-    called.get_future().get();
+    assert_get_nothrow(called);
 }
 
 struct get_disable_and_use : use_resource {
@@ -153,7 +153,7 @@ struct get_disable_and_use : use_resource {
         _pool_impl->get(check, seconds(1));
         _pool_impl->disable();
         use_resource::operator ()(err, res);
-        called.get_future().get();
+        assert_get_nothrow(called);
     }
 };
 
@@ -162,7 +162,7 @@ TEST_F(async_resource_pool_impl_complex, get_recycled_after_disable_returns_erro
     resource_pool_impl_ptr pool_impl = make_resource_pool_impl(1, 1);
     const get_disable_and_use use(pool_impl, &use_resource::recycle, called);
     pool_impl->get(use);
-    called.get_future().get();
+    assert_get_nothrow(called);
 }
 
 TEST_F(async_resource_pool_impl_complex, get_new_after_disable_returns_error) {
@@ -170,7 +170,7 @@ TEST_F(async_resource_pool_impl_complex, get_new_after_disable_returns_error) {
     resource_pool_impl_ptr pool_impl = make_resource_pool_impl(1, 1);
     const get_disable_and_use use(pool_impl, &use_resource::waste, called);
     pool_impl->get(use);
-    called.get_future().get();
+    assert_get_nothrow(called);
 }
 
 }

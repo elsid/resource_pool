@@ -6,6 +6,22 @@
 
 #include <yamail/resource_pool.hpp>
 
+namespace boost {
+
+inline std::ostream& operator <<(std::ostream& stream, future_status value) {
+    switch (value) {
+        case future_status::ready:
+            return stream << "future_status::ready";
+        case future_status::timeout:
+            return stream << "future_status::timeout";
+        case future_status::deferred:
+            return stream << "future_status::deferred";
+    }
+    throw std::logic_error("unknown future_status");
+}
+
+}
+
 namespace tests {
 
 using namespace testing;
@@ -73,6 +89,18 @@ protected:
 
 inline void throw_on_call() {
     throw std::logic_error("unexpected call");
+}
+
+template <class T>
+void assert_ready(const boost::unique_future<T>& future) {
+    ASSERT_EQ(future.wait_for(seconds(3)), boost::future_status::ready);
+}
+
+template <class T>
+T assert_get_nothrow(boost::promise<T>& promise) {
+    boost::unique_future<T> future = promise.get_future();
+    assert_ready(future);
+    return future.get();
 }
 
 }
