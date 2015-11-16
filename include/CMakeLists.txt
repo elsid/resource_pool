@@ -1,1 +1,0 @@
-yamail_install_headers(yamail)
