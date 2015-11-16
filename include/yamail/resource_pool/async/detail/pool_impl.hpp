@@ -79,7 +79,7 @@ private:
     void reserve_resource(unique_lock& lock, const callback& call);
     void alloc_resource(unique_lock& lock, const callback& call);
     void perform_one_request(unique_lock& lock);
-    static void call_and_abort_on_catch_exception(const boost::function<void ()>& call);
+    static void call_and_abort_on_catch_exception(const boost::function<void ()>& call) throw();
 };
 
 template <class T>
@@ -138,10 +138,10 @@ void pool_impl<T>::get(callback call, const time_duration& wait_duration) {
             async_call(bind(call, make_error_code(error::get_resource_timeout),
                 list_iterator_opt()));
         } else {
+            const boost::function<void ()> expired = bind(call,
+                make_error_code(error::get_resource_timeout), list_iterator_opt());
             const boost::system::error_code& push_result = _callbacks->push(call,
-                bind(call, make_error_code(error::get_resource_timeout),
-                    list_iterator_opt()),
-                wait_duration);
+                bind(call_and_abort_on_catch_exception, expired), wait_duration);
             if (push_result != boost::system::error_code()) {
                 async_call(bind(call, push_result, list_iterator_opt()));
             }
@@ -194,7 +194,7 @@ void pool_impl<T>::perform_one_request(unique_lock& lock) {
 }
 
 template <class T>
-void pool_impl<T>::call_and_abort_on_catch_exception(const boost::function<void ()>& call) {
+void pool_impl<T>::call_and_abort_on_catch_exception(const boost::function<void ()>& call) throw() {
     try {
         call();
     } catch (...) {
