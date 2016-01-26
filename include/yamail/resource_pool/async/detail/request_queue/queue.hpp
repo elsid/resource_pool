@@ -78,7 +78,6 @@ private:
     typedef typename request_list::iterator request_list_it;
     typedef std::multimap<time_point, expiring_request_ptr> request_multimap;
     typedef typename request_multimap::iterator request_multimap_it;
-    typedef typename std::pair<request_multimap_it, request_multimap_it> request_multimap_range;
     typedef typename request_multimap::value_type request_multimap_value;
 
     struct expiring_request {
@@ -151,10 +150,11 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
         return;
     }
     const lock_guard lock(_mutex);
-    const request_multimap_range& range = _expires_at_requests.equal_range(
+    const request_multimap_it end = _expires_at_requests.upper_bound(
         _timer->expires_at());
-    boost::for_each(range, bind(&queue::cancel_one, this, _1));
-    _expires_at_requests.erase(range.first, range.second);
+    std::for_each(_expires_at_requests.begin(), end,
+                  bind(&queue::cancel_one, this, _1));
+    _expires_at_requests.erase(_expires_at_requests.begin(), end);
     update_timer();
 }
 
