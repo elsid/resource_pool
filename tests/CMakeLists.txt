@@ -27,16 +27,3 @@ endif()
 enable_testing()
 add_test(resource_pool_test resource_pool_test)
 add_dependencies(check resource_pool_test)
-
-add_executable(resource_pool_load_test_async_pool main.cc async/load_pool.cc)
-
-target_link_libraries(resource_pool_load_test_async_pool ${LIBRARIES})
-
-add_executable(resource_pool_load_test_async_request_queue main.cc async/load_request_queue.cc)
-
-target_link_libraries(resource_pool_load_test_async_request_queue ${LIBRARIES})
-
-add_custom_target(resource_pool_load_check
-    COMMAND load_test_async_pool
-    COMMAND load_test_async_request_queue
-)

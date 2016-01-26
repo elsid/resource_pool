@@ -19,7 +19,6 @@ enum code {
     get_resource_timeout = 1,
     request_queue_overflow,
     request_queue_is_empty,
-    exception,
     disabled
 };
 
@@ -37,8 +36,6 @@ public:
                 return "request queue overflow";
             case request_queue_is_empty:
                 return "request queue is empty";
-            case exception:
-                return "exception";
             case disabled:
                 return "resource pool is disabled";
             default:

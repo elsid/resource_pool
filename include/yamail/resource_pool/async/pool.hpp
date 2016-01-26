@@ -13,22 +13,40 @@ namespace yamail {
 namespace resource_pool {
 namespace async {
 
-template <class T>
+using detail::clock;
+
+template <class Value,
+          class IoService = boost::asio::io_service,
+          class Timer = boost::asio::basic_waitable_timer<clock> >
 class pool : boost::noncopyable {
 public:
-    typedef T value_type;
-    typedef detail::pool_impl<value_type> pool_impl;
+    typedef Value value_type;
+    typedef IoService io_service_t;
+    typedef Timer timer_t;
+    typedef detail::pool_impl<value_type, io_service_t, timer_t> pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
-    typedef resource_pool::handle<pool_impl> handle;
+    typedef resource_pool::handle<pool> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
     typedef boost::function<void (const boost::system::error_code&,
         handle_ptr)> callback;
 
-    pool(boost::asio::io_service& io_service, std::size_t capacity = 0,
-            std::size_t queue_capacity = 0)
+    pool(io_service_t& io_service,
+         std::size_t capacity = 0,
+         std::size_t queue_capacity = 0)
             : _impl(boost::make_shared<pool_impl>(
                 boost::ref(io_service),
+                boost::make_shared<timer_t>(boost::ref(io_service)),
+                capacity,
+                queue_capacity)) {}
+
+    pool(io_service_t& io_service,
+         boost::shared_ptr<timer_t> timer,
+         std::size_t capacity = 0,
+         std::size_t queue_capacity = 0)
+            : _impl(boost::make_shared<pool_impl>(
+                boost::ref(io_service),
+                timer,
                 capacity,
                 queue_capacity)) {}
 
@@ -69,18 +87,12 @@ private:
     static void make_handle(pool_impl_ptr impl, callback call,
             strategy use_strategy, const boost::system::error_code& ec,
             const list_iterator_opt& res) {
-        try {
-            impl->async_call(bind(call, ec,
-                handle_ptr(new handle(impl, use_strategy, res))));
-        } catch (...) {
-            impl->async_call(bind(call,
-                make_error_code(error::exception), handle_ptr()));
-        }
+        call(ec, handle_ptr(new handle(impl, use_strategy, res)));
     }
 };
 
-}
-}
-}
+} // namespace async
+} // namespace resource_pool
+} // namespace yamail
 
-#endif
+#endif // YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
