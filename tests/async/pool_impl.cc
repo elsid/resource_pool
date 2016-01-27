@@ -15,9 +15,19 @@ typedef boost::shared_ptr<resource_pool_impl> resource_pool_impl_ptr;
 
 using boost::system::error_code;
 
+struct mocked_callback {
+    MOCK_CONST_METHOD2(call, void (const error_code&, const resource_ptr_list_iterator_opt&));
+};
+
+typedef boost::shared_ptr<mocked_callback> mocked_callback_ptr;
+
 struct async_resource_pool_impl : Test {
     mocked_io_service ios;
     boost::shared_ptr<mocked_timer> timer;
+
+    boost::function<void ()> on_get;
+    boost::function<void ()> on_first_get;
+    boost::function<void ()> on_second_get;
 
     async_resource_pool_impl() : timer(new mocked_timer()) {}
 
@@ -29,12 +39,6 @@ struct async_resource_pool_impl : Test {
 };
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
-
-struct mocked_callback {
-    MOCK_CONST_METHOD2(call, void (const error_code&, const resource_ptr_list_iterator_opt&));
-};
-
-typedef boost::shared_ptr<mocked_callback> mocked_callback_ptr;
 
 class callback {
 public:
@@ -79,17 +83,26 @@ private:
     resource_pool_impl_ptr pool;
 };
 
+TEST_F(async_resource_pool_impl, get_one_should_call_callback) {
+    resource_pool_impl_ptr pool = make_pool(1, 0);
+
+    mocked_callback_ptr get = make_shared<mocked_callback>();
+
+    InSequence s;
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(*get, call(_, _)).WillOnce(Return());
+
+    pool->get(callback(get));
+    on_get();
+}
+
 TEST_F(async_resource_pool_impl, get_one_and_recycle_should_make_one_available_resource) {
     resource_pool_impl_ptr pool = make_pool(1, 0);
 
-    boost::function<void ()> on_get;
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
 
-    recycle_resource recycle(pool);
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(recycle));
+    pool->get(recycle_resource(pool));
     on_get();
 
     EXPECT_EQ(pool->available(), 1);
@@ -98,14 +111,9 @@ TEST_F(async_resource_pool_impl, get_one_and_recycle_should_make_one_available_r
 TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_resources) {
     resource_pool_impl_ptr pool = make_pool(1, 0);
 
-    boost::function<void ()> on_get;
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
 
-    waste_resource waste(pool);
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(waste));
+    pool->get(waste_resource(pool));
     on_get();
 
     EXPECT_EQ(pool->available(), 0);
@@ -114,23 +122,16 @@ TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_reso
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make_one_available_resource) {
     resource_pool_impl_ptr pool = make_pool(1, 1);
 
-    boost::function<void ()> on_first_get;
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
+    InSequence s;
 
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
     EXPECT_CALL(*timer, expires_at(_)).WillOnce(Return());
     EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
-    pool->get(get, seconds(1));
-
-    recycle_resource recycle(pool);
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(recycle));
-    boost::function<void ()> on_second_get;
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    on_first_get();
 
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(recycle));
+    pool->get(recycle_resource(pool));
+    pool->get(recycle_resource(pool), seconds(1));
+    on_first_get();
     on_second_get();
 
     EXPECT_EQ(pool->available(), 1);
@@ -139,6 +140,7 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make
 class check_error {
 public:
     check_error(const error_code& error) : error(error) {}
+    check_error(const error::code& error) : error(make_error_code(error)) {}
 
     void operator ()(const error_code& err, const resource_ptr_list_iterator_opt& res) const {
         EXPECT_EQ(err, error);
@@ -149,57 +151,46 @@ private:
     const error_code error;
 };
 
-TEST_F(async_resource_pool_impl, get_with_queeu_use_and_timer_timeout_should_returns_error) {
+struct check_no_error : check_error {
+    check_no_error() : check_error(error_code()) {}
+};
+
+TEST_F(async_resource_pool_impl, get_with_queue_use_and_timer_timeout_should_return_error) {
     resource_pool_impl_ptr pool = make_pool(1, 1);
 
-    boost::function<void ()> on_first_get;
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
-
-    error_code none;
-    check_error check_no_error(none);
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(check_no_error));
-    on_first_get();
-
-    time_point expire_time;
-    EXPECT_CALL(*timer, expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
     boost::function<void (error_code)> on_async_wait;
-    EXPECT_CALL(*timer, async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
-    pool->get(get, seconds(1));
+    time_point expire_time;
 
-    boost::function<void ()> on_second_get;
+    InSequence s;
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(*timer, expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
+    EXPECT_CALL(*timer, async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
+
+    pool->get(check_no_error());
+    on_first_get();
+    pool->get(check_error(error::get_resource_timeout), seconds(1));
+
     EXPECT_CALL(*timer, expires_at()).WillOnce(Return(expire_time));
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    on_async_wait(error_code());
 
-    check_error check_get_resource_timeout(make_error_code(error::get_resource_timeout));
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(check_get_resource_timeout));
+    on_async_wait(error_code());
     on_second_get();
 }
 
-TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_should_returns_error) {
+TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_should_return_error) {
     resource_pool_impl_ptr pool = make_pool(1, 1);
 
-    boost::function<void ()> on_first_get;
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
+    InSequence s;
 
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
     EXPECT_CALL(*timer, expires_at(_)).Times(0);
     EXPECT_CALL(*timer, async_wait(_)).Times(0);
-    boost::function<void ()> on_second_get;
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    pool->get(get);
 
-    recycle_resource recycle(pool);
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(recycle));
+    pool->get(recycle_resource(pool));
+    pool->get(check_error(error::get_resource_timeout), seconds(0));
     on_first_get();
-
-    check_error check_get_resource_timeout(make_error_code(error::get_resource_timeout));
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(check_get_resource_timeout));
     on_second_get();
 
     EXPECT_EQ(pool->available(), 1);
@@ -208,64 +199,42 @@ TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_shou
 TEST_F(async_resource_pool_impl, get_after_disable_returns_error) {
     resource_pool_impl_ptr pool = make_pool(1, 0);
 
-    pool->disable();
+    InSequence s;
 
-    boost::function<void ()> on_get;
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
 
-    check_error check_disabled(make_error_code(error::disabled));
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(check_disabled));
+    pool->disable();
+    pool->get(check_error(error::disabled));
     on_get();
 }
 
 TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
     resource_pool_impl_ptr pool = make_pool(1, 0);
 
-    boost::function<void ()> on_first_get;
+    InSequence s;
+
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
-
-    pool->disable();
-
-    boost::function<void ()> on_second_get;
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    pool->get(get);
 
-    recycle_resource recycle(pool);
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(recycle));
+    pool->get(recycle_resource(pool));
+    pool->disable();
+    pool->get(check_error(error::disabled));
     on_first_get();
-
-    check_error check_disabled(make_error_code(error::disabled));
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(check_disabled));
     on_second_get();
 }
 
 TEST_F(async_resource_pool_impl, get_new_after_disable_returns_error) {
     resource_pool_impl_ptr pool = make_pool(1, 0);
 
-    boost::function<void ()> on_first_get;
+    InSequence s;
+
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    mocked_callback_ptr get_impl = make_shared<mocked_callback>();
-    callback get(get_impl);
-    pool->get(get);
-
-    pool->disable();
-
-    boost::function<void ()> on_second_get;
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    pool->get(get);
 
-    waste_resource waste(pool);
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(waste));
+    pool->get(waste_resource(pool));
+    pool->disable();
+    pool->get(check_error(error::disabled));
     on_first_get();
-
-    check_error check_disabled(make_error_code(error::disabled));
-    EXPECT_CALL(*get_impl, call(_, _)).WillOnce(Invoke(check_disabled));
     on_second_get();
 }
 
