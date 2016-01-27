@@ -87,7 +87,17 @@ private:
     static void make_handle(pool_impl_ptr impl, callback call,
             strategy use_strategy, const boost::system::error_code& ec,
             const list_iterator_opt& res) {
-        call(ec, handle_ptr(new handle(impl, use_strategy, res)));
+        if (ec) {
+            return call(ec, handle_ptr());
+        }
+        handle_ptr res_handle;
+        boost::system::error_code error;
+        try {
+            res_handle.reset(new handle(impl, use_strategy, res));
+        } catch (const std::exception&) {
+            error = make_error_code(error::exception);
+        }
+        call(error, res_handle);
     }
 };
 
