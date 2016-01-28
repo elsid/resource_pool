@@ -3,6 +3,5 @@
 
 #include <yamail/resource_pool/async/pool.hpp>
 #include <yamail/resource_pool/sync/pool.hpp>
-#include <yamail/resource_pool/handle_facade.hpp>
 
 #endif

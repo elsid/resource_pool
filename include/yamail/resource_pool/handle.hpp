@@ -9,26 +9,16 @@
 namespace yamail {
 namespace resource_pool {
 
-namespace sync {
-template <class T>
-class pool;
-}
-
-namespace async {
-template <class T>
-class pool;
-}
-
-template <class ResourcePoolImpl>
+template <class Pool>
 class handle : boost::noncopyable {
 public:
-    typedef ResourcePoolImpl pool_impl;
+    typedef Pool pool;
+    typedef typename pool::pool_impl pool_impl;
     typedef typename pool_impl::value_type value_type;
     typedef typename pool_impl::pointer pointer;
     typedef void (handle::*strategy)();
 
-    friend class sync::pool<value_type>;
-    friend class async::pool<value_type>;
+    friend Pool;
 
     virtual ~handle();
 
@@ -64,54 +54,54 @@ private:
     void assert_not_unusable() const;
 };
 
-template <class R>
-handle<R>::~handle() {
+template <class P>
+handle<P>::~handle() {
     if (!unusable()) {
         (this->*_use_strategy)();
     }
 }
 
-template <class R>
-typename handle<R>::value_type& handle<R>::get() {
+template <class P>
+typename handle<P>::value_type& handle<P>::get() {
     assert_not_empty();
     return ***_resource_it;
 }
 
-template <class R>
-const typename handle<R>::value_type& handle<R>::get() const {
+template <class P>
+const typename handle<P>::value_type& handle<P>::get() const {
     assert_not_empty();
     return ***_resource_it;
 }
 
-template <class R>
-void handle<R>::recycle() {
+template <class P>
+void handle<P>::recycle() {
     assert_not_unusable();
     _pool_impl->recycle(*_resource_it);
     _resource_it.reset();
 }
 
-template <class R>
-void handle<R>::waste() {
+template <class P>
+void handle<P>::waste() {
     assert_not_unusable();
     _pool_impl->waste(*_resource_it);
     _resource_it.reset();
 }
 
-template <class R>
-void handle<R>::reset(pointer res) {
+template <class P>
+void handle<P>::reset(pointer res) {
     assert_not_unusable();
     **_resource_it = res;
 }
 
-template <class R>
-void handle<R>::assert_not_empty() const {
+template <class P>
+void handle<P>::assert_not_empty() const {
     if (empty()) {
         throw error::empty_handle();
     }
 }
 
-template <class R>
-void handle<R>::assert_not_unusable() const {
+template <class P>
+void handle<P>::assert_not_unusable() const {
     if (unusable()) {
         throw error::unusable_handle();
     }

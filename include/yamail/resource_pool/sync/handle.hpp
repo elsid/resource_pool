@@ -9,10 +9,13 @@ namespace resource_pool {
 namespace sync {
 
 template <class T>
-class handle : public resource_pool::handle<sync::detail::pool_impl<T> > {
+class pool;
+
+template <class T>
+class handle : public resource_pool::handle<sync::pool<T> > {
 public:
     typedef T value_type;
-    typedef resource_pool::handle<sync::detail::pool_impl<value_type> > base;
+    typedef resource_pool::handle<sync::pool<value_type> > base;
 
     friend class sync::pool<value_type>;
 

@@ -1,197 +1,126 @@
-#include <boost/lambda/bind.hpp>
-#include <boost/lambda/lambda.hpp>
+#include <yamail/resource_pool/async/pool.hpp>
 
-#include "pool_tests.hpp"
+#include "tests.hpp"
 
 namespace {
 
-using namespace pool_tests;
+using namespace tests;
+using namespace yamail::resource_pool;
+using namespace yamail::resource_pool::async;
 
-typedef pool<resource> resource_pool;
+typedef pool<resource, mocked_io_service, mocked_timer> resource_pool;
 typedef boost::shared_ptr<resource_pool::handle> resource_handle_ptr;
 
-struct async_resource_pool_simple : public Test {};
+using boost::system::error_code;
+
+struct async_resource_pool : Test {
+    mocked_io_service ios;
+    boost::shared_ptr<mocked_timer> timer;
+    boost::function<void ()> on_get;
+
+    async_resource_pool() : timer(new mocked_timer()) {}
+};
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
-TEST(async_resource_pool_simple, create_should_succeed) {
-    io_service ios;
-    resource_pool pool(ios);
+class check_no_error {
+public:
+    void operator ()(const error_code& err, resource_handle_ptr res) const {
+        EXPECT_EQ(err, error_code());
+        EXPECT_FALSE(res->unusable());
+    }
+};
+
+TEST_F(async_resource_pool, get_auto_recylce_handle_should_make_one_available_resource) {
+    resource_pool pool(ios, timer, 1, 0);
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+
+    pool.get_auto_recycle(check_no_error());
+    on_get();
+
+    EXPECT_EQ(pool.available(), 1);
 }
 
-TEST(async_resource_pool_simple, create_not_empty_should_succeed) {
-    io_service ios;
-    resource_pool pool(ios, 42, 42);
+TEST_F(async_resource_pool, get_auto_waste_handle_make_no_available_resources) {
+    resource_pool pool(ios, timer, 1, 0);
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+
+    pool.get_auto_waste(check_no_error());
+    on_get();
+
+    EXPECT_EQ(pool.available(), 0);
 }
 
-TEST(async_resource_pool_simple, check_metrics_for_empty) {
-    io_service ios;
-    resource_pool pool(ios);
-    EXPECT_EQ(pool.capacity(), 0ul);
-    EXPECT_EQ(pool.size(), 0ul);
-    EXPECT_EQ(pool.used(), 0ul);
-    EXPECT_EQ(pool.available(), 0ul);
-    EXPECT_EQ(pool.queue_capacity(), 0ul);
-    EXPECT_EQ(pool.queue_size(), 0ul);
+class recycle_resource {
+public:
+    void operator ()(const error_code& err, resource_handle_ptr res) {
+        EXPECT_EQ(err, error_code());
+        EXPECT_FALSE(res->unusable());
+        res->recycle();
+        handle = res;
+    }
+
+private:
+    resource_handle_ptr handle;
+};
+
+TEST_F(async_resource_pool, get_auto_recylce_handle_and_recycle_should_make_one_available_resource) {
+    resource_pool pool(ios, timer, 1, 0);
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+
+    pool.get_auto_recycle(recycle_resource());
+    on_get();
+
+    EXPECT_EQ(pool.available(), 1);
 }
 
-TEST(async_resource_pool_simple, check_capacity) {
-    const std::size_t capacity = 42;
-    io_service ios;
-    resource_pool pool(ios, capacity);
-    EXPECT_EQ(pool.capacity(), capacity);
+TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_make_one_available_resource) {
+    resource_pool pool(ios, timer, 1, 0);
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+
+    pool.get_auto_waste(recycle_resource());
+    on_get();
+
+    EXPECT_EQ(pool.available(), 1);
 }
 
-struct async_resource_pool_complex : public async_test {};
+class waste_resource {
+public:
+    void operator ()(const error_code& err, resource_handle_ptr res) {
+        EXPECT_EQ(err, error_code());
+        EXPECT_FALSE(res->unusable());
+        res->waste();
+        handle = res;
+    }
 
-TEST_F(async_resource_pool_complex, get_auto_recylce_handle_should_succeed) {
-    boost::promise<void> called;
-    resource_pool pool(*_io_service, 1, 0);
-    const reset_resource_if_need reset_res(make_resource, called);
-    pool.get_auto_recycle(reset_res);
-    assert_get_nothrow(called);
+private:
+    resource_handle_ptr handle;
+};
+
+TEST_F(async_resource_pool, get_auto_recylce_handle_and_waste_should_make_no_available_resources) {
+    resource_pool pool(ios, timer, 1, 0);
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+
+    pool.get_auto_recycle(waste_resource());
+    on_get();
+
+    EXPECT_EQ(pool.available(), 0);
 }
 
-TEST_F(async_resource_pool_complex, get_auto_waste_handle_should_succeed) {
-    boost::promise<void> called;
-    resource_pool pool(*_io_service, 1, 0);
-    const reset_resource_if_need reset_res(make_resource, called);
-    pool.get_auto_waste(reset_res);
-    assert_get_nothrow(called);
-}
+TEST_F(async_resource_pool, get_auto_waste_handle_and_waste_should_make_no_available_resources) {
+    resource_pool pool(ios, timer, 1, 0);
 
-TEST_F(async_resource_pool_complex, get_auto_recylce_handle_and_recycle_should_succeed) {
-    using namespace boost;
-    using namespace boost::lambda;
-    boost::promise<void> reset_res_called;
-    boost::promise<void> use_called;
-    resource_pool pool(*_io_service, 1, 1);
-    const reset_resource_if_need reset_res(make_resource, reset_res_called);
-    const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_recycle((lambda::bind(reset_res, lambda::_1, lambda::_2),
-        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
-    assert_get_nothrow(reset_res_called);
-    assert_get_nothrow(use_called);
-}
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 
-TEST_F(async_resource_pool_complex, get_auto_recylce_handle_and_waste_should_succeed) {
-    using namespace boost;
-    using namespace boost::lambda;
-    boost::promise<void> reset_res_called;
-    boost::promise<void> use_called;
-    resource_pool pool(*_io_service, 1, 1);
-    const reset_resource_if_need reset_res(make_resource, reset_res_called);
-    const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_recycle((lambda::bind(reset_res, lambda::_1, lambda::_2),
-        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
-    assert_get_nothrow(reset_res_called);
-    assert_get_nothrow(use_called);
-}
+    pool.get_auto_waste(waste_resource());
+    on_get();
 
-TEST_F(async_resource_pool_complex, get_auto_waste_handle_and_recycle_should_succeed) {
-    using namespace boost;
-    using namespace boost::lambda;
-    boost::promise<void> reset_res_called;
-    boost::promise<void> use_called;
-    resource_pool pool(*_io_service, 1, 1);
-    const reset_resource_if_need reset_res(make_resource, reset_res_called);
-    const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_waste((lambda::bind(reset_res, lambda::_1, lambda::_2),
-        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
-    assert_get_nothrow(reset_res_called);
-    assert_get_nothrow(use_called);
-}
-
-TEST_F(async_resource_pool_complex, get_auto_waste_handle_and_waste_should_succeed) {
-    using namespace boost;
-    using namespace boost::lambda;
-    boost::promise<void> reset_res_called;
-    boost::promise<void> use_called;
-    resource_pool pool(*_io_service, 1, 1);
-    const reset_resource_if_need reset_res(make_resource, reset_res_called);
-    const use_handle use(&use_handle::recycle, use_called);
-    pool.get_auto_waste((lambda::bind(reset_res, lambda::_1, lambda::_2),
-        lambda::bind(use, lambda::_1, lambda::_2)), seconds(1));
-    assert_get_nothrow(reset_res_called);
-    assert_get_nothrow(use_called);
-}
-
-TEST_F(async_resource_pool_complex, get_two_and_use_queue_to_wait_create_should_succeed) {
-    using namespace boost;
-    using namespace boost::lambda;
-    boost::promise<void> first_reset_res_called;
-    boost::promise<void> second_reset_res_called;
-    boost::promise<void> first_check_called;
-    boost::promise<void> second_check_called;
-    resource_pool pool(*_io_service, 2, 2);
-    const reset_resource_if_need first_reset_res(make_resource, first_reset_res_called);
-    const reset_resource_if_need second_reset_res(make_resource, second_reset_res_called);
-    const check_error first_check(boost::system::error_code(), first_check_called);
-    const check_error second_check(boost::system::error_code(), second_check_called);
-    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1, lambda::_2),
-        lambda::bind(first_check, lambda::_1, lambda::_2)), seconds(1));
-    pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1, lambda::_2),
-        lambda::bind(second_check, lambda::_1, lambda::_2)), seconds(1));
-    assert_get_nothrow(first_reset_res_called);
-    assert_get_nothrow(second_reset_res_called);
-    assert_get_nothrow(first_check_called);
-    assert_get_nothrow(second_check_called);
-}
-
-TEST_F(async_resource_pool_complex, get_two_and_use_queue_to_wait_recycle_should_succeed) {
-    using namespace boost;
-    using namespace boost::lambda;
-    boost::promise<void> first_reset_res_called;
-    boost::promise<void> second_reset_res_called;
-    boost::promise<void> first_check_called;
-    boost::promise<void> second_check_called;
-    resource_pool pool(*_io_service, 1, 2);
-    const reset_resource_if_need first_reset_res(make_resource, first_reset_res_called);
-    const reset_resource_if_need second_reset_res(make_resource, second_reset_res_called);
-    const check_error first_check(boost::system::error_code(), first_check_called);
-    const check_error second_check(boost::system::error_code(), second_check_called);
-    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1, lambda::_2),
-        lambda::bind(first_check, lambda::_1, lambda::_2)), seconds(1));
-    pool.get_auto_recycle((lambda::bind(second_reset_res, lambda::_1, lambda::_2),
-        lambda::bind(second_check, lambda::_1, lambda::_2)), seconds(1));
-    assert_get_nothrow(first_reset_res_called);
-    assert_get_nothrow(second_reset_res_called);
-    assert_get_nothrow(first_check_called);
-    assert_get_nothrow(second_check_called);
-}
-
-TEST_F(async_resource_pool_complex, get_two_and_use_queue_should_return_get_resource_timeout_error_for_second) {
-    using namespace boost;
-    using namespace boost::lambda;
-    boost::promise<void> first_reset_res_called;
-    boost::promise<void> first_called;
-    boost::promise<void> second_called;
-    resource_pool pool(*_io_service, 1, 1);
-    const reset_resource_if_need first_reset_res(make_resource, first_reset_res_called);
-    const check_error first_check(boost::system::error_code(), first_called);
-    const check_error second_check(make_error_code(error::get_resource_timeout), second_called);
-    pool.get_auto_recycle((lambda::bind(first_reset_res, lambda::_1, lambda::_2),
-        lambda::bind(first_check, lambda::_1, lambda::_2)), seconds(1));
-    pool.get_auto_recycle(second_check);
-    assert_get_nothrow(first_reset_res_called);
-    assert_get_nothrow(first_called);
-    assert_get_nothrow(second_called);
-}
-
-TEST_F(async_resource_pool_complex, get_auto_recycle_handle_from_empty_pool_should_return_error) {
-    boost::promise<void> called;
-    resource_pool pool(*_io_service, 0, 0);
-    const check_error check(make_error_code(error::get_resource_timeout), called);
-    pool.get_auto_recycle(check);
-    assert_get_nothrow(called);
-}
-
-TEST_F(async_resource_pool_complex, create_my_resoure_handle_should_succeed) {
-    boost::promise<void> called;
-    resource_pool pool(*_io_service, 0, 1);
-    const create_my_resource_handle use(called);
-    pool.get_auto_recycle(use);
-    assert_get_nothrow(called);
+    EXPECT_EQ(pool.available(), 0);
 }
 
 }

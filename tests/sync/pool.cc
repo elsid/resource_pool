@@ -18,12 +18,6 @@ typedef resource_pool::handle_ptr resource_handle_ptr;
 
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
-class my_resource_handle : public handle_facade<resource_pool> {
-public:
-    my_resource_handle(const resource_handle_ptr& handle)
-            : handle_facade<resource_pool>(handle) {}
-};
-
 struct sync_resource_pool : Test {};
 
 TEST(sync_resource_pool, create_should_succeed) {
@@ -176,11 +170,6 @@ TEST(sync_resource_pool, get_auto_recycle_handle_from_empty_pool_should_return_e
     resource_pool pool(0);
     resource_handle_ptr handle = pool.get_auto_recycle();
     EXPECT_EQ(handle->error(), make_error_code(error::get_resource_timeout));
-}
-
-TEST(sync_resource_pool, create_my_resoure_handle_should_succeed) {
-    resource_pool pool(1);
-    my_resource_handle handle(pool.get_auto_recycle());
 }
 
 TEST(sync_resource_pool, check_pool_lifetime) {
