@@ -161,17 +161,13 @@ template <class V, class I, class T>
 void pool_impl<V, I, T>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
-    const boost::system::error_code& empty_queue = make_error_code(
-        error::request_queue_is_empty);
     while (true) {
         const typename callback_queue::pop_result& result = _callbacks->pop();
-        if (result == empty_queue) {
+        if (result.error != boost::system::error_code()) {
             break;
-        } else if (result == boost::system::error_code()) {
-            async_call(bind(*result.request,
-                make_error_code(error::disabled),
-                list_iterator_opt()));
         }
+        async_call(bind(*result.request, make_error_code(error::disabled),
+                        list_iterator_opt()));
     }
 }
 

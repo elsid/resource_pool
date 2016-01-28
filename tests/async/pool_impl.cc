@@ -209,31 +209,18 @@ TEST_F(async_resource_pool_impl, get_after_disable_returns_error) {
 }
 
 TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
-    resource_pool_impl_ptr pool = make_pool(1, 0);
+    resource_pool_impl_ptr pool = make_pool(1, 1);
 
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(*timer, expires_at(_)).WillOnce(Return());
+    EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
 
     pool->get(recycle_resource(pool));
+    pool->get(check_error(error::disabled), seconds(1));
     pool->disable();
-    pool->get(check_error(error::disabled));
-    on_first_get();
-    on_second_get();
-}
-
-TEST_F(async_resource_pool_impl, get_new_after_disable_returns_error) {
-    resource_pool_impl_ptr pool = make_pool(1, 0);
-
-    InSequence s;
-
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-
-    pool->get(waste_resource(pool));
-    pool->disable();
-    pool->get(check_error(error::disabled));
     on_first_get();
     on_second_get();
 }
