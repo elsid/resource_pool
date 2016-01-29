@@ -13,6 +13,22 @@ typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
 typedef resource_pool_impl::list_iterator_opt resource_ptr_list_iterator_opt;
 typedef boost::shared_ptr<resource_pool_impl> resource_pool_impl_ptr;
 
+}
+
+namespace boost {
+
+inline std::ostream& operator <<(std::ostream& stream, const resource_ptr_list_iterator_opt& res) {
+    if (!res.is_initialized()) {
+        stream << "<Uninitialized resource>";
+    } else {
+        stream << "<Initialized resource>";
+    }
+}
+
+}
+
+namespace {
+
 using boost::system::error_code;
 
 struct mocked_callback {
