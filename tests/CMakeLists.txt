@@ -10,6 +10,7 @@ add_executable(resource_pool_test
 )
 
 set(LIBRARIES
+    -lrt
     -pthread
     -lgtest
     -lgmock
