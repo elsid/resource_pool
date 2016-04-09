@@ -94,7 +94,7 @@ std::size_t pool_impl<V, I, T>::size() const {
 
 template <class V, class I, class T>
 std::size_t pool_impl<V, I, T>::available() const {
-    const unique_lock lock(_mutex);
+    const lock_guard lock(_mutex);
     return _available_size;
 }
 
