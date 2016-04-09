@@ -1,10 +1,6 @@
 #ifndef YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 #define YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 
-#include <list>
-
-#include <boost/make_shared.hpp>
-
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/handle.hpp>
 #include <yamail/resource_pool/async/detail/pool_impl.hpp>
