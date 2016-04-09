@@ -148,6 +148,24 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make
     EXPECT_EQ(pool->available(), 1);
 }
 
+TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) {
+    resource_pool_impl_ptr pool = make_pool(1, 1);
+
+    InSequence s;
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(*timer, expires_at(_)).WillOnce(Return());
+    EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+
+    pool->get(waste_resource(pool));
+    pool->get(waste_resource(pool), seconds(1));
+    on_first_get();
+    on_second_get();
+
+    EXPECT_EQ(pool->available(), 0);
+}
+
 class check_error {
 public:
     check_error(const error_code& error) : error(error) {}

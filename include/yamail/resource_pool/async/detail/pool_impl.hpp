@@ -67,6 +67,7 @@ private:
     typedef typename boost::shared_ptr<callback_queue> callback_queue_ptr;
     typedef boost::unique_lock<boost::mutex> unique_lock;
     typedef boost::lock_guard<boost::mutex> lock_guard;
+    typedef void (pool_impl::*serve_request_t)(unique_lock&, const callback&);
 
     mutable boost::mutex _mutex;
     list _available;
@@ -82,7 +83,7 @@ private:
     bool fit_capacity() const { return size_unsafe() < _capacity; }
     void reserve_resource(unique_lock& lock, const callback& call);
     void alloc_resource(unique_lock& lock, const callback& call);
-    void perform_one_request(unique_lock& lock);
+    void perform_one_request(unique_lock& lock, serve_request_t serve);
     static void call_and_abort_on_catch_exception(const boost::function<void ()>& call) throw();
 };
 
@@ -110,7 +111,7 @@ void pool_impl<V, I, T>::recycle(list_iterator res_it) {
     _used.splice(_available.end(), _available, res_it);
     --_used_size;
     ++_available_size;
-    perform_one_request(lock);
+    perform_one_request(lock, &pool_impl::alloc_resource);
 }
 
 template <class V, class I, class T>
@@ -118,12 +119,7 @@ void pool_impl<V, I, T>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
     _used.erase(res_it);
     --_used_size;
-    if (_callbacks->empty()) {
-        return;
-    }
-    if (!_available.empty()) {
-        perform_one_request(lock);
-    }
+    perform_one_request(lock, &pool_impl::reserve_resource);
 }
 
 template <class V, class I, class T>
@@ -187,10 +183,10 @@ void pool_impl<V, I, T>::reserve_resource(unique_lock& lock, const callback& cal
 }
 
 template <class V, class I, class T>
-void pool_impl<V, I, T>::perform_one_request(unique_lock& lock) {
+void pool_impl<V, I, T>::perform_one_request(unique_lock& lock, serve_request_t serve) {
     callback call;
     if (_callbacks->pop(call)) {
-        alloc_resource(lock, call);
+        (this->*serve)(lock, call);
     }
 }
 
