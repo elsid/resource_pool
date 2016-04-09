@@ -25,8 +25,7 @@ public:
     typedef boost::chrono::seconds seconds;
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
-    typedef boost::optional<list_iterator> list_iterator_opt;
-    typedef std::pair<boost::system::error_code, list_iterator_opt> get_result;
+    typedef std::pair<boost::system::error_code, list_iterator> get_result;
 
     pool_impl(std::size_t capacity)
             : _capacity(capacity),
@@ -111,7 +110,7 @@ typename pool_impl<T>::get_result pool_impl<T>::get(
         const time_duration& wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
-        return std::make_pair(make_error_code(error::disabled), boost::none);
+        return std::make_pair(make_error_code(error::disabled), list_iterator());
     }
     if (_available_size == 0 && fit_capacity()) {
         const list_iterator res_it = _used.insert(_used.end(), pointer());
@@ -120,10 +119,10 @@ typename pool_impl<T>::get_result pool_impl<T>::get(
     }
     if (!wait_for(lock, wait_duration)) {
         return std::make_pair(make_error_code(error::get_resource_timeout),
-            boost::none);
+            list_iterator());
     }
     if (_disabled) {
-        return std::make_pair(make_error_code(error::disabled), boost::none);
+        return std::make_pair(make_error_code(error::disabled), list_iterator());
     }
     const list_iterator res_it = _available.begin();
     _available.splice(_used.end(), _used, res_it);

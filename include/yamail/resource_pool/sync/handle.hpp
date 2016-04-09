@@ -26,7 +26,7 @@ private:
 
     handle(typename base::pool_impl_ptr pool_impl,
             typename base::strategy use_strategy,
-            const typename base::list_iterator_opt& resource_it,
+            typename base::list_iterator resource_it,
             const boost::system::error_code& error)
             : base(pool_impl, use_strategy, resource_it), _error(error) {}
 };

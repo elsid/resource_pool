@@ -22,8 +22,8 @@ public:
 
     virtual ~handle();
 
-    bool unusable() const { return !_resource_it; }
-    bool empty() const { return unusable() || !**_resource_it; }
+    bool unusable() const { return _resource_it == list_iterator(); }
+    bool empty() const { return unusable() || !*_resource_it; }
     value_type& get();
     const value_type& get() const;
     value_type *operator ->() { return &get(); }
@@ -37,18 +37,18 @@ public:
 
 protected:
     typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
-    typedef typename pool_impl::list_iterator_opt list_iterator_opt;
+    typedef typename pool_impl::list_iterator list_iterator;
 
     handle(pool_impl_ptr pool_impl,
-            strategy use_strategy,
-            const list_iterator_opt& resource_it)
+           strategy use_strategy,
+           list_iterator resource_it)
             : _pool_impl(pool_impl), _use_strategy(use_strategy),
               _resource_it(resource_it) {}
 
 private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
-    list_iterator_opt _resource_it;
+    list_iterator _resource_it;
 
     void assert_not_empty() const;
     void assert_not_unusable() const;
@@ -64,33 +64,33 @@ handle<P>::~handle() {
 template <class P>
 typename handle<P>::value_type& handle<P>::get() {
     assert_not_empty();
-    return ***_resource_it;
+    return **_resource_it;
 }
 
 template <class P>
 const typename handle<P>::value_type& handle<P>::get() const {
     assert_not_empty();
-    return ***_resource_it;
+    return **_resource_it;
 }
 
 template <class P>
 void handle<P>::recycle() {
     assert_not_unusable();
-    _pool_impl->recycle(*_resource_it);
-    _resource_it.reset();
+    _pool_impl->recycle(_resource_it);
+    _resource_it = list_iterator();
 }
 
 template <class P>
 void handle<P>::waste() {
     assert_not_unusable();
-    _pool_impl->waste(*_resource_it);
-    _resource_it.reset();
+    _pool_impl->waste(_resource_it);
+    _resource_it = list_iterator();
 }
 
 template <class P>
 void handle<P>::reset(pointer res) {
     assert_not_unusable();
-    **_resource_it = res;
+    *_resource_it = res;
 }
 
 template <class P>

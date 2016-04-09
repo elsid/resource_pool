@@ -18,7 +18,6 @@ struct unusable_handle : std::logic_error {
 enum code {
     get_resource_timeout = 1,
     request_queue_overflow,
-    request_queue_is_empty,
     exception,
     disabled
 };
@@ -35,8 +34,6 @@ public:
                 return "get resource timeout";
             case request_queue_overflow:
                 return "request queue overflow";
-            case request_queue_is_empty:
-                return "request queue is empty";
             case exception:
                 return "exception";
             case disabled:

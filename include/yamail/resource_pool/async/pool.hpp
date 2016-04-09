@@ -72,7 +72,7 @@ public:
     }
 
 private:
-    typedef typename pool_impl::list_iterator_opt list_iterator_opt;
+    typedef typename pool_impl::list_iterator list_iterator;
     typedef typename handle::strategy strategy;
     typedef typename boost::shared_ptr<pool_impl> pool_impl_ptr;
 
@@ -86,7 +86,7 @@ private:
 
     static void make_handle(pool_impl_ptr impl, callback call,
             strategy use_strategy, const boost::system::error_code& ec,
-            const list_iterator_opt& res) {
+            list_iterator res) {
         if (ec) {
             return call(ec, handle_ptr());
         }

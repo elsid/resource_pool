@@ -77,8 +77,8 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     EXPECT_EQ(queue->push(request(), callback(expired), seconds(1)), error_code());
 
     EXPECT_FALSE(queue->empty());
-    const request_queue::pop_result& result = queue->pop();
-    EXPECT_EQ(result.error, error_code());
+    request_queue::value_type result;
+    EXPECT_EQ(queue->pop(result), true);
 }
 
 TEST_F(async_request_queue, push_into_queue_with_null_capacity_should_return_error) {
@@ -92,8 +92,8 @@ TEST_F(async_request_queue, pop_from_empty_should_return_error) {
     request_queue_ptr queue = make_queue(1);
 
     EXPECT_TRUE(queue->empty());
-    const request_queue::pop_result& result = queue->pop();
-    EXPECT_EQ(result.error, make_error_code(error::request_queue_is_empty));
+    request_queue::value_type result;
+    EXPECT_FALSE(queue->pop(result));
 }
 
 }

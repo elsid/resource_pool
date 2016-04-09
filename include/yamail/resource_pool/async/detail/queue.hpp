@@ -15,7 +15,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/lock_guard.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/optional.hpp>
 
 #include <yamail/resource_pool/error.hpp>
 
@@ -38,19 +37,6 @@ public:
     typedef boost::function<void ()> callback;
     typedef clock::duration time_duration;
     typedef clock::time_point time_point;
-    typedef boost::optional<value_type> value_type_opt;
-
-    struct pop_result {
-        boost::system::error_code error;
-        value_type_opt request;
-
-        pop_result(const boost::system::error_code& error) : error(error) {}
-        pop_result(const queue::value_type& request) : request(request) {}
-
-        bool operator ==(const boost::system::error_code& error) const {
-            return this->error == error;
-        }
-    };
 
     queue(io_service_t& io_service,
           boost::shared_ptr<timer_t> timer,
@@ -67,7 +53,7 @@ public:
 
     boost::system::error_code push(value_type req, callback req_expired,
             const time_duration& wait_duration);
-    pop_result pop();
+    bool pop(value_type& req);
 
 private:
     typedef boost::lock_guard<boost::mutex> lock_guard;
@@ -131,16 +117,17 @@ boost::system::error_code queue<V, I, T>::push(value_type req_data, callback req
 }
 
 template <class V, class I, class T>
-typename queue<V, I, T>::pop_result queue<V, I, T>::pop() {
+bool queue<V, I, T>::pop(value_type& value) {
     const lock_guard lock(_mutex);
     if (_ordered_requests.empty()) {
-        return make_error_code(error::request_queue_is_empty);
+        return false;
     }
     const expiring_request_ptr req = _ordered_requests.front();
     _ordered_requests.pop_front();
     _expires_at_requests.erase(req->expires_at_it);
     update_timer();
-    return req->request;
+    value = req->request;
+    return true;
 }
 
 template <class V, class I, class T>

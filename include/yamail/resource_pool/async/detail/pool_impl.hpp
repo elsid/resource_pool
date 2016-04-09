@@ -3,8 +3,6 @@
 
 #include <list>
 
-#include <boost/optional.hpp>
-
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/async/detail/queue.hpp>
 
@@ -27,10 +25,8 @@ public:
     typedef boost::shared_ptr<value_type> pointer;
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
-    typedef boost::optional<list_iterator> list_iterator_opt;
     typedef boost::chrono::seconds seconds;
-    typedef boost::function<void (const boost::system::error_code&,
-        const list_iterator_opt&)> callback;
+    typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef detail::queue<callback, io_service_t, timer_t> callback_queue;
     typedef typename callback_queue::time_duration time_duration;
 
@@ -134,8 +130,7 @@ template <class V, class I, class T>
 void pool_impl<V, I, T>::get(callback call, const time_duration& wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
-        async_call(bind(call, make_error_code(error::disabled),
-            list_iterator_opt()));
+        async_call(bind(call, make_error_code(error::disabled), list_iterator()));
     } else if (!_available.empty()) {
         alloc_resource(lock, call);
     } else if (fit_capacity()) {
@@ -144,14 +139,14 @@ void pool_impl<V, I, T>::get(callback call, const time_duration& wait_duration) 
         lock.unlock();
         if (wait_duration.count() == 0ll) {
             async_call(bind(call, make_error_code(error::get_resource_timeout),
-                list_iterator_opt()));
+                            list_iterator()));
         } else {
             const boost::function<void ()> expired = bind(call,
-                make_error_code(error::get_resource_timeout), list_iterator_opt());
+                make_error_code(error::get_resource_timeout), list_iterator());
             const boost::system::error_code& push_result = _callbacks->push(call,
                 bind(call_and_abort_on_catch_exception, expired), wait_duration);
             if (push_result != boost::system::error_code()) {
-                async_call(bind(call, push_result, list_iterator_opt()));
+                async_call(bind(call, push_result, list_iterator()));
             }
         }
     }
@@ -162,12 +157,12 @@ void pool_impl<V, I, T>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     while (true) {
-        const typename callback_queue::pop_result& result = _callbacks->pop();
-        if (result.error != boost::system::error_code()) {
+        callback call;
+        if (!_callbacks->pop(call)) {
             break;
         }
-        async_call(bind(*result.request, make_error_code(error::disabled),
-                        list_iterator_opt()));
+        async_call(bind(call, make_error_code(error::disabled),
+                        list_iterator()));
     }
 }
 
@@ -191,9 +186,9 @@ void pool_impl<V, I, T>::reserve_resource(unique_lock& lock, const callback& cal
 
 template <class V, class I, class T>
 void pool_impl<V, I, T>::perform_one_request(unique_lock& lock) {
-    const typename callback_queue::pop_result& result = _callbacks->pop();
-    if (result == boost::system::error_code()) {
-        alloc_resource(lock, *result.request);
+    callback call;
+    if (_callbacks->pop(call)) {
+        alloc_resource(lock, call);
     }
 }
 

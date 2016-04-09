@@ -10,19 +10,14 @@ using namespace yamail::resource_pool::async::detail;
 
 typedef pool_impl<resource, mocked_io_service, mocked_timer> resource_pool_impl;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
-typedef resource_pool_impl::list_iterator_opt resource_ptr_list_iterator_opt;
 typedef boost::shared_ptr<resource_pool_impl> resource_pool_impl_ptr;
 
 }
 
 namespace boost {
 
-inline std::ostream& operator <<(std::ostream& stream, const resource_ptr_list_iterator_opt& res) {
-    if (!res.is_initialized()) {
-        stream << "<Uninitialized resource>";
-    } else {
-        stream << "<Initialized resource>";
-    }
+inline std::ostream& operator <<(std::ostream& stream, resource_ptr_list_iterator res) {
+    return stream << res._M_node;
 }
 
 }
@@ -32,7 +27,7 @@ namespace {
 using boost::system::error_code;
 
 struct mocked_callback {
-    MOCK_CONST_METHOD2(call, void (const error_code&, const resource_ptr_list_iterator_opt&));
+    MOCK_CONST_METHOD2(call, void (const error_code&, resource_ptr_list_iterator));
 };
 
 typedef boost::shared_ptr<mocked_callback> mocked_callback_ptr;
@@ -63,7 +58,7 @@ public:
     callback(const mocked_callback_ptr& impl) : impl(impl) {}
 
     result_type operator ()(const error_code& err,
-                            const resource_ptr_list_iterator_opt& res) const {
+                            resource_ptr_list_iterator res) const {
         impl->call(err, res);
     }
 
@@ -75,10 +70,10 @@ class recycle_resource {
 public:
     recycle_resource(resource_pool_impl_ptr pool) : pool(pool) {}
 
-    void operator ()(const error_code& err, const resource_ptr_list_iterator_opt& res) const {
+    void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
-        ASSERT_TRUE(res.is_initialized());
-        pool->recycle(*res);
+        ASSERT_NE(res, resource_ptr_list_iterator());
+        pool->recycle(res);
     }
 
 private:
@@ -89,10 +84,10 @@ class waste_resource {
 public:
     waste_resource(resource_pool_impl_ptr pool) : pool(pool) {}
 
-    void operator ()(const error_code& err, const resource_ptr_list_iterator_opt& res) const {
+    void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
-        ASSERT_TRUE(res.is_initialized());
-        pool->waste(*res);
+        ASSERT_NE(res, resource_ptr_list_iterator());
+        pool->waste(res);
     }
 
 private:
@@ -158,9 +153,9 @@ public:
     check_error(const error_code& error) : error(error) {}
     check_error(const error::code& error) : error(make_error_code(error)) {}
 
-    void operator ()(const error_code& err, const resource_ptr_list_iterator_opt& res) const {
+    void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error);
-        EXPECT_EQ(res.is_initialized(), error == error_code());
+        EXPECT_EQ(res != resource_ptr_list_iterator(), error == error_code());
     }
 
 private:
