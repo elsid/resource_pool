@@ -30,6 +30,7 @@ find_package(Boost REQUIRED system thread chrono)
 
 add_executable(resource_pool_test
     main.cc
+    error.cc
     sync/pool.cc
     sync/pool_impl.cc
     async/pool.cc

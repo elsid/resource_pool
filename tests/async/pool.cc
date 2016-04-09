@@ -87,12 +87,22 @@ TEST_F(async_resource_pool, call_used_should_call_impl_used) {
     pool.used();
 }
 
-class check_no_error {
+class check_error {
 public:
-    void operator ()(const error_code& err, resource_handle_ptr res) const {
-        EXPECT_EQ(err, error_code());
-        EXPECT_FALSE(res->unusable());
+    check_error(const error_code& error) : error(error) {}
+    check_error(const error::code& error) : error(make_error_code(error)) {}
+
+    void operator ()(const error_code& err, const resource_handle_ptr& res) const {
+        EXPECT_EQ(err, error);
+        EXPECT_EQ(bool(res), error == error_code());
     }
+
+private:
+    const error_code error;
+};
+
+struct check_no_error : check_error {
+    check_no_error() : check_error(error_code()) {}
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_should_call_recycle) {
@@ -185,6 +195,18 @@ TEST_F(async_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_on
 
     pool.get_auto_waste(waste_resource());
     on_get(error_code(), resource_iterator);
+}
+
+TEST_F(async_resource_pool, get_from_pool_returns_error_should_not_call_waste_or_recycle) {
+    resource_pool pool(ios, 0, 0);
+
+    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), waste(_)).Times(0);
+    EXPECT_CALL(pool.impl(), recycle(_)).Times(0);
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    pool.get_auto_waste(check_error(error::get_resource_timeout));
+    on_get(make_error_code(error::get_resource_timeout), mocked_pool_impl::list_iterator());
 }
 
 }

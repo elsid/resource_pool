@@ -39,6 +39,31 @@ struct async_request_queue : Test {
     }
 };
 
+TEST_F(async_request_queue, create_const_with_capacity_1_then_check_capacity_should_be_1) {
+    const request_queue queue(ios, 1);
+    EXPECT_EQ(queue.capacity(), 1);
+}
+
+TEST_F(async_request_queue, create_const_then_check_size_should_be_0) {
+    const request_queue queue(ios, 1);
+    EXPECT_EQ(queue.size(), 0);
+}
+
+TEST_F(async_request_queue, create_const_then_check_empty_should_be_true) {
+    const request_queue queue(ios, 1);
+    EXPECT_EQ(queue.empty(), true);
+}
+
+TEST_F(async_request_queue, create_const_then_call_timer_should_succeed) {
+    const request_queue queue(ios, 1);
+    EXPECT_NO_THROW(queue.timer());
+}
+
+TEST_F(async_request_queue, create_ptr_then_call_shared_from_this_should_return_equal) {
+    const request_queue_ptr queue = make_queue(1);
+    EXPECT_EQ(queue->shared_from_this(), queue);
+}
+
 class callback {
 public:
     typedef void result_type;
@@ -82,6 +107,10 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     EXPECT_CALL(*expired, call()).Times(0);
 
     EXPECT_TRUE(queue->push(request(), callback(expired), seconds(1)));
+
+    using namespace boost::system::errc;
+
+    on_async_wait(error_code(make_error_code(operation_canceled)));
 
     EXPECT_FALSE(queue->empty());
     request_queue::value_type result;

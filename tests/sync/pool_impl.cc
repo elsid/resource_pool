@@ -34,6 +34,26 @@ TEST(sync_resource_pool_impl, create_with_zero_capacity_should_throw_exception) 
     EXPECT_THROW(resource_pool_impl(0), error::zero_pool_capacity);
 }
 
+TEST(sync_resource_pool_impl, create_with_non_zero_capacity_then_check) {
+    resource_pool_impl pool(1);
+    EXPECT_EQ(pool.capacity(), 1);
+}
+
+TEST(sync_resource_pool_impl, create_then_check_size_should_be_0) {
+    resource_pool_impl pool(1);
+    EXPECT_EQ(pool.size(), 0);
+}
+
+TEST(sync_resource_pool_impl, create_then_check_available_should_be_0) {
+    resource_pool_impl pool(1);
+    EXPECT_EQ(pool.available(), 0);
+}
+
+TEST(sync_resource_pool_impl, create_then_check_used_should_be_0) {
+    resource_pool_impl pool(1);
+    EXPECT_EQ(pool.used(), 0);
+}
+
 TEST(sync_resource_pool_impl, get_one_should_succeed) {
     resource_pool_impl pool_impl(1);
     const get_result res = pool_impl.get();
@@ -135,6 +155,35 @@ TEST(sync_resource_pool_impl, get_from_pool_and_wait_then_after_waste_should_res
 
     EXPECT_FALSE(second_res.first);
     EXPECT_NE(second_res.second, resource_ptr_list_iterator());
+}
+
+struct disable_pool {
+    resource_pool_impl& pool;
+
+    disable_pool(resource_pool_impl& pool) : pool(pool) {}
+
+    boost::cv_status operator ()(boost::unique_lock<boost::mutex>& lock, time_duration) const {
+        lock.unlock();
+        pool.disable();
+        lock.lock();
+        return boost::cv_status::no_timeout;
+    }
+};
+
+TEST(sync_resource_pool_impl, get_from_pool_with_zero_capacity_then_disable_should_return_error) {
+    resource_pool_impl pool(1);
+    const get_result& first = pool.get();
+
+    EXPECT_EQ(first.first, boost::system::error_code());
+
+    InSequence s;
+
+    EXPECT_CALL(pool.has_capacity(), wait_for(_, _)).WillOnce(Invoke(disable_pool(pool)));
+    EXPECT_CALL(pool.has_capacity(), notify_all()).WillOnce(Return());
+
+    const get_result& result = pool.get();
+
+    EXPECT_EQ(result.first, make_error_code(error::disabled));
 }
 
 }

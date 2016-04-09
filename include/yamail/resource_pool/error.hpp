@@ -20,7 +20,8 @@ struct zero_pool_capacity : std::logic_error {
 };
 
 enum code {
-    get_resource_timeout = 1,
+    ok,
+    get_resource_timeout,
     request_queue_overflow,
     disabled
 };
@@ -29,10 +30,12 @@ namespace detail {
 
 class category : public boost::system::error_category {
 public:
-    const char* name() const throw() { return "resource_pool"; }
+    const char* name() const throw() { return "yamail::resource_pool::error::detail::category"; }
 
     std::string message(int value) const {
         switch (value) {
+            case ok:
+                return "no error";
             case get_resource_timeout:
                 return "get resource timeout";
             case request_queue_overflow:
@@ -40,7 +43,7 @@ public:
             case disabled:
                 return "resource pool is disabled";
             default:
-                return "resource_pool error";
+                return "resource pool error";
         }
     }
 };

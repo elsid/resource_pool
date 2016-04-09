@@ -165,6 +165,24 @@ TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_reso
     EXPECT_EQ(pool.available(), 0);
 }
 
+TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_make_one_available_resource) {
+    resource_pool_impl pool(ios, 1, 0);
+
+    InSequence s;
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
+    pool.get(recycle_resource(pool));
+    on_first_get();
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
+    pool.get(recycle_resource(pool), time_duration(1));
+    on_second_get();
+
+    EXPECT_EQ(pool.available(), 1);
+}
+
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make_one_available_resource) {
     resource_pool_impl pool(ios, 1, 0);
 
@@ -220,6 +238,24 @@ private:
 struct check_no_error : check_error {
     check_no_error() : check_error(error_code()) {}
 };
+
+TEST_F(async_resource_pool_impl, get_with_queue_zero_capacity_use_should_return_error) {
+    resource_pool_impl pool(ios, 1, 0);
+
+    InSequence s;
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(pool.queue(), push(_, _, _)).WillOnce(Return(false));
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
+
+    pool.get(recycle_resource(pool));
+    pool.get(check_error(error::request_queue_overflow), time_duration(1));
+    on_first_get();
+    on_second_get();
+
+    EXPECT_EQ(pool.available(), 1);
+}
 
 TEST_F(async_resource_pool_impl, get_with_queue_use_and_timer_timeout_should_return_error) {
     resource_pool_impl pool(ios, 1, 0);
