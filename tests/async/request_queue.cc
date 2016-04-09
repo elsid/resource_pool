@@ -6,7 +6,7 @@ namespace {
 
 using namespace tests;
 using namespace yamail::resource_pool;
-using namespace yamail::resource_pool::async::detail::request_queue;
+using namespace yamail::resource_pool::async::detail;
 
 typedef queue<request, mocked_io_service, mocked_timer> request_queue;
 typedef boost::shared_ptr<request_queue> request_queue_ptr;

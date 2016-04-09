@@ -13,7 +13,7 @@ namespace resource_pool {
 namespace async {
 namespace detail {
 
-using detail::request_queue::clock;
+using detail::clock;
 
 template <class Value,
           class IoService = boost::asio::io_service,
@@ -31,7 +31,7 @@ public:
     typedef boost::chrono::seconds seconds;
     typedef boost::function<void (const boost::system::error_code&,
         const list_iterator_opt&)> callback;
-    typedef detail::request_queue::queue<callback, io_service_t, timer_t> callback_queue;
+    typedef detail::queue<callback, io_service_t, timer_t> callback_queue;
     typedef typename callback_queue::time_duration time_duration;
 
     pool_impl(io_service_t& io_service,

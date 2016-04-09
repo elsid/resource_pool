@@ -23,7 +23,6 @@ namespace yamail {
 namespace resource_pool {
 namespace async {
 namespace detail {
-namespace request_queue {
 
 typedef boost::chrono::steady_clock clock;
 
@@ -175,7 +174,6 @@ void queue<V, I, T>::update_timer() {
     _timer->async_wait(bind(&queue::cancel, shared_from_this(), _1));
 }
 
-} // namespace request_queue
 } // namespace detail
 } // namespace async
 } // namespace resource_pool
