@@ -39,7 +39,7 @@ public:
     typedef clock::time_point time_point;
 
     queue(io_service_t& io_service,
-          boost::shared_ptr<timer_t> timer,
+          const boost::shared_ptr<timer_t>& timer,
           std::size_t capacity = 0)
             : _io_service(io_service), _timer(timer), _capacity(capacity) {}
 
@@ -51,7 +51,7 @@ public:
     std::size_t size() const;
     bool empty() const;
 
-    bool push(value_type req, callback req_expired,
+    bool push(const value_type& req, const callback& req_expired,
             const time_duration& wait_duration);
     bool pop(value_type& req);
 
@@ -101,13 +101,13 @@ bool queue<V, I, T>::empty() const {
 }
 
 template <class V, class I, class T>
-bool queue<V, I, T>::push(value_type req_data, callback req_expired,
+bool queue<V, I, T>::push(const value_type& req_data, const callback& req_expired,
         const time_duration& wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
         return false;
     }
-    const expiring_request_ptr req = boost::make_shared<expiring_request>(
+    const expiring_request_ptr& req = boost::make_shared<expiring_request>(
         req_data, req_expired);
     req->order_it = _ordered_requests.insert(_ordered_requests.end(), req);
     req->expires_at_it = _expires_at_requests.insert(std::make_pair(
@@ -146,7 +146,7 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
 
 template <class V, class I, class T>
 void queue<V, I, T>::cancel_one(const request_multimap_value &pair) {
-    const expiring_request_ptr req = pair.second;
+    const expiring_request_ptr& req = pair.second;
     _ordered_requests.erase(req->order_it);
     _io_service.post(req->expired);
 }

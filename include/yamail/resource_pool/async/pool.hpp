@@ -29,7 +29,7 @@ public:
     typedef resource_pool::handle<pool> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
     typedef boost::function<void (const boost::system::error_code&,
-        handle_ptr)> callback;
+        const handle_ptr&)> callback;
 
     pool(io_service_t& io_service,
          std::size_t capacity = 0,
@@ -41,7 +41,7 @@ public:
                 queue_capacity)) {}
 
     pool(io_service_t& io_service,
-         boost::shared_ptr<timer_t> timer,
+         const boost::shared_ptr<timer_t>& timer,
          std::size_t capacity = 0,
          std::size_t queue_capacity = 0)
             : _impl(boost::make_shared<pool_impl>(
@@ -61,12 +61,12 @@ public:
     std::size_t queue_size() const { return _impl->queue_size(); }
     bool queue_empty() const { return _impl->queue_empty(); }
 
-    void get_auto_waste(callback call,
+    void get_auto_waste(const callback& call,
             const time_duration& wait_duration = seconds(0)) {
         return get(call, &handle::waste, wait_duration);
     }
 
-    void get_auto_recycle(callback call,
+    void get_auto_recycle(const callback& call,
             const time_duration& wait_duration = seconds(0)) {
         return get(call, &handle::recycle, wait_duration);
     }
@@ -78,13 +78,13 @@ private:
 
     pool_impl_ptr _impl;
 
-    void get(callback call, strategy use_strategy,
+    void get(const callback& call, strategy use_strategy,
             const time_duration& wait_duration) {
         _impl->get(bind(make_handle, _impl, call, use_strategy, _1, _2),
             wait_duration);
     }
 
-    static void make_handle(pool_impl_ptr impl, callback call,
+    static void make_handle(pool_impl_ptr impl, const callback& call,
             strategy use_strategy, const boost::system::error_code& ec,
             list_iterator res) {
         if (ec) {

@@ -33,13 +33,13 @@ public:
 
     void recycle();
     void waste();
-    void reset(pointer res);
+    void reset(const pointer& res);
 
 protected:
     typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
     typedef typename pool_impl::list_iterator list_iterator;
 
-    handle(pool_impl_ptr pool_impl,
+    handle(const pool_impl_ptr& pool_impl,
            strategy use_strategy,
            list_iterator resource_it)
             : _pool_impl(pool_impl), _use_strategy(use_strategy),
@@ -88,7 +88,7 @@ void handle<P>::waste() {
 }
 
 template <class P>
-void handle<P>::reset(pointer res) {
+void handle<P>::reset(const pointer &res) {
     assert_not_unusable();
     *_resource_it = res;
 }

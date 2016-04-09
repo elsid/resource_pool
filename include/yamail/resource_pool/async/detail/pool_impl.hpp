@@ -31,7 +31,7 @@ public:
     typedef typename callback_queue::time_duration time_duration;
 
     pool_impl(io_service_t& io_service,
-              boost::shared_ptr<timer_t> timer,
+              const boost::shared_ptr<timer_t>& timer,
               std::size_t capacity,
               std::size_t queue_capacity)
             : _io_service(io_service),
@@ -50,7 +50,7 @@ public:
     std::size_t queue_capacity() const { return _callbacks->capacity(); }
     std::size_t queue_size() const { return _callbacks->size(); }
     bool queue_empty() const { return _callbacks->empty(); }
-    void async_call(boost::function<void ()> call) {
+    void async_call(const boost::function<void ()>& call) {
         _io_service.post(bind(call_and_abort_on_catch_exception, call));
     }
 
@@ -58,7 +58,7 @@ public:
         return boost::enable_shared_from_this<pool_impl>::shared_from_this();
     }
 
-    void get(callback call, const time_duration& wait_duration = seconds(0));
+    void get(const callback& call, const time_duration& wait_duration = seconds(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
     void disable();
@@ -127,7 +127,7 @@ void pool_impl<V, I, T>::waste(list_iterator res_it) {
 }
 
 template <class V, class I, class T>
-void pool_impl<V, I, T>::get(callback call, const time_duration& wait_duration) {
+void pool_impl<V, I, T>::get(const callback& call, const time_duration& wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
