@@ -132,7 +132,7 @@ bool queue<V, I, T>::pop(value_type& value) {
 
 template <class V, class I, class T>
 void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
-    if (ec != boost::system::errc::success) {
+    if (ec) {
         return;
     }
     const lock_guard lock(_mutex);
