@@ -51,7 +51,7 @@ public:
     std::size_t size() const;
     bool empty() const;
 
-    boost::system::error_code push(value_type req, callback req_expired,
+    bool push(value_type req, callback req_expired,
             const time_duration& wait_duration);
     bool pop(value_type& req);
 
@@ -101,11 +101,11 @@ bool queue<V, I, T>::empty() const {
 }
 
 template <class V, class I, class T>
-boost::system::error_code queue<V, I, T>::push(value_type req_data, callback req_expired,
+bool queue<V, I, T>::push(value_type req_data, callback req_expired,
         const time_duration& wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
-        return make_error_code(error::request_queue_overflow);
+        return false;
     }
     const expiring_request_ptr req = boost::make_shared<expiring_request>(
         req_data, req_expired);
@@ -113,7 +113,7 @@ boost::system::error_code queue<V, I, T>::push(value_type req_data, callback req
     req->expires_at_it = _expires_at_requests.insert(std::make_pair(
         clock::now() + wait_duration, req));
     update_timer();
-    return boost::system::error_code();
+    return true;
 }
 
 template <class V, class I, class T>

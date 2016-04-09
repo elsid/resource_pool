@@ -143,10 +143,11 @@ void pool_impl<V, I, T>::get(callback call, const time_duration& wait_duration) 
         } else {
             const boost::function<void ()> expired = bind(call,
                 make_error_code(error::get_resource_timeout), list_iterator());
-            const boost::system::error_code& push_result = _callbacks->push(call,
+            const bool pushed = _callbacks->push(call,
                 bind(call_and_abort_on_catch_exception, expired), wait_duration);
-            if (push_result != boost::system::error_code()) {
-                async_call(bind(call, push_result, list_iterator()));
+            if (!pushed) {
+                async_call(bind(call, make_error_code(error::request_queue_overflow),
+                                list_iterator()));
             }
         }
     }

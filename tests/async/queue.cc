@@ -54,7 +54,7 @@ TEST_F(async_request_queue, push_then_timeout_request_queue_should_be_empty) {
     EXPECT_CALL(*timer, expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
     EXPECT_CALL(*timer, async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
 
-    ASSERT_EQ(queue->push(request(), callback(expired), seconds(0)), error_code());
+    ASSERT_TRUE(queue->push(request(), callback(expired), seconds(0)));
 
     EXPECT_CALL(*timer, expires_at()).WillOnce(Return(expire_time));
     EXPECT_CALL(ios, post(_)).WillOnce(InvokeArgument<0>());
@@ -74,18 +74,18 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
     EXPECT_CALL(*expired, call()).Times(0);
 
-    EXPECT_EQ(queue->push(request(), callback(expired), seconds(1)), error_code());
+    EXPECT_TRUE(queue->push(request(), callback(expired), seconds(1)));
 
     EXPECT_FALSE(queue->empty());
     request_queue::value_type result;
-    EXPECT_EQ(queue->pop(result), true);
+    EXPECT_TRUE(queue->pop(result));
 }
 
 TEST_F(async_request_queue, push_into_queue_with_null_capacity_should_return_error) {
     request_queue_ptr queue = make_queue(0);
 
-    const error_code& result = queue->push(request(), callback(expired), seconds(0));
-    EXPECT_EQ(result, make_error_code(error::request_queue_overflow));
+    const bool result = queue->push(request(), callback(expired), seconds(0));
+    EXPECT_FALSE(result);
 }
 
 TEST_F(async_request_queue, pop_from_empty_should_return_error) {
