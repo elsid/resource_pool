@@ -1,4 +1,4 @@
-#include <yamail/resource_pool/async/detail/request_queue/queue.hpp>
+#include <yamail/resource_pool/async/detail/queue.hpp>
 
 #include "tests.hpp"
 

@@ -6,7 +6,7 @@
 #include <boost/optional.hpp>
 
 #include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/async/detail/request_queue/queue.hpp>
+#include <yamail/resource_pool/async/detail/queue.hpp>
 
 namespace yamail {
 namespace resource_pool {
