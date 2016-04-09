@@ -8,7 +8,6 @@
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
-#include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/lock_guard.hpp>
 #include <boost/thread/mutex.hpp>
@@ -54,27 +53,29 @@ public:
 
 private:
     typedef boost::lock_guard<boost::mutex> lock_guard;
-    struct expiring_request;
-    typedef boost::shared_ptr<expiring_request> expiring_request_ptr;
-    typedef std::list<expiring_request_ptr> request_list;
-    typedef typename request_list::iterator request_list_it;
-    typedef std::multimap<time_point, expiring_request_ptr> request_multimap;
-    typedef typename request_multimap::iterator request_multimap_it;
-    typedef typename request_multimap::value_type request_multimap_value;
 
     struct expiring_request {
+        typedef std::list<expiring_request> list;
+        typedef typename list::iterator list_it;
+        typedef std::multimap<time_point, const expiring_request*> multimap;
+        typedef typename multimap::iterator multimap_it;
+
         queue::value_type request;
         callback expired;
-        request_list_it order_it;
-        request_multimap_it expires_at_it;
+        list_it order_it;
+        multimap_it expires_at_it;
 
         expiring_request(const queue::value_type& request, const callback& expired)
                 : request(request), expired(expired) {}
     };
 
+    typedef typename expiring_request::list_it request_list_it;
+    typedef typename expiring_request::multimap_it request_multimap_it;
+    typedef typename expiring_request::multimap::value_type request_multimap_value;
+
     mutable boost::mutex _mutex;
-    request_list _ordered_requests;
-    request_multimap _expires_at_requests;
+    typename expiring_request::list _ordered_requests;
+    typename expiring_request::multimap _expires_at_requests;
     io_service_t& _io_service;
     boost::shared_ptr<timer_t> _timer;
     const std::size_t _capacity;
@@ -104,11 +105,12 @@ bool queue<V, I, T>::push(const value_type& req_data, const callback& req_expire
     if (!fit_capacity()) {
         return false;
     }
-    const expiring_request_ptr& req = boost::make_shared<expiring_request>(
-        req_data, req_expired);
-    req->order_it = _ordered_requests.insert(_ordered_requests.end(), req);
-    req->expires_at_it = _expires_at_requests.insert(std::make_pair(
-        clock::now() + wait_duration, req));
+    request_list_it order_it = _ordered_requests.insert(
+        _ordered_requests.end(), expiring_request(req_data, req_expired));
+    expiring_request& req = *order_it;
+    req.order_it = order_it;
+    req.expires_at_it = _expires_at_requests.insert(
+        std::make_pair(clock::now() + wait_duration, &req));
     update_timer();
     return true;
 }
@@ -119,11 +121,11 @@ bool queue<V, I, T>::pop(value_type& value) {
     if (_ordered_requests.empty()) {
         return false;
     }
-    const expiring_request_ptr req = _ordered_requests.front();
+    const expiring_request& req = _ordered_requests.front();
+    value = req.request;
+    _expires_at_requests.erase(req.expires_at_it);
     _ordered_requests.pop_front();
-    _expires_at_requests.erase(req->expires_at_it);
     update_timer();
-    value = req->request;
     return true;
 }
 
@@ -143,9 +145,9 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
 
 template <class V, class I, class T>
 void queue<V, I, T>::cancel_one(const request_multimap_value &pair) {
-    const expiring_request_ptr& req = pair.second;
-    _ordered_requests.erase(req->order_it);
+    const expiring_request* req = pair.second;
     _io_service.post(req->expired);
+    _ordered_requests.erase(req->order_it);
 }
 
 template <class V, class I, class T>
