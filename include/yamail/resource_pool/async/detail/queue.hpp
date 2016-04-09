@@ -52,7 +52,7 @@ public:
     bool empty() const;
 
     bool push(const value_type& req, const callback& req_expired,
-            const time_duration& wait_duration);
+              time_duration wait_duration);
     bool pop(value_type& req);
 
 private:
@@ -102,7 +102,7 @@ bool queue<V, I, T>::empty() const {
 
 template <class V, class I, class T>
 bool queue<V, I, T>::push(const value_type& req_data, const callback& req_expired,
-        const time_duration& wait_duration) {
+        time_duration wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
         return false;

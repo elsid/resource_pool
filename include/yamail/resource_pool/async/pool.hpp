@@ -62,12 +62,12 @@ public:
     bool queue_empty() const { return _impl->queue_empty(); }
 
     void get_auto_waste(const callback& call,
-            const time_duration& wait_duration = seconds(0)) {
+                        time_duration wait_duration = seconds(0)) {
         return get(call, &handle::waste, wait_duration);
     }
 
     void get_auto_recycle(const callback& call,
-            const time_duration& wait_duration = seconds(0)) {
+                          time_duration wait_duration = seconds(0)) {
         return get(call, &handle::recycle, wait_duration);
     }
 
@@ -79,7 +79,7 @@ private:
     pool_impl_ptr _impl;
 
     void get(const callback& call, strategy use_strategy,
-            const time_duration& wait_duration) {
+            time_duration wait_duration) {
         _impl->get(bind(make_handle, _impl, call, use_strategy, _1, _2),
             wait_duration);
     }

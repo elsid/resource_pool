@@ -39,7 +39,7 @@ public:
     std::size_t available() const;
     std::size_t used() const;
 
-    get_result get(const time_duration& wait_duration = seconds(0));
+    get_result get(time_duration wait_duration = seconds(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
     void disable();
@@ -62,7 +62,7 @@ private:
     std::size_t size_unsafe() const { return _available_size + _used_size; }
     bool fit_capacity() const { return size_unsafe() < _capacity; }
     bool has_available() const { return !_available.empty(); }
-    bool wait_for(unique_lock& lock, const time_duration& wait_duration);
+    bool wait_for(unique_lock& lock, time_duration wait_duration);
 };
 
 template <class T>
@@ -108,8 +108,7 @@ void pool_impl<T>::disable() {
 }
 
 template <class T>
-typename pool_impl<T>::get_result pool_impl<T>::get(
-        const time_duration& wait_duration) {
+typename pool_impl<T>::get_result pool_impl<T>::get(time_duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         return std::make_pair(make_error_code(error::disabled), list_iterator());
@@ -134,8 +133,7 @@ typename pool_impl<T>::get_result pool_impl<T>::get(
 }
 
 template <class T>
-bool pool_impl<T>::wait_for(unique_lock& lock,
-        const time_duration& wait_duration) {
+bool pool_impl<T>::wait_for(unique_lock& lock, time_duration wait_duration) {
     return _has_available.wait_for(lock, wait_duration,
         boost::bind(&pool_impl::has_available, this));
 }

@@ -32,11 +32,11 @@ public:
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
 
-    handle_ptr get_auto_waste(const time_duration& wait_duration = seconds(0)) {
+    handle_ptr get_auto_waste(time_duration wait_duration = seconds(0)) {
         return get_handle(&handle::waste, wait_duration);
     }
 
-    handle_ptr get_auto_recycle(const time_duration& wait_duration = seconds(0)) {
+    handle_ptr get_auto_recycle(time_duration wait_duration = seconds(0)) {
         return get_handle(&handle::recycle, wait_duration);
     }
 
@@ -46,7 +46,7 @@ private:
 
     pool_impl_ptr _impl;
 
-    handle_ptr get_handle(strategy use_strategy, const time_duration& wait_duration) {
+    handle_ptr get_handle(strategy use_strategy, time_duration wait_duration) {
         const typename pool_impl::get_result& res = _impl->get(wait_duration);
         return handle_ptr(new handle(_impl, use_strategy, res.second, res.first));
     }

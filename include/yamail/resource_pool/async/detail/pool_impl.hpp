@@ -58,7 +58,7 @@ public:
         return boost::enable_shared_from_this<pool_impl>::shared_from_this();
     }
 
-    void get(const callback& call, const time_duration& wait_duration = seconds(0));
+    void get(const callback& call, time_duration wait_duration = seconds(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
     void disable();
@@ -125,7 +125,7 @@ void pool_impl<V, I, T>::waste(list_iterator res_it) {
 }
 
 template <class V, class I, class T>
-void pool_impl<V, I, T>::get(const callback& call, const time_duration& wait_duration) {
+void pool_impl<V, I, T>::get(const callback& call, time_duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
