@@ -130,6 +130,7 @@ template <class V, class I, class T>
 void pool_impl<V, I, T>::get(callback call, const time_duration& wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
+        lock.unlock();
         async_call(bind(call, make_error_code(error::disabled), list_iterator()));
     } else if (!_available.empty()) {
         alloc_resource(lock, call);
