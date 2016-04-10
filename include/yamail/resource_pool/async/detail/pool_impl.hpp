@@ -136,7 +136,7 @@ void pool_impl<V, I, T>::get(const callback& call, time_duration wait_duration) 
         reserve_resource(lock, call);
     } else {
         lock.unlock();
-        if (wait_duration.count() == 0ll) {
+        if (wait_duration.count() == 0) {
             async_call(bind(call, make_error_code(error::get_resource_timeout),
                             list_iterator()));
         } else {
