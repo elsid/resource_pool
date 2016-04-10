@@ -21,7 +21,6 @@ struct async_resource_pool : Test {
     async_resource_pool() : timer(new mocked_timer()) {}
 };
 
-
 class check_no_error {
 public:
     void operator ()(const error_code& err, resource_handle_ptr res) const {
