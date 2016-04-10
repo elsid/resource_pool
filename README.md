@@ -1,95 +1,42 @@
-resource_pool
-==========
+# Resource pool
 
-# Описание
+Header only library purposed to create pool of some resources like keepalive connections.
+Supports sync and async interfaces. Based on boost.
 
-Библиотека для создания синхронных и асинхронных пулов ресурсов.
+## Build
 
-## Синхронный пул
-
-## Асинхронный пул
-
-Работает через boost::asio::io_service, содержит очередь запросов с таймаутами.
-
-### Создание пула
-
-Тип [async::pool](include/yamail/resource_pool/async/pool.hpp#L18-L102) параметризуется типом ресурса:
-```c++
-template <class T>
-class pool;
+Proejct uses CMake. Need only to run tests or examples:
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make -j $(nproc)
+ctest -V -j $(nproc)
+examples/sync_pool
+examples/async_pool
 ```
 
-В пуле ресурс хранится под ```boost::shared_ptr```, поэтому нет смысла оборачивать в него тип.
+## Install
 
-Пример:
-```c++
-typedef pool<std::fstream> fstream_pool;
-```
+Include as subdirectory into your CMake project or copy folder include.
 
-Объект класса полностью определяет пул, для его создания нужен готовый объект
-```boost::asio::io_service```, определение ёмкости пула и очереди запросов.
-```c++
-pool<T>::pool(
-    boost::asio::io_service& io_service,
-    std::size_t capacity,
-    std::size_t queue_capacity
-);
-```
+## Usage
 
-Пример:
-```c++
-boost::asio::io_service ios;
-fstream_pool pool(ios, 13, 42);
-```
+### Handle
 
-### Запрос ресурса
+The wrapper contains ```boost::shared_ptr``` of resource type.
+Declared as type [handle](include/yamail/resource_pool/handle.hpp#L12-L59).
+Constructs with one of strategies that uses in destructor:
+* waste -- resets ```boost::shared_ptr``` value if handle is usable.
+* recycle -- returns resource to pool if handle is usable.
 
-Ресурс запрашивается через методы:
-```c++
-void get_auto_waste(
-    boost::function<void (
-        const boost::system::error_code&,
-        boost::shared_ptr<handle>
-    )> call,
-    const boost::chrono::steady_clock& wait_duration = seconds(0)
-);
-```
-вызовет ```call```, когда ресурс станет доступен, или наступит таймаут, с
-```handle``` со стратегией возврата ресурса непригодным для дальнейшего использования.
-
-```c++
-void get_auto_recycle(
-    boost::function<void (
-        const boost::system::error_code&,
-        boost::shared_ptr<handle>
-    )> call,
-    const boost::chrono::steady_clock& wait_duration = seconds(0)
-);
-```
-вызовет ```call```, когда ресурс станет доступен, или наступит таймаут, с
-```handle``` со стратегией возврата ресурса пригодным для дальнейшего использования.
-
-Рекомендуется использовать ```get_auto_waste``` и явно вызывать ```recycle```.
-
-### handle
-
-Пул хранит слоты для ресурсов.
-Интерфейс слота реализован с помощью класса
-[handle](include/yamail/resource_pool/handle.hpp#L22-L65).
-Из только что созданного пула вернется пустой слот.
-Это можно проверить методом:
+Pool contains slots for resources that means handle may contains pointer to some client object or ```nullptr```.
+Client always must check value before using by method:
 ```c++
 bool empty() const;
 ```
 
-Чтобы заполнить слот, нужно вызвать метод:
-```c++
-void reset(boost::shared_ptr<value_type> res);
-```
-
-```value_type``` - тип ресурса, заданный в параметре типа pool.
-
-Получить доступ к ресурсу можно через методы:
+Access to value provides by methods:
 ```с++
 value_type& get();
 const value_type& get() const;
@@ -99,51 +46,208 @@ value_type &operator *();
 const value_type &operator *() const;
 ```
 
-Объект класса создается при получении запрошенного ресурса со
-стратегией возврата в зависимости от вызванного метода.
-Вернуть ресурс можно принудительно методами:
+```value_type``` -- resource type.
 
+Value of handle changes by method:
 ```c++
-void recycle();
+void reset(const boost::shared_ptr<value_type>& res);
 ```
-вернет ресурс в пригодном для дальнейшего использования состоянии;
 
+To drop resource use method:
 ```c++
 void waste();
 ```
-вернет ресурс в состоянии не пригодном для дальнейшего использования.
 
-После возвращения ресурса в пул, ```handle``` станет не пригодным для использования:
+To return resource into pool use method:
+```c++
+void recycle();
+```
+
+Both methods makes handle unsable that could be checked by method:
 ```c++
 bool unusable() const;
 ```
-вернет ```false```.
 
-Если ресурс не был возвращен, то в деструкторе ```handle``` он будет возвращен в
-соответствии со стратегией.
+Calling one of these methods for unusable handle throws an exception ```error::unusable_handle```.
 
-Пример:
+### Synchronous pool
+
+Based on ```boost::condition_variable```.
+
+#### Create pool
+
+Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-L54). Parametrize resource type:
 ```c++
-std::shared_ptr<std::string> data = get_data();
-pool.get_auto_waste([=] (const boost::system::error_code& err,
-                         boost::shared_ptr<fstream_pool::handle> h) {
-    if (err) {
-        std::cerr << "Error get fstream: " << err.message() << std::endl;
-        return;
-    }
-    if (h->empty()) {
-        try {
-            h->reset(open_file());
-        } catch (const std::exception& e) {
-            std::cerr << "Can't fill handle: " << e.what() << std::endl;
+template <class Value
+          class Impl = detail::pool_impl<Value, boost::condition_variable> >
+class pool;
+```
+
+Pool holds ```boost::shared_ptr``` of resource type. Type wrapping isn't necessary.
+
+Example:
+```c++
+typedef pool<std::fstream> fstream_pool;
+```
+
+Object constructing requires capacicty of pool:
+```c++
+pool(
+    std::size_t capacity,
+    time_traits::duration idle_timeout = time_traits::duration::max()
+);
+```
+
+Example:
+```c++
+fstream_pool pool(42);
+```
+
+#### Specific handle
+
+Declared as type [sync::handle](include/yamail/resource_pool/sync/handle.hpp#L14-L33)
+based on type [handle](include/yamail/resource_pool/handle.hpp#L12-L59).
+Contains extra method to get error code:
+```c++
+const boost::system::error_code& error() const;
+```
+
+If new handle is not usable error value will be not ok.
+
+#### Get handle
+
+Use one of these methods:
+```c++
+boost::shared_ptr<handle> get_auto_waste(
+    time_traits::duration wait_duration = time_traits::duration(0)
+);
+```
+returns resource handle when it will be available with auto waste strategy.
+
+```c++
+boost::shared_ptr<handle> get_auto_recycle(
+    time_traits::duration wait_duration = time_traits::duration(0)
+);
+```
+returns resource handle when it will be available with auto recycle strategy.
+
+Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
+
+Example:
+```c++
+boost::shared<handle> h = pool.get(time_traits::duration(1));
+if (h->error()) {
+    std::cerr << "Cant't get resource: " << h->error().message() << std::endl;
+    return;
+}
+if (h->empty()) {
+    h->reset(create_resource());
+}
+use_resource(h.get());
+```
+
+### Asynchronous pool
+
+Based on ```boost::asio::io_service```. Uses async queue with deadline timer to store waiting resources requests.
+
+#### Create pool
+
+Use type [async::pool](include/yamail/resource_pool/async/pool.hpp#L36-L124). Parametrize resource type:
+```c++
+template <class Value,
+          class IoService = boost::asio::io_service,
+          class Impl = default_pool_impl<Value, IoService>::type>
+class pool;
+```
+
+Pool holds ```boost::shared_ptr``` of resource type. Type wrapping isn't necessary.
+
+Example:
+```c++
+typedef pool<std::fstream> fstream_pool;
+```
+
+Object constructing requires reference to io service, capacicty of pool, queue capacity:
+```c++
+pool(
+    io_service_t& io_service,
+    std::size_t capacity,
+    std::size_t queue_capacity,
+    time_traits::duration idle_timeout = time_traits::duration::max(),
+    const on_catch_handler_exception_type& on_catch_handler_exception = detail::abort()
+);
+```
+
+Example:
+```c++
+boost::asio::io_service ios;
+fstream_pool pool(ios, 13, 42);
+```
+
+#### Get handle
+
+Use one of these methods:
+```c++
+template <class Callback>
+void get_auto_waste(
+    const Callback& call,
+    const time_traits::duration& wait_duration = time_traits::duration(0)
+);
+```
+returns resource handle when it will be available with auto waste strategy.
+
+```c++
+template <class Callback>
+void get_auto_recycle(
+    const Callback& call,
+    const time_traits::duration& wait_duration = time_traits::duration(0)
+);
+```
+returns resource handle when it will be available with auto recycle strategy.
+
+Type ```Callback``` must provide interface:
+```c++
+void operator ()(
+    const boost::system::error_code&,
+    const boost::shared_ptr<handle>&
+);
+```
+
+Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
+
+If error occurs ```ec``` will be not ok and ```handle``` will be nullptr.
+
+Example:
+```c++
+struct on_create_resource {
+    boost::shared_ptr<handle> h;
+
+    on_create_resource(const boost::shared_ptr<handle>& h) : h(h) {}
+
+    void operator ()(const boost::system::error_code& ec, const handle::pointer& r) {
+        if (ec) {
+            std::cerr << "Cant't create resource: " << ec.message() << std::endl;
             return;
         }
+        h->reset(r);
+        use_resource(h->get());
     }
-    try {
-        h->get() << data << std::endl;
-        h->recycle();
-    } catch (const std::exception& e) {
-        std::cerr << "Can't write to file: " << e.what() << std::endl;
+};
+
+struct handle_get {
+    void operator ()(const boost::system::error_code& ec,
+                     const boost::shared_ptr<handle>& h) {
+        if (ec) {
+            std::cerr << "Cant't get resource: " << ec.message() << std::endl;
+            return;
+        }
+        if (h->empty()) {
+            async_create_resource(on_create_resource(h));
+        } else {
+            use_resource(h->get());
+        }
     }
-}, boost::chrono::seconds(1));
+};
+
+pool.get(handle_get(), time_traits::duration(1));
 ```
