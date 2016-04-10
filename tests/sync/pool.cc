@@ -20,17 +20,13 @@ const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 struct sync_resource_pool : Test {};
 
-TEST(sync_resource_pool, create_should_succeed) {
-    resource_pool pool;
-}
-
 TEST(sync_resource_pool, create_not_empty_should_succeed) {
     resource_pool pool(42);
 }
 
 TEST(sync_resource_pool, check_metrics_for_empty) {
-    resource_pool pool;
-    EXPECT_EQ(pool.capacity(), 0ul);
+    resource_pool pool(1);
+    EXPECT_EQ(pool.capacity(), 1ul);
     EXPECT_EQ(pool.size(), 0ul);
     EXPECT_EQ(pool.used(), 0ul);
     EXPECT_EQ(pool.available(), 0ul);
@@ -166,10 +162,11 @@ TEST(sync_resource_pool, get_auto_recycle_handle_and_recycle_recycled_should_thr
     EXPECT_THROW(handle->recycle(), error::unusable_handle);
 }
 
-TEST(sync_resource_pool, get_auto_recycle_handle_from_empty_pool_should_return_error) {
-    resource_pool pool(0);
-    resource_handle_ptr handle = pool.get_auto_recycle();
-    EXPECT_EQ(handle->error(), make_error_code(error::get_resource_timeout));
+TEST(sync_resource_pool, get_from_pool_with_no_available_and_out_of_capacity_should_return_error) {
+    resource_pool pool(1);
+    resource_handle_ptr first_handle = pool.get_auto_recycle();
+    resource_handle_ptr second_handle = pool.get_auto_recycle();
+    EXPECT_EQ(second_handle->error(), make_error_code(error::get_resource_timeout));
 }
 
 TEST(sync_resource_pool, check_pool_lifetime) {

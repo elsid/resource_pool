@@ -15,6 +15,10 @@ struct unusable_handle : std::logic_error {
     unusable_handle() : std::logic_error("handle is unusable") {}
 };
 
+struct zero_pool_capacity : std::logic_error {
+    zero_pool_capacity() : std::logic_error("pool capacity is 0") {}
+};
+
 enum code {
     get_resource_timeout = 1,
     request_queue_overflow,

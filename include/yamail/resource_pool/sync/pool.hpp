@@ -21,7 +21,7 @@ public:
     typedef sync::handle<value_type> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
-    pool(std::size_t capacity = 0)
+    pool(std::size_t capacity)
             : _impl(boost::make_shared<pool_impl>(capacity))
     {}
 

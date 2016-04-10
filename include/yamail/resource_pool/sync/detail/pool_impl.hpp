@@ -28,7 +28,7 @@ public:
     typedef std::pair<boost::system::error_code, list_iterator> get_result;
 
     pool_impl(std::size_t capacity)
-            : _capacity(capacity),
+            : _capacity(assert_capacity(capacity)),
               _available_size(0),
               _used_size(0),
               _disabled(false)
@@ -44,15 +44,17 @@ public:
     void waste(list_iterator res_it);
     void disable();
 
+    static std::size_t assert_capacity(std::size_t value);
+
 private:
     typedef boost::lock_guard<boost::mutex> lock_guard;
     typedef boost::unique_lock<boost::mutex> unique_lock;
 
     mutable boost::mutex _mutex;
-    boost::condition_variable _has_available;
     list _available;
     list _used;
     const std::size_t _capacity;
+    boost::condition_variable _has_available;
     std::size_t _available_size;
     std::size_t _used_size;
     bool _disabled;
@@ -136,6 +138,14 @@ bool pool_impl<T>::wait_for(unique_lock& lock,
         const time_duration& wait_duration) {
     return _has_available.wait_for(lock, wait_duration,
         boost::bind(&pool_impl::has_available, this));
+}
+
+template <class T>
+std::size_t pool_impl<T>::assert_capacity(std::size_t value) {
+    if (value == 0) {
+        throw error::zero_pool_capacity();
+    }
+    return value;
 }
 
 }

@@ -21,6 +21,10 @@ const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 struct sync_resource_pool_impl : Test {};
 
+TEST(sync_resource_pool_impl, create_with_zero_capacity_should_throw_exception) {
+    EXPECT_THROW(resource_pool_impl(0), error::zero_pool_capacity);
+}
+
 TEST(sync_resource_pool_impl, get_one_should_succeed) {
     resource_pool_impl pool_impl(1);
     const get_result res = pool_impl.get();
