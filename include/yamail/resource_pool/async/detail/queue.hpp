@@ -36,7 +36,7 @@ public:
 
     queue(io_service_t& io_service,
           const boost::shared_ptr<timer_t>& timer,
-          std::size_t capacity = 0)
+          std::size_t capacity)
             : _io_service(io_service), _timer(timer), _capacity(capacity) {}
 
     boost::shared_ptr<queue> shared_from_this() {
