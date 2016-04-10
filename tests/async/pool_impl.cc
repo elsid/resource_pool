@@ -49,6 +49,10 @@ struct async_resource_pool_impl : Test {
     }
 };
 
+TEST_F(async_resource_pool_impl, create_with_zero_capacity_should_throw_exception) {
+    EXPECT_THROW(resource_pool_impl(ios, timer, 0, 0), error::zero_pool_capacity);
+}
+
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 class callback {

@@ -35,9 +35,9 @@ public:
               std::size_t capacity,
               std::size_t queue_capacity)
             : _io_service(io_service),
+              _capacity(assert_capacity(capacity)),
               _callbacks(boost::make_shared<callback_queue>(
                 boost::ref(io_service), timer, queue_capacity)),
-              _capacity(capacity),
               _available_size(0),
               _used_size(0),
               _disabled(false)
@@ -63,6 +63,8 @@ public:
     void waste(list_iterator res_it);
     void disable();
 
+    static std::size_t assert_capacity(std::size_t value);
+
 private:
     typedef typename boost::shared_ptr<callback_queue> callback_queue_ptr;
     typedef boost::unique_lock<boost::mutex> unique_lock;
@@ -73,8 +75,8 @@ private:
     list _available;
     list _used;
     io_service_t& _io_service;
-    callback_queue_ptr _callbacks;
     const std::size_t _capacity;
+    callback_queue_ptr _callbacks;
     std::size_t _available_size;
     std::size_t _used_size;
     bool _disabled;
@@ -162,6 +164,14 @@ void pool_impl<V, I, T>::disable() {
         async_call(bind(call, make_error_code(error::disabled),
                         list_iterator()));
     }
+}
+
+template <class V, class I, class T>
+std::size_t pool_impl<V, I, T>::assert_capacity(std::size_t value) {
+    if (value == 0) {
+        throw error::zero_pool_capacity();
+    }
+    return value;
 }
 
 template <class V, class I, class T>

@@ -32,7 +32,7 @@ public:
         const handle_ptr&)> callback;
 
     pool(io_service_t& io_service,
-         std::size_t capacity = 0,
+         std::size_t capacity,
          std::size_t queue_capacity = 0)
             : _impl(boost::make_shared<pool_impl>(
                 boost::ref(io_service),
@@ -42,7 +42,7 @@ public:
 
     pool(io_service_t& io_service,
          const boost::shared_ptr<timer_t>& timer,
-         std::size_t capacity = 0,
+         std::size_t capacity,
          std::size_t queue_capacity = 0)
             : _impl(boost::make_shared<pool_impl>(
                 boost::ref(io_service),
