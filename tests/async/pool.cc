@@ -21,7 +21,6 @@ struct async_resource_pool : Test {
     async_resource_pool() : timer(new mocked_timer()) {}
 };
 
-const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 class check_no_error {
 public:
