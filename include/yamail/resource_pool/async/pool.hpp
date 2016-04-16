@@ -9,17 +9,26 @@ namespace yamail {
 namespace resource_pool {
 namespace async {
 
-using detail::clock;
+template <class Value>
+struct default_pool_queue {
+    typedef Value value_type;
+    typedef boost::asio::io_service io_service_t;
+    typedef boost::asio::steady_timer timer_t;
+    typedef boost::shared_ptr<value_type> pointer;
+    typedef std::list<pointer> list;
+    typedef typename list::iterator list_iterator;
+    typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
+    typedef detail::queue<callback, io_service_t, timer_t> type;
+};
 
 template <class Value,
           class IoService = boost::asio::io_service,
-          class Timer = boost::asio::basic_waitable_timer<clock> >
+          class Impl = typename detail::pool_impl<Value, IoService, typename default_pool_queue<Value>::type> >
 class pool : boost::noncopyable {
 public:
     typedef Value value_type;
     typedef IoService io_service_t;
-    typedef Timer timer_t;
-    typedef detail::pool_impl<value_type, io_service_t, timer_t> pool_impl;
+    typedef Impl pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
     typedef resource_pool::handle<pool> handle;
@@ -42,9 +51,7 @@ public:
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
 
-    std::size_t queue_capacity() const { return _impl->queue_capacity(); }
-    std::size_t queue_size() const { return _impl->queue_size(); }
-    bool queue_empty() const { return _impl->queue_empty(); }
+    const pool_impl& impl() const { return *_impl; }
 
     void get_auto_waste(const callback& call,
                         time_duration wait_duration = seconds(0)) {

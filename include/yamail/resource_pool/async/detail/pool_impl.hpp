@@ -11,32 +11,25 @@ namespace resource_pool {
 namespace async {
 namespace detail {
 
-using detail::clock;
-
-template <class Value,
-          class IoService = boost::asio::io_service,
-          class Timer = boost::asio::basic_waitable_timer<clock> >
-class pool_impl : boost::noncopyable,
-    public boost::enable_shared_from_this<pool_impl<Value, IoService, Timer> > {
+template <class Value, class IoService, class Queue>
+class pool_impl : boost::noncopyable {
 public:
     typedef Value value_type;
     typedef IoService io_service_t;
-    typedef Timer timer_t;
     typedef boost::shared_ptr<value_type> pointer;
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
     typedef boost::chrono::seconds seconds;
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
-    typedef detail::queue<callback, io_service_t, timer_t> callback_queue;
-    typedef typename callback_queue::time_duration time_duration;
+    typedef Queue queue_type;
+    typedef typename queue_type::time_duration time_duration;
 
     pool_impl(io_service_t& io_service,
               std::size_t capacity,
               std::size_t queue_capacity)
             : _io_service(io_service),
               _capacity(assert_capacity(capacity)),
-              _callbacks(boost::make_shared<callback_queue>(
-                boost::ref(io_service), queue_capacity)),
+              _callbacks(boost::make_shared<queue_type>(boost::ref(io_service), queue_capacity)),
               _available_size(0),
               _used_size(0),
               _disabled(false)
@@ -46,17 +39,11 @@ public:
     std::size_t size() const;
     std::size_t available() const;
     std::size_t used() const;
-    std::size_t queue_capacity() const { return _callbacks->capacity(); }
-    std::size_t queue_size() const { return _callbacks->size(); }
-    bool queue_empty() const { return _callbacks->empty(); }
-    const timer_t& queue_timer() const { return _callbacks->timer(); }
+
+    const queue_type& queue() const { return *_callbacks; }
 
     void async_call(const boost::function<void ()>& call) {
         _io_service.post(bind(call_and_abort_on_catch_exception, call));
-    }
-
-    boost::shared_ptr<pool_impl> shared_from_this() {
-        return boost::enable_shared_from_this<pool_impl>::shared_from_this();
     }
 
     void get(const callback& call, time_duration wait_duration = seconds(0));
@@ -67,7 +54,6 @@ public:
     static std::size_t assert_capacity(std::size_t value);
 
 private:
-    typedef typename boost::shared_ptr<callback_queue> callback_queue_ptr;
     typedef boost::unique_lock<boost::mutex> unique_lock;
     typedef boost::lock_guard<boost::mutex> lock_guard;
     typedef void (pool_impl::*serve_request_t)(unique_lock&, const callback&);
@@ -77,7 +63,7 @@ private:
     list _used;
     io_service_t& _io_service;
     const std::size_t _capacity;
-    callback_queue_ptr _callbacks;
+    boost::shared_ptr<queue_type> _callbacks;
     std::size_t _available_size;
     std::size_t _used_size;
     bool _disabled;
@@ -90,26 +76,26 @@ private:
     static void call_and_abort_on_catch_exception(const boost::function<void ()>& call) throw();
 };
 
-template <class V, class I, class T>
-std::size_t pool_impl<V, I, T>::size() const {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::size() const {
     const lock_guard lock(_mutex);
     return size_unsafe();
 }
 
-template <class V, class I, class T>
-std::size_t pool_impl<V, I, T>::available() const {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::available() const {
     const lock_guard lock(_mutex);
     return _available_size;
 }
 
-template <class V, class I, class T>
-std::size_t pool_impl<V, I, T>::used() const {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::used() const {
     const lock_guard lock(_mutex);
     return _used_size;
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::recycle(list_iterator res_it) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::recycle(list_iterator res_it) {
     unique_lock lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
     --_used_size;
@@ -117,16 +103,16 @@ void pool_impl<V, I, T>::recycle(list_iterator res_it) {
     perform_one_request(lock, &pool_impl::alloc_resource);
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::waste(list_iterator res_it) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
     _used.erase(res_it);
     --_used_size;
     perform_one_request(lock, &pool_impl::reserve_resource);
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::get(const callback& call, time_duration wait_duration) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::get(const callback& call, time_duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
@@ -153,8 +139,8 @@ void pool_impl<V, I, T>::get(const callback& call, time_duration wait_duration) 
     }
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::disable() {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     while (true) {
@@ -167,16 +153,16 @@ void pool_impl<V, I, T>::disable() {
     }
 }
 
-template <class V, class I, class T>
-std::size_t pool_impl<V, I, T>::assert_capacity(std::size_t value) {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::assert_capacity(std::size_t value) {
     if (value == 0) {
         throw error::zero_pool_capacity();
     }
     return value;
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::alloc_resource(unique_lock& lock, const callback& call) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, const callback& call) {
     const list_iterator res_it = _available.begin();
     _available.splice(_used.end(), _used, res_it);
     --_available_size;
@@ -185,24 +171,24 @@ void pool_impl<V, I, T>::alloc_resource(unique_lock& lock, const callback& call)
     async_call(bind(call, boost::system::error_code(), res_it));
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::reserve_resource(unique_lock& lock, const callback& call) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::reserve_resource(unique_lock& lock, const callback& call) {
     const list_iterator res_it = _used.insert(_used.end(), pointer());
     ++_used_size;
     lock.unlock();
     async_call(bind(call, boost::system::error_code(), res_it));
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::perform_one_request(unique_lock& lock, serve_request_t serve) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::perform_one_request(unique_lock& lock, serve_request_t serve) {
     callback call;
     if (_callbacks->pop(call)) {
         (this->*serve)(lock, call);
     }
 }
 
-template <class V, class I, class T>
-void pool_impl<V, I, T>::call_and_abort_on_catch_exception(const boost::function<void ()>& call) throw() {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::call_and_abort_on_catch_exception(const boost::function<void ()>& call) throw() {
     try {
         call();
     } catch (...) {

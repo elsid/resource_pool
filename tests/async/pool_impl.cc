@@ -8,9 +8,20 @@ using namespace tests;
 using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::async::detail;
 
-typedef pool_impl<resource, mocked_io_service, mocked_timer> resource_pool_impl;
+struct mocked_queue {
+    typedef std::list<boost::shared_ptr<resource> >::iterator list_iterator;
+    typedef boost::function<void (const boost::system::error_code&, list_iterator)> value_type;
+    typedef boost::function<void ()> callback;
+    typedef tests::time_duration time_duration;
+
+    MOCK_CONST_METHOD3(push, bool (const value_type&, const callback&, time_duration));
+    MOCK_CONST_METHOD1(pop, bool (value_type&));
+
+    mocked_queue(mocked_io_service&, std::size_t) {}
+};
+
+typedef pool_impl<resource, mocked_io_service, mocked_queue> resource_pool_impl;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
-typedef boost::shared_ptr<resource_pool_impl> resource_pool_impl_ptr;
 
 }
 
@@ -39,13 +50,38 @@ struct async_resource_pool_impl : Test {
     boost::function<void ()> on_first_get;
     boost::function<void ()> on_second_get;
 
-    resource_pool_impl_ptr make_pool(std::size_t capacity, std::size_t queue_capacity) {
-        return make_shared<resource_pool_impl>(ref(ios), capacity, queue_capacity);
-    }
+    mocked_queue::value_type on_get_res;
+
+    boost::function<void ()> on_expired;
 };
 
 TEST_F(async_resource_pool_impl, create_with_zero_capacity_should_throw_exception) {
     EXPECT_THROW(resource_pool_impl(ios, 0, 0), error::zero_pool_capacity);
+}
+
+TEST_F(async_resource_pool_impl, create_const_with_non_zero_capacity_then_check) {
+    const resource_pool_impl pool(ios, 1, 0);
+    EXPECT_EQ(pool.capacity(), 1);
+}
+
+TEST_F(async_resource_pool_impl, create_const_then_check_size_should_be_0) {
+    const resource_pool_impl pool(ios, 1, 0);
+    EXPECT_EQ(pool.size(), 0);
+}
+
+TEST_F(async_resource_pool_impl, create_const_then_check_available_should_be_0) {
+    const resource_pool_impl pool(ios, 1, 0);
+    EXPECT_EQ(pool.available(), 0);
+}
+
+TEST_F(async_resource_pool_impl, create_const_then_check_used_should_be_0) {
+    const resource_pool_impl pool(ios, 1, 0);
+    EXPECT_EQ(pool.used(), 0);
+}
+
+TEST_F(async_resource_pool_impl, create_const_then_call_queue_should_succeed) {
+    const resource_pool_impl pool(ios, 1, 0);
+    EXPECT_NO_THROW(pool.queue());
 }
 
 class callback {
@@ -65,34 +101,34 @@ private:
 
 class recycle_resource {
 public:
-    recycle_resource(resource_pool_impl_ptr pool) : pool(pool) {}
+    recycle_resource(resource_pool_impl& pool) : pool(pool) {}
 
     void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
         ASSERT_NE(res, resource_ptr_list_iterator());
-        pool->recycle(res);
+        pool.recycle(res);
     }
 
 private:
-    resource_pool_impl_ptr pool;
+    resource_pool_impl& pool;
 };
 
 class waste_resource {
 public:
-    waste_resource(resource_pool_impl_ptr pool) : pool(pool) {}
+    waste_resource(resource_pool_impl& pool) : pool(pool) {}
 
     void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
         ASSERT_NE(res, resource_ptr_list_iterator());
-        pool->waste(res);
+        pool.waste(res);
     }
 
 private:
-    resource_pool_impl_ptr pool;
+    resource_pool_impl& pool;
 };
 
 TEST_F(async_resource_pool_impl, get_one_should_call_callback) {
-    resource_pool_impl_ptr pool = make_pool(1, 0);
+    resource_pool_impl pool(ios, 1, 0);
 
     mocked_callback_ptr get = make_shared<mocked_callback>();
 
@@ -101,66 +137,70 @@ TEST_F(async_resource_pool_impl, get_one_should_call_callback) {
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
     EXPECT_CALL(*get, call(_, _)).WillOnce(Return());
 
-    pool->get(callback(get));
+    pool.get(callback(get));
     on_get();
 }
 
 TEST_F(async_resource_pool_impl, get_one_and_recycle_should_make_one_available_resource) {
-    resource_pool_impl_ptr pool = make_pool(1, 0);
+    resource_pool_impl pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
 
-    pool->get(recycle_resource(pool));
+    pool.get(recycle_resource(pool));
     on_get();
 
-    EXPECT_EQ(pool->available(), 1);
+    EXPECT_EQ(pool.available(), 1);
 }
 
 TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_resources) {
-    resource_pool_impl_ptr pool = make_pool(1, 0);
+    resource_pool_impl pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
 
-    pool->get(waste_resource(pool));
+    pool.get(waste_resource(pool));
     on_get();
 
-    EXPECT_EQ(pool->available(), 0);
+    EXPECT_EQ(pool.available(), 0);
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make_one_available_resource) {
-    resource_pool_impl_ptr pool = make_pool(1, 1);
+    resource_pool_impl pool(ios, 1, 0);
 
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(Return());
-    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(Return());
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), push(_, _, _)).WillOnce(DoAll(SaveArg<0>(&on_get_res), Return(true)));
+    pool.get(recycle_resource(pool));
+    pool.get(recycle_resource(pool), seconds(1));
 
-    pool->get(recycle_resource(pool));
-    pool->get(recycle_resource(pool), seconds(1));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(DoAll(SetArgReferee<0>(on_get_res), Return(true)));
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool->available(), 1);
+    EXPECT_EQ(pool.available(), 1);
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) {
-    resource_pool_impl_ptr pool = make_pool(1, 1);
+    resource_pool_impl pool(ios, 1, 0);
 
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(Return());
-    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(Return());
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), push(_, _, _)).WillOnce(DoAll(SaveArg<0>(&on_get_res), Return(true)));
+    pool.get(waste_resource(pool));
+    pool.get(waste_resource(pool), seconds(1));
 
-    pool->get(waste_resource(pool));
-    pool->get(waste_resource(pool), seconds(1));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(DoAll(SetArgReferee<0>(on_get_res), Return(true)));
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool->available(), 0);
+    EXPECT_EQ(pool.available(), 0);
 }
 
 class check_error {
@@ -182,71 +222,64 @@ struct check_no_error : check_error {
 };
 
 TEST_F(async_resource_pool_impl, get_with_queue_use_and_timer_timeout_should_return_error) {
-    resource_pool_impl_ptr pool = make_pool(1, 1);
-
-    boost::function<void (error_code)> on_async_wait;
-    time_point expire_time;
+    resource_pool_impl pool(ios, 1, 0);
 
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
-    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
+    EXPECT_CALL(pool.queue(), push(_, _, _)).WillOnce(DoAll(SaveArg<1>(&on_expired), Return(true)));
 
-    pool->get(check_no_error());
+    pool.get(check_no_error());
+    pool.get(check_error(error::get_resource_timeout), seconds(1));
     on_first_get();
-    pool->get(check_error(error::get_resource_timeout), seconds(1));
-
-    EXPECT_CALL(pool->queue_timer(), expires_at()).WillOnce(Return(expire_time));
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-
-    on_async_wait(error_code());
-    on_second_get();
+    on_expired();
 }
 
 TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_should_return_error) {
-    resource_pool_impl_ptr pool = make_pool(1, 1);
+    resource_pool_impl pool(ios, 1, 0);
 
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(pool->queue_timer(), expires_at(_)).Times(0);
-    EXPECT_CALL(pool->queue_timer(), async_wait(_)).Times(0);
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
 
-    pool->get(recycle_resource(pool));
-    pool->get(check_error(error::get_resource_timeout), seconds(0));
+    pool.get(recycle_resource(pool));
+    pool.get(check_error(error::get_resource_timeout), seconds(0));
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool->available(), 1);
+    EXPECT_EQ(pool.available(), 1);
 }
 
 TEST_F(async_resource_pool_impl, get_after_disable_returns_error) {
-    resource_pool_impl_ptr pool = make_pool(1, 0);
+    resource_pool_impl pool(ios, 1, 0);
 
     InSequence s;
 
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 
-    pool->disable();
-    pool->get(check_error(error::disabled));
+    pool.disable();
+    pool.get(check_error(error::disabled));
     on_get();
 }
 
 TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
-    resource_pool_impl_ptr pool = make_pool(1, 1);
+    resource_pool_impl pool(ios, 1, 0);
 
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(Return());
-    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(Return());
-    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), push(_, _, _)).WillOnce(DoAll(SaveArg<0>(&on_get_res), Return(true)));
+    pool.get(recycle_resource(pool));
+    pool.get(check_error(error::disabled), seconds(1));
 
-    pool->get(recycle_resource(pool));
-    pool->get(check_error(error::disabled), seconds(1));
-    pool->disable();
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(DoAll(SetArgReferee<0>(on_get_res), Return(true)));
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
+    pool.disable();
     on_first_get();
     on_second_get();
 }
