@@ -23,7 +23,8 @@ enum code {
     ok,
     get_resource_timeout,
     request_queue_overflow,
-    disabled
+    disabled,
+    client_handler_exception
 };
 
 namespace detail {
@@ -42,6 +43,8 @@ public:
                 return "request queue overflow";
             case disabled:
                 return "resource pool is disabled";
+            case client_handler_exception:
+                return "exception in client handler";
             default:
                 return "resource pool error";
         }

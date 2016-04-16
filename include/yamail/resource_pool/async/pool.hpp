@@ -1,6 +1,8 @@
 #ifndef YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 #define YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 
+#include <iostream>
+
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/handle.hpp>
 #include <yamail/resource_pool/async/detail/pool_impl.hpp>
@@ -21,9 +23,19 @@ struct default_pool_queue {
     typedef detail::queue<callback, io_service_t, timer_t> type;
 };
 
+template <class Value, class IoService>
+struct default_pool_impl {
+    typedef typename detail::pool_impl<
+        Value,
+        IoService,
+        detail::abort,
+        typename default_pool_queue<Value>::type
+    > type;
+};
+
 template <class Value,
           class IoService = boost::asio::io_service,
-          class Impl = typename detail::pool_impl<Value, IoService, typename default_pool_queue<Value>::type> >
+          class Impl = typename default_pool_impl<Value, IoService>::type >
 class pool : boost::noncopyable {
 public:
     typedef Value value_type;
@@ -35,14 +47,17 @@ public:
     typedef boost::shared_ptr<handle> handle_ptr;
     typedef boost::function<void (const boost::system::error_code&,
         const handle_ptr&)> callback;
+    typedef typename pool_impl::on_catch_handler_exception_type on_catch_handler_exception_type;
 
     pool(io_service_t& io_service,
          std::size_t capacity,
-         std::size_t queue_capacity)
+         std::size_t queue_capacity,
+         const on_catch_handler_exception_type& on_catch_handler_exception = detail::abort())
             : _impl(boost::make_shared<pool_impl>(
                 boost::ref(io_service),
                 capacity,
-                queue_capacity)) {}
+                queue_capacity,
+                on_catch_handler_exception)) {}
 
     ~pool() { _impl->disable(); }
 

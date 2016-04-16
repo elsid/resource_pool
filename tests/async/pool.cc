@@ -15,6 +15,7 @@ struct mocked_pool_impl {
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef tests::time_duration time_duration;
     typedef tests::seconds seconds;
+    typedef boost::function<void (const boost::system::error_code&)> on_catch_handler_exception_type;
 
     MOCK_CONST_METHOD0(capacity, std::size_t ());
     MOCK_CONST_METHOD0(size, std::size_t ());
@@ -25,7 +26,7 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD1(waste, void (list_iterator));
     MOCK_CONST_METHOD0(disable, void ());
 
-    mocked_pool_impl(mocked_io_service&, std::size_t, std::size_t) {}
+    mocked_pool_impl(mocked_io_service&, std::size_t, std::size_t, const on_catch_handler_exception_type&) {}
 };
 
 typedef pool<resource, mocked_io_service, mocked_pool_impl> resource_pool;

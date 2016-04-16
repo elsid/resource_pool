@@ -20,7 +20,7 @@ struct mocked_queue {
     mocked_queue(mocked_io_service&, std::size_t) {}
 };
 
-typedef pool_impl<resource, mocked_io_service, mocked_queue> resource_pool_impl;
+typedef pool_impl<resource, mocked_io_service, mocked_on_catch_handler_exception, mocked_queue> resource_pool_impl;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
 
 }
@@ -56,31 +56,31 @@ struct async_resource_pool_impl : Test {
 };
 
 TEST_F(async_resource_pool_impl, create_with_zero_capacity_should_throw_exception) {
-    EXPECT_THROW(resource_pool_impl(ios, 0, 0), error::zero_pool_capacity);
+    EXPECT_THROW(resource_pool_impl(ios, 0, 0, mocked_on_catch_handler_exception()), error::zero_pool_capacity);
 }
 
 TEST_F(async_resource_pool_impl, create_const_with_non_zero_capacity_then_check) {
-    const resource_pool_impl pool(ios, 1, 0);
+    const resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
     EXPECT_EQ(pool.capacity(), 1);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_check_size_should_be_0) {
-    const resource_pool_impl pool(ios, 1, 0);
+    const resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
     EXPECT_EQ(pool.size(), 0);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_check_available_should_be_0) {
-    const resource_pool_impl pool(ios, 1, 0);
+    const resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
     EXPECT_EQ(pool.available(), 0);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_check_used_should_be_0) {
-    const resource_pool_impl pool(ios, 1, 0);
+    const resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
     EXPECT_EQ(pool.used(), 0);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_call_queue_should_succeed) {
-    const resource_pool_impl pool(ios, 1, 0);
+    const resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
     EXPECT_NO_THROW(pool.queue());
 }
 
@@ -128,7 +128,7 @@ private:
 };
 
 TEST_F(async_resource_pool_impl, get_one_should_call_callback) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     mocked_callback_ptr get = make_shared<mocked_callback>();
 
@@ -142,7 +142,7 @@ TEST_F(async_resource_pool_impl, get_one_should_call_callback) {
 }
 
 TEST_F(async_resource_pool_impl, get_one_and_recycle_should_make_one_available_resource) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
     EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
@@ -154,7 +154,7 @@ TEST_F(async_resource_pool_impl, get_one_and_recycle_should_make_one_available_r
 }
 
 TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_resources) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
     EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
@@ -166,7 +166,7 @@ TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_reso
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_make_one_available_resource) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -184,7 +184,7 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_make_one_available
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make_one_available_resource) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -203,7 +203,7 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -240,7 +240,7 @@ struct check_no_error : check_error {
 };
 
 TEST_F(async_resource_pool_impl, get_with_queue_zero_capacity_use_should_return_error) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -258,7 +258,7 @@ TEST_F(async_resource_pool_impl, get_with_queue_zero_capacity_use_should_return_
 }
 
 TEST_F(async_resource_pool_impl, get_with_queue_use_and_timer_timeout_should_return_error) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -272,7 +272,7 @@ TEST_F(async_resource_pool_impl, get_with_queue_use_and_timer_timeout_should_ret
 }
 
 TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_should_return_error) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -289,7 +289,7 @@ TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_shou
 }
 
 TEST_F(async_resource_pool_impl, get_after_disable_returns_error) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -302,7 +302,7 @@ TEST_F(async_resource_pool_impl, get_after_disable_returns_error) {
 }
 
 TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
-    resource_pool_impl pool(ios, 1, 0);
+    resource_pool_impl pool(ios, 1, 0, mocked_on_catch_handler_exception());
 
     InSequence s;
 
@@ -318,6 +318,51 @@ TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
     pool.disable();
     on_first_get();
     on_second_get();
+}
+
+struct throw_exception {
+    void operator ()(const error_code&, resource_ptr_list_iterator) const {
+        throw std::exception();
+    }
+};
+
+TEST_F(async_resource_pool_impl, get_and_throw_exception_on_handle_should_call_on_catch_handler_exception) {
+    mocked_on_catch_handler_exception on_catch_handler_exception;
+    resource_pool_impl pool(ios, 1, 0, on_catch_handler_exception);
+
+    InSequence s;
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(on_catch_handler_exception.impl(), call(make_error_code(error::client_handler_exception))).WillOnce(Return());
+    pool.get(throw_exception());
+    on_first_get();
+}
+
+struct call_abort : Test {};
+
+struct on_abort_impl {
+    MOCK_CONST_METHOD0(call, void ());
+};
+
+struct abort_impl_type {
+    static on_abort_impl* mock;
+
+    static void call() {
+        mock->call();
+    }
+};
+
+on_abort_impl* abort_impl_type::mock = 0;
+
+TEST(call_abort, on_call_should_call_impl) {
+    on_abort_impl mock;
+    abort_impl_type::mock = &mock;
+
+    yamail::resource_pool::async::detail::abort abort(abort_impl_type::call);
+
+    EXPECT_CALL(mock, call());
+
+    abort(boost::system::error_code());
 }
 
 }

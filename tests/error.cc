@@ -32,6 +32,11 @@ TEST(error_test, make_disabled_error_and_check_message) {
     EXPECT_EQ(error.message(), "resource pool is disabled");
 }
 
+TEST(error_test, make_client_handler_exception_error_and_check_message) {
+    const error_code error = make_error_code(client_handler_exception);
+    EXPECT_EQ(error.message(), "exception in client handler");
+}
+
 TEST(error_test, make_out_of_range_error_and_check_message) {
     const error_code error = make_error_code(code(std::numeric_limits<int>::max()));
     EXPECT_EQ(error.message(), "resource pool error");
