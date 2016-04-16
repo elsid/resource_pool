@@ -16,8 +16,6 @@ struct resource {};
 struct mocked_pool_impl {
     typedef resource value_type;
     typedef boost::shared_ptr<value_type> pointer;
-    typedef boost::chrono::system_clock::duration time_duration;
-    typedef boost::chrono::seconds seconds;
     typedef std::list<pointer> list;
     typedef list::iterator list_iterator;
     typedef std::pair<boost::system::error_code, list_iterator> get_result;
@@ -28,7 +26,7 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD0(size, std::size_t ());
     MOCK_CONST_METHOD0(available, std::size_t ());
     MOCK_CONST_METHOD0(used, std::size_t ());
-    MOCK_CONST_METHOD1(get, get_result (time_duration));
+    MOCK_CONST_METHOD1(get, get_result (time_traits::duration));
     MOCK_CONST_METHOD1(recycle, void (list_iterator));
     MOCK_CONST_METHOD1(waste, void (list_iterator));
     MOCK_CONST_METHOD0(disable, void ());

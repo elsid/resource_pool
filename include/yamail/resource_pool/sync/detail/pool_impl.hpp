@@ -10,6 +10,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include <yamail/resource_pool/error.hpp>
+#include <yamail/resource_pool/time_traits.hpp>
 
 namespace yamail {
 namespace resource_pool {
@@ -22,8 +23,6 @@ public:
     typedef Value value_type;
     typedef ConditionVariable condition_variable;
     typedef boost::shared_ptr<value_type> pointer;
-    typedef boost::chrono::system_clock::duration time_duration;
-    typedef boost::chrono::seconds seconds;
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
     typedef std::pair<boost::system::error_code, list_iterator> get_result;
@@ -42,7 +41,7 @@ public:
 
     const condition_variable& has_capacity() const { return _has_capacity; }
 
-    get_result get(time_duration wait_duration = seconds(0));
+    get_result get(time_traits::duration wait_duration = time_traits::duration(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
     void disable();
@@ -66,7 +65,7 @@ private:
     bool fit_capacity() const { return size_unsafe() < _capacity; }
     list_iterator alloc_resource(unique_lock& lock);
     list_iterator reserve_resource(unique_lock& lock);
-    bool wait_for(unique_lock& lock, time_duration wait_duration);
+    bool wait_for(unique_lock& lock, time_traits::duration wait_duration);
 };
 
 template <class T, class C>
@@ -112,7 +111,7 @@ void pool_impl<T, C>::disable() {
 }
 
 template <class T, class C>
-typename pool_impl<T, C>::get_result pool_impl<T, C>::get(time_duration wait_duration) {
+typename pool_impl<T, C>::get_result pool_impl<T, C>::get(time_traits::duration wait_duration) {
     unique_lock lock(_mutex);
     while (true) {
         if (_disabled) {
@@ -150,7 +149,7 @@ typename pool_impl<T, C>::list_iterator pool_impl<T, C>::reserve_resource(unique
 }
 
 template <class T, class C>
-bool pool_impl<T, C>::wait_for(unique_lock& lock, time_duration wait_duration) {
+bool pool_impl<T, C>::wait_for(unique_lock& lock, time_traits::duration wait_duration) {
     return _has_capacity.wait_for(lock, wait_duration) == boost::cv_status::no_timeout;
 }
 

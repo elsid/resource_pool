@@ -17,8 +17,6 @@ class pool {
 public:
     typedef Value value_type;
     typedef Impl pool_impl;
-    typedef typename pool_impl::time_duration time_duration;
-    typedef typename pool_impl::seconds seconds;
     typedef sync::handle<value_type, pool_impl> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
@@ -35,11 +33,11 @@ public:
 
     const pool_impl& impl() const { return *_impl; }
 
-    handle_ptr get_auto_waste(time_duration wait_duration = seconds(0)) {
+    handle_ptr get_auto_waste(time_traits::duration wait_duration = time_traits::duration(0)) {
         return get_handle(&handle::waste, wait_duration);
     }
 
-    handle_ptr get_auto_recycle(time_duration wait_duration = seconds(0)) {
+    handle_ptr get_auto_recycle(time_traits::duration wait_duration = time_traits::duration(0)) {
         return get_handle(&handle::recycle, wait_duration);
     }
 
@@ -49,7 +47,7 @@ private:
 
     pool_impl_ptr _impl;
 
-    handle_ptr get_handle(strategy use_strategy, time_duration wait_duration) {
+    handle_ptr get_handle(strategy use_strategy, time_traits::duration wait_duration) {
         const typename pool_impl::get_result& res = _impl->get(wait_duration);
         return handle_ptr(new handle(_impl, use_strategy, res.second, res.first));
     }

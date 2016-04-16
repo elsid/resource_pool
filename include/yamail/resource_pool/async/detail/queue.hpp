@@ -4,7 +4,6 @@
 #include <list>
 #include <map>
 
-#include <boost/asio/steady_timer.hpp>
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
@@ -13,6 +12,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include <yamail/resource_pool/error.hpp>
+#include <yamail/resource_pool/time_traits.hpp>
 
 namespace yamail {
 namespace resource_pool {
@@ -23,7 +23,7 @@ typedef boost::chrono::steady_clock clock;
 
 template <class Value,
           class IoService = boost::asio::io_service,
-          class Timer = boost::asio::basic_waitable_timer<clock> >
+          class Timer = time_traits::timer >
 class queue : public boost::enable_shared_from_this<queue<Value, IoService, Timer> >,
     boost::noncopyable {
 public:
@@ -31,8 +31,6 @@ public:
     typedef IoService io_service_t;
     typedef Timer timer_t;
     typedef boost::function<void ()> callback;
-    typedef clock::duration time_duration;
-    typedef clock::time_point time_point;
 
     queue(io_service_t& io_service, std::size_t capacity)
             : _io_service(io_service), _capacity(capacity), _timer(io_service) {}
@@ -47,7 +45,7 @@ public:
     const timer_t& timer() const { return _timer; }
 
     bool push(const value_type& req, const callback& req_expired,
-              time_duration wait_duration);
+              time_traits::duration wait_duration);
     bool pop(value_type& req);
 
 private:
@@ -56,7 +54,7 @@ private:
     struct expiring_request {
         typedef std::list<expiring_request> list;
         typedef typename list::iterator list_it;
-        typedef std::multimap<time_point, const expiring_request*> multimap;
+        typedef std::multimap<time_traits::time_point, const expiring_request*> multimap;
         typedef typename multimap::iterator multimap_it;
 
         queue::value_type request;
@@ -99,7 +97,7 @@ bool queue<V, I, T>::empty() const {
 
 template <class V, class I, class T>
 bool queue<V, I, T>::push(const value_type& req_data, const callback& req_expired,
-        time_duration wait_duration) {
+        time_traits::duration wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
         return false;
@@ -109,7 +107,7 @@ bool queue<V, I, T>::push(const value_type& req_data, const callback& req_expire
     expiring_request& req = *order_it;
     req.order_it = order_it;
     req.expires_at_it = _expires_at_requests.insert(
-        std::make_pair(clock::now() + wait_duration, &req));
+        std::make_pair(time_traits::add(time_traits::now(), wait_duration), &req));
     update_timer();
     return true;
 }
@@ -154,7 +152,7 @@ void queue<V, I, T>::update_timer() {
     if (_expires_at_requests.empty()) {
         return;
     }
-    const time_point& eariest_expires_at = _expires_at_requests.begin()->first;
+    const time_traits::time_point& eariest_expires_at = _expires_at_requests.begin()->first;
     _timer.expires_at(eariest_expires_at);
     _timer.async_wait(bind(&queue::cancel, shared_from_this(), _1));
 }

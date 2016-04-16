@@ -34,10 +34,8 @@ public:
     typedef boost::shared_ptr<value_type> pointer;
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
-    typedef boost::chrono::seconds seconds;
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef Queue queue_type;
-    typedef typename queue_type::time_duration time_duration;
     typedef OnCatchHandlerException on_catch_handler_exception_type;
 
     pool_impl(io_service_t& io_service,
@@ -64,7 +62,7 @@ public:
         _io_service.post(bind(call_and_catch_exception, _on_catch_handler_exception, call));
     }
 
-    void get(const callback& call, time_duration wait_duration = seconds(0));
+    void get(const callback& call, time_traits::duration wait_duration = time_traits::duration(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
     void disable();
@@ -132,7 +130,7 @@ void pool_impl<V, I, O, Q>::waste(list_iterator res_it) {
 }
 
 template <class V, class I, class O, class Q>
-void pool_impl<V, I, O, Q>::get(const callback& call, time_duration wait_duration) {
+void pool_impl<V, I, O, Q>::get(const callback& call, time_traits::duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();

@@ -11,8 +11,8 @@ using namespace yamail::resource_pool::async::detail;
 struct mocked_timer {
     mocked_timer(mocked_io_service&) {}
 
-    MOCK_CONST_METHOD0(expires_at, time_point ());
-    MOCK_CONST_METHOD1(expires_at, void (const time_point&));
+    MOCK_CONST_METHOD0(expires_at, time_traits::time_point ());
+    MOCK_CONST_METHOD1(expires_at, void (const time_traits::time_point&));
     MOCK_CONST_METHOD1(async_wait, void (boost::function<void (boost::system::error_code)>));
 };
 
@@ -79,14 +79,14 @@ private:
 TEST_F(async_request_queue, push_then_timeout_request_queue_should_be_empty) {
     request_queue_ptr queue = make_queue(1);
 
-    time_point expire_time;
+    time_traits::time_point expire_time;
 
     InSequence s;
 
     EXPECT_CALL(queue->timer(), expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
     EXPECT_CALL(queue->timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
 
-    ASSERT_TRUE(queue->push(request(), callback(expired), seconds(0)));
+    ASSERT_TRUE(queue->push(request(), callback(expired), time_traits::duration(0)));
 
     EXPECT_CALL(queue->timer(), expires_at()).WillOnce(Return(expire_time));
     EXPECT_CALL(ios, post(_)).WillOnce(InvokeArgument<0>());
@@ -106,7 +106,7 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     EXPECT_CALL(queue->timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
     EXPECT_CALL(*expired, call()).Times(0);
 
-    EXPECT_TRUE(queue->push(request(), callback(expired), seconds(1)));
+    EXPECT_TRUE(queue->push(request(), callback(expired), time_traits::duration(1)));
 
     using namespace boost::system::errc;
 
@@ -120,7 +120,7 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
 TEST_F(async_request_queue, push_into_queue_with_null_capacity_should_return_error) {
     request_queue_ptr queue = make_queue(0);
 
-    const bool result = queue->push(request(), callback(expired), seconds(0));
+    const bool result = queue->push(request(), callback(expired), time_traits::duration(0));
     EXPECT_FALSE(result);
 }
 

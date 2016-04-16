@@ -13,12 +13,10 @@ using boost::make_shared;
 
 struct resource {};
 
-typedef boost::chrono::system_clock::duration time_duration;
-
 struct mocked_condition_variable {
     MOCK_CONST_METHOD0(notify_one, void ());
     MOCK_CONST_METHOD0(notify_all, void ());
-    MOCK_CONST_METHOD2(wait_for, boost::cv_status (boost::unique_lock<boost::mutex>&, time_duration));
+    MOCK_CONST_METHOD2(wait_for, boost::cv_status (boost::unique_lock<boost::mutex>&, time_traits::duration));
 };
 
 typedef boost::shared_ptr<resource> resource_ptr;
@@ -103,7 +101,7 @@ struct handle_resource {
     handle_resource(resource_pool_impl& pool, resource_ptr_list_iterator res_it, strategy_type strategy)
         : pool(pool), res_it(res_it), strategy(strategy) {}
 
-    boost::cv_status operator ()(boost::unique_lock<boost::mutex>& lock, time_duration) const {
+    boost::cv_status operator ()(boost::unique_lock<boost::mutex>& lock, time_traits::duration) const {
         lock.unlock();
         (pool.*strategy)(res_it);
         lock.lock();
@@ -162,7 +160,7 @@ struct disable_pool {
 
     disable_pool(resource_pool_impl& pool) : pool(pool) {}
 
-    boost::cv_status operator ()(boost::unique_lock<boost::mutex>& lock, time_duration) const {
+    boost::cv_status operator ()(boost::unique_lock<boost::mutex>& lock, time_traits::duration) const {
         lock.unlock();
         pool.disable();
         lock.lock();

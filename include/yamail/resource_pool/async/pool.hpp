@@ -15,12 +15,11 @@ template <class Value>
 struct default_pool_queue {
     typedef Value value_type;
     typedef boost::asio::io_service io_service_t;
-    typedef boost::asio::steady_timer timer_t;
     typedef boost::shared_ptr<value_type> pointer;
     typedef std::list<pointer> list;
     typedef typename list::iterator list_iterator;
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
-    typedef detail::queue<callback, io_service_t, timer_t> type;
+    typedef detail::queue<callback, io_service_t, time_traits::timer> type;
 };
 
 template <class Value, class IoService>
@@ -41,8 +40,6 @@ public:
     typedef Value value_type;
     typedef IoService io_service_t;
     typedef Impl pool_impl;
-    typedef typename pool_impl::time_duration time_duration;
-    typedef typename pool_impl::seconds seconds;
     typedef resource_pool::handle<pool> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
     typedef boost::function<void (const boost::system::error_code&,
@@ -69,12 +66,12 @@ public:
     const pool_impl& impl() const { return *_impl; }
 
     void get_auto_waste(const callback& call,
-                        time_duration wait_duration = seconds(0)) {
+                        time_traits::duration wait_duration = time_traits::duration(0)) {
         return get(call, &handle::waste, wait_duration);
     }
 
     void get_auto_recycle(const callback& call,
-                          time_duration wait_duration = seconds(0)) {
+                          time_traits::duration wait_duration = time_traits::duration(0)) {
         return get(call, &handle::recycle, wait_duration);
     }
 
@@ -86,7 +83,7 @@ private:
     pool_impl_ptr _impl;
 
     void get(const callback& call, strategy use_strategy,
-            time_duration wait_duration) {
+            time_traits::duration wait_duration) {
         const handle_ptr h(new handle(_impl, use_strategy, list_iterator()));
         _impl->get(bind(fill_handle, call, h, _1, _2), wait_duration);
     }

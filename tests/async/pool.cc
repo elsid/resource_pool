@@ -13,15 +13,13 @@ struct mocked_pool_impl {
     typedef boost::shared_ptr<value_type> pointer;
     typedef std::list<boost::shared_ptr<value_type> >::iterator list_iterator;
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
-    typedef tests::time_duration time_duration;
-    typedef tests::seconds seconds;
     typedef boost::function<void (const boost::system::error_code&)> on_catch_handler_exception_type;
 
     MOCK_CONST_METHOD0(capacity, std::size_t ());
     MOCK_CONST_METHOD0(size, std::size_t ());
     MOCK_CONST_METHOD0(available, std::size_t ());
     MOCK_CONST_METHOD0(used, std::size_t ());
-    MOCK_CONST_METHOD2(get, void (const callback&, time_duration));
+    MOCK_CONST_METHOD2(get, void (const callback&, time_traits::duration));
     MOCK_CONST_METHOD1(recycle, void (list_iterator));
     MOCK_CONST_METHOD1(waste, void (list_iterator));
     MOCK_CONST_METHOD0(disable, void ());
