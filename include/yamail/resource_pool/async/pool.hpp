@@ -65,24 +65,17 @@ private:
 
     void get(const callback& call, strategy use_strategy,
             time_duration wait_duration) {
-        _impl->get(bind(make_handle, _impl, call, use_strategy, _1, _2),
-            wait_duration);
+        const handle_ptr h(new handle(_impl, use_strategy, list_iterator()));
+        _impl->get(bind(fill_handle, call, h, _1, _2), wait_duration);
     }
 
-    static void make_handle(pool_impl_ptr impl, const callback& call,
-            strategy use_strategy, const boost::system::error_code& ec,
-            list_iterator res) {
+    static void fill_handle(const callback& call, const handle_ptr& h,
+            const boost::system::error_code& ec, list_iterator res) {
         if (ec) {
             return call(ec, handle_ptr());
         }
-        handle_ptr res_handle;
-        boost::system::error_code error;
-        try {
-            res_handle.reset(new handle(impl, use_strategy, res));
-        } catch (const std::exception&) {
-            error = make_error_code(error::exception);
-        }
-        call(error, res_handle);
+        h->_resource_it = res;
+        call(ec, h);
     }
 };
 

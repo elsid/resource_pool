@@ -34,6 +34,8 @@ TEST_F(async_resource_pool, get_auto_recylce_handle_should_make_one_available_re
     pool.get_auto_recycle(check_no_error());
     on_get();
 
+    on_get = boost::function<void ()>();
+
     EXPECT_EQ(pool.available(), 1);
 }
 
@@ -44,6 +46,8 @@ TEST_F(async_resource_pool, get_auto_waste_handle_make_no_available_resources) {
 
     pool.get_auto_waste(check_no_error());
     on_get();
+
+    on_get = boost::function<void ()>();
 
     EXPECT_EQ(pool.available(), 0);
 }

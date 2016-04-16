@@ -22,7 +22,6 @@ struct zero_pool_capacity : std::logic_error {
 enum code {
     get_resource_timeout = 1,
     request_queue_overflow,
-    exception,
     disabled
 };
 
@@ -38,8 +37,6 @@ public:
                 return "get resource timeout";
             case request_queue_overflow:
                 return "request queue overflow";
-            case exception:
-                return "exception";
             case disabled:
                 return "resource pool is disabled";
             default:
