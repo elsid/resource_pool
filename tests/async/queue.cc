@@ -21,14 +21,13 @@ typedef boost::shared_ptr<mocked_callback> mocked_callback_ptr;
 
 struct async_request_queue : Test {
     mocked_io_service ios;
-    boost::shared_ptr<mocked_timer> timer;
     mocked_callback_ptr expired;
     boost::function<void (error_code)> on_async_wait;
 
-    async_request_queue() : timer(new mocked_timer()), expired(make_shared<mocked_callback>()) {}
+    async_request_queue() : expired(make_shared<mocked_callback>()) {}
 
     request_queue_ptr make_queue(std::size_t capacity) {
-        return make_shared<request_queue>(ref(ios), timer, capacity);
+        return make_shared<request_queue>(ref(ios), capacity);
     }
 };
 
@@ -51,12 +50,12 @@ TEST_F(async_request_queue, push_then_timeout_request_queue_should_be_empty) {
 
     InSequence s;
 
-    EXPECT_CALL(*timer, expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
-    EXPECT_CALL(*timer, async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
+    EXPECT_CALL(queue->timer(), expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
+    EXPECT_CALL(queue->timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
 
     ASSERT_TRUE(queue->push(request(), callback(expired), seconds(0)));
 
-    EXPECT_CALL(*timer, expires_at()).WillOnce(Return(expire_time));
+    EXPECT_CALL(queue->timer(), expires_at()).WillOnce(Return(expire_time));
     EXPECT_CALL(ios, post(_)).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(*expired, call()).WillOnce(Return());
 
@@ -70,8 +69,8 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
 
     InSequence s;
 
-    EXPECT_CALL(*timer, expires_at(_)).WillOnce(Return());
-    EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
+    EXPECT_CALL(queue->timer(), expires_at(_)).WillOnce(Return());
+    EXPECT_CALL(queue->timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
     EXPECT_CALL(*expired, call()).Times(0);
 
     EXPECT_TRUE(queue->push(request(), callback(expired), seconds(1)));

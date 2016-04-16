@@ -31,13 +31,12 @@ public:
     typedef typename callback_queue::time_duration time_duration;
 
     pool_impl(io_service_t& io_service,
-              const boost::shared_ptr<timer_t>& timer,
               std::size_t capacity,
               std::size_t queue_capacity)
             : _io_service(io_service),
               _capacity(assert_capacity(capacity)),
               _callbacks(boost::make_shared<callback_queue>(
-                boost::ref(io_service), timer, queue_capacity)),
+                boost::ref(io_service), queue_capacity)),
               _available_size(0),
               _used_size(0),
               _disabled(false)
@@ -50,6 +49,8 @@ public:
     std::size_t queue_capacity() const { return _callbacks->capacity(); }
     std::size_t queue_size() const { return _callbacks->size(); }
     bool queue_empty() const { return _callbacks->empty(); }
+    const timer_t& queue_timer() const { return _callbacks->timer(); }
+
     void async_call(const boost::function<void ()>& call) {
         _io_service.post(bind(call_and_abort_on_catch_exception, call));
     }

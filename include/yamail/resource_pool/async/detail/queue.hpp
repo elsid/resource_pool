@@ -34,10 +34,8 @@ public:
     typedef clock::duration time_duration;
     typedef clock::time_point time_point;
 
-    queue(io_service_t& io_service,
-          const boost::shared_ptr<timer_t>& timer,
-          std::size_t capacity)
-            : _io_service(io_service), _timer(timer), _capacity(capacity) {}
+    queue(io_service_t& io_service, std::size_t capacity)
+            : _io_service(io_service), _capacity(capacity), _timer(io_service) {}
 
     boost::shared_ptr<queue> shared_from_this() {
         return boost::enable_shared_from_this<queue>::shared_from_this();
@@ -46,6 +44,7 @@ public:
     std::size_t capacity() const { return _capacity; }
     std::size_t size() const;
     bool empty() const;
+    const timer_t& timer() const { return _timer; }
 
     bool push(const value_type& req, const callback& req_expired,
               time_duration wait_duration);
@@ -77,8 +76,8 @@ private:
     typename expiring_request::list _ordered_requests;
     typename expiring_request::multimap _expires_at_requests;
     io_service_t& _io_service;
-    boost::shared_ptr<timer_t> _timer;
     const std::size_t _capacity;
+    timer_t _timer;
 
     bool fit_capacity() const { return _expires_at_requests.size() < _capacity; }
     void cancel(const boost::system::error_code& ec);
@@ -136,7 +135,7 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
     }
     const lock_guard lock(_mutex);
     const request_multimap_it end = _expires_at_requests.upper_bound(
-        _timer->expires_at());
+        _timer.expires_at());
     std::for_each(_expires_at_requests.begin(), end,
                   bind(&queue::cancel_one, this, _1));
     _expires_at_requests.erase(_expires_at_requests.begin(), end);
@@ -156,8 +155,8 @@ void queue<V, I, T>::update_timer() {
         return;
     }
     const time_point& eariest_expires_at = _expires_at_requests.begin()->first;
-    _timer->expires_at(eariest_expires_at);
-    _timer->async_wait(bind(&queue::cancel, shared_from_this(), _1));
+    _timer.expires_at(eariest_expires_at);
+    _timer.async_wait(bind(&queue::cancel, shared_from_this(), _1));
 }
 
 } // namespace detail

@@ -32,17 +32,6 @@ public:
          std::size_t queue_capacity)
             : _impl(boost::make_shared<pool_impl>(
                 boost::ref(io_service),
-                boost::make_shared<timer_t>(boost::ref(io_service)),
-                capacity,
-                queue_capacity)) {}
-
-    pool(io_service_t& io_service,
-         const boost::shared_ptr<timer_t>& timer,
-         std::size_t capacity,
-         std::size_t queue_capacity)
-            : _impl(boost::make_shared<pool_impl>(
-                boost::ref(io_service),
-                timer,
                 capacity,
                 queue_capacity)) {}
 

@@ -15,10 +15,7 @@ using boost::system::error_code;
 
 struct async_resource_pool : Test {
     mocked_io_service ios;
-    boost::shared_ptr<mocked_timer> timer;
     boost::function<void ()> on_get;
-
-    async_resource_pool() : timer(new mocked_timer()) {}
 };
 
 class check_no_error {
@@ -30,7 +27,7 @@ public:
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_should_make_one_available_resource) {
-    resource_pool pool(ios, timer, 1, 0);
+    resource_pool pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 
@@ -41,7 +38,7 @@ TEST_F(async_resource_pool, get_auto_recylce_handle_should_make_one_available_re
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_make_no_available_resources) {
-    resource_pool pool(ios, timer, 1, 0);
+    resource_pool pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 
@@ -65,7 +62,7 @@ private:
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_recycle_should_make_one_available_resource) {
-    resource_pool pool(ios, timer, 1, 0);
+    resource_pool pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 
@@ -76,7 +73,7 @@ TEST_F(async_resource_pool, get_auto_recylce_handle_and_recycle_should_make_one_
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_make_one_available_resource) {
-    resource_pool pool(ios, timer, 1, 0);
+    resource_pool pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 
@@ -100,7 +97,7 @@ private:
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_waste_should_make_no_available_resources) {
-    resource_pool pool(ios, timer, 1, 0);
+    resource_pool pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 
@@ -111,7 +108,7 @@ TEST_F(async_resource_pool, get_auto_recylce_handle_and_waste_should_make_no_ava
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_and_waste_should_make_no_available_resources) {
-    resource_pool pool(ios, timer, 1, 0);
+    resource_pool pool(ios, 1, 0);
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_get));
 

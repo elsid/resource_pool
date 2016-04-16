@@ -34,23 +34,18 @@ typedef boost::shared_ptr<mocked_callback> mocked_callback_ptr;
 
 struct async_resource_pool_impl : Test {
     mocked_io_service ios;
-    boost::shared_ptr<mocked_timer> timer;
 
     boost::function<void ()> on_get;
     boost::function<void ()> on_first_get;
     boost::function<void ()> on_second_get;
 
-    async_resource_pool_impl() : timer(new mocked_timer()) {}
-
-    resource_pool_impl_ptr make_pool(std::size_t capacity,
-                                     std::size_t queue_capacity) {
-        return make_shared<resource_pool_impl>(ref(ios), timer,
-                                               capacity, queue_capacity);
+    resource_pool_impl_ptr make_pool(std::size_t capacity, std::size_t queue_capacity) {
+        return make_shared<resource_pool_impl>(ref(ios), capacity, queue_capacity);
     }
 };
 
 TEST_F(async_resource_pool_impl, create_with_zero_capacity_should_throw_exception) {
-    EXPECT_THROW(resource_pool_impl(ios, timer, 0, 0), error::zero_pool_capacity);
+    EXPECT_THROW(resource_pool_impl(ios, 0, 0), error::zero_pool_capacity);
 }
 
 class callback {
@@ -138,8 +133,8 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(*timer, expires_at(_)).WillOnce(Return());
-    EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
+    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(Return());
+    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(Return());
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
 
     pool->get(recycle_resource(pool));
@@ -156,8 +151,8 @@ TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) 
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(*timer, expires_at(_)).WillOnce(Return());
-    EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
+    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(Return());
+    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(Return());
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
 
     pool->get(waste_resource(pool));
@@ -195,14 +190,14 @@ TEST_F(async_resource_pool_impl, get_with_queue_use_and_timer_timeout_should_ret
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(*timer, expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
-    EXPECT_CALL(*timer, async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
+    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
+    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
 
     pool->get(check_no_error());
     on_first_get();
     pool->get(check_error(error::get_resource_timeout), seconds(1));
 
-    EXPECT_CALL(*timer, expires_at()).WillOnce(Return(expire_time));
+    EXPECT_CALL(pool->queue_timer(), expires_at()).WillOnce(Return(expire_time));
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
 
     on_async_wait(error_code());
@@ -215,8 +210,8 @@ TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_shou
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(*timer, expires_at(_)).Times(0);
-    EXPECT_CALL(*timer, async_wait(_)).Times(0);
+    EXPECT_CALL(pool->queue_timer(), expires_at(_)).Times(0);
+    EXPECT_CALL(pool->queue_timer(), async_wait(_)).Times(0);
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
 
     pool->get(recycle_resource(pool));
@@ -245,8 +240,8 @@ TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
     InSequence s;
 
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(*timer, expires_at(_)).WillOnce(Return());
-    EXPECT_CALL(*timer, async_wait(_)).WillOnce(Return());
+    EXPECT_CALL(pool->queue_timer(), expires_at(_)).WillOnce(Return());
+    EXPECT_CALL(pool->queue_timer(), async_wait(_)).WillOnce(Return());
     EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
 
     pool->get(recycle_resource(pool));
