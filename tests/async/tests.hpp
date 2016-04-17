@@ -30,15 +30,6 @@ struct mocked_io_service {
     MOCK_METHOD1(post, void (boost::function<void ()>));
 };
 
-struct mocked_timer {
-    mocked_timer() {}
-    mocked_timer(mocked_io_service&) {}
-
-    MOCK_CONST_METHOD0(expires_at, time_point ());
-    MOCK_CONST_METHOD1(expires_at, void (const time_point&));
-    MOCK_CONST_METHOD1(async_wait, void (boost::function<void (boost::system::error_code)>));
-};
-
 } // namespace tests
 
 #endif // YAMAIL_RESOURCE_POOL_TEST_ASYNC_TESTS_HPP
