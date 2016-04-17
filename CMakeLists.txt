@@ -13,3 +13,4 @@ install(DIRECTORY include/ DESTINATION include COMPONENT development)
 enable_testing()
 
 add_subdirectory(tests)
+add_subdirectory(examples)
