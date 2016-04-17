@@ -18,7 +18,11 @@ public:
     typedef typename pool_impl::pointer pointer;
     typedef void (handle::*strategy)();
 
-    friend Pool;
+    struct pool_type {
+        typedef pool type;
+    };
+
+    friend class pool_type::type;
 
     virtual ~handle();
 
