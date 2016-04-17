@@ -34,7 +34,7 @@ add_executable(resource_pool_test
     sync/pool_impl.cc
     async/pool.cc
     async/pool_impl.cc
-    async/request_queue.cc
+    async/queue.cc
 )
 
 add_dependencies(resource_pool_test googletest)
