@@ -16,10 +16,12 @@ namespace resource_pool {
 namespace sync {
 namespace detail {
 
-template <class T>
+template <class Value,
+          class ConditionVariable = boost::condition_variable>
 class pool_impl : boost::noncopyable {
 public:
-    typedef T value_type;
+    typedef Value value_type;
+    typedef ConditionVariable condition_variable;
     typedef boost::shared_ptr<value_type> pointer;
     typedef boost::chrono::system_clock::duration time_duration;
     typedef boost::chrono::seconds seconds;
@@ -39,6 +41,8 @@ public:
     std::size_t available() const;
     std::size_t used() const;
 
+    const condition_variable& has_available_cv() const { return _has_available; }
+
     get_result get(time_duration wait_duration = seconds(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
@@ -54,7 +58,7 @@ private:
     list _available;
     list _used;
     const std::size_t _capacity;
-    boost::condition_variable _has_available;
+    condition_variable _has_available;
     std::size_t _available_size;
     std::size_t _used_size;
     bool _disabled;
@@ -65,26 +69,26 @@ private:
     bool wait_for(unique_lock& lock, time_duration wait_duration);
 };
 
-template <class T>
-std::size_t pool_impl<T>::size() const {
+template <class T, class C>
+std::size_t pool_impl<T, C>::size() const {
     const lock_guard lock(_mutex);
     return size_unsafe();
 }
 
-template <class T>
-std::size_t pool_impl<T>::available() const {
+template <class T, class C>
+std::size_t pool_impl<T, C>::available() const {
     const lock_guard lock(_mutex);
     return _available_size;
 }
 
-template <class T>
-std::size_t pool_impl<T>::used() const {
+template <class T, class C>
+std::size_t pool_impl<T, C>::used() const {
     const lock_guard lock(_mutex);
     return _used_size;
 }
 
-template <class T>
-void pool_impl<T>::recycle(list_iterator res_it) {
+template <class T, class C>
+void pool_impl<T, C>::recycle(list_iterator res_it) {
     const lock_guard lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
     --_used_size;
@@ -92,23 +96,23 @@ void pool_impl<T>::recycle(list_iterator res_it) {
     _has_available.notify_one();
 }
 
-template <class T>
-void pool_impl<T>::waste(list_iterator res_it) {
+template <class T, class C>
+void pool_impl<T, C>::waste(list_iterator res_it) {
     const lock_guard lock(_mutex);
     _used.erase(res_it);
     --_used_size;
     _has_available.notify_one();
 }
 
-template <class T>
-void pool_impl<T>::disable() {
+template <class T, class C>
+void pool_impl<T, C>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     _has_available.notify_all();
 }
 
-template <class T>
-typename pool_impl<T>::get_result pool_impl<T>::get(time_duration wait_duration) {
+template <class T, class C>
+typename pool_impl<T, C>::get_result pool_impl<T, C>::get(time_duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         return std::make_pair(make_error_code(error::disabled), list_iterator());
@@ -132,14 +136,14 @@ typename pool_impl<T>::get_result pool_impl<T>::get(time_duration wait_duration)
     return std::make_pair(boost::system::error_code(), res_it);
 }
 
-template <class T>
-bool pool_impl<T>::wait_for(unique_lock& lock, time_duration wait_duration) {
+template <class T, class C>
+bool pool_impl<T, C>::wait_for(unique_lock& lock, time_duration wait_duration) {
     return _has_available.wait_for(lock, wait_duration,
         boost::bind(&pool_impl::has_available, this));
 }
 
-template <class T>
-std::size_t pool_impl<T>::assert_capacity(std::size_t value) {
+template <class T, class C>
+std::size_t pool_impl<T, C>::assert_capacity(std::size_t value) {
     if (value == 0) {
         throw error::zero_pool_capacity();
     }
