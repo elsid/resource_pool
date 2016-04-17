@@ -9,7 +9,6 @@ using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::async::detail;
 
 struct mocked_timer {
-    mocked_timer() {}
     mocked_timer(mocked_io_service&) {}
 
     MOCK_CONST_METHOD0(expires_at, time_point ());
