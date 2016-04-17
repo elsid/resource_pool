@@ -1,5 +1,6 @@
 #include <boost/make_shared.hpp>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <yamail/resource_pool.hpp>
 
 namespace {
@@ -12,170 +13,170 @@ using boost::make_shared;
 
 struct resource {};
 
-typedef boost::shared_ptr<resource> resource_ptr;
-typedef pool<resource> resource_pool;
+struct mocked_pool_impl {
+    typedef resource value_type;
+    typedef boost::shared_ptr<value_type> pointer;
+    typedef boost::chrono::system_clock::duration time_duration;
+    typedef boost::chrono::seconds seconds;
+    typedef std::list<pointer> list;
+    typedef list::iterator list_iterator;
+    typedef std::pair<boost::system::error_code, list_iterator> get_result;
+
+    mocked_pool_impl(std::size_t) {}
+
+    MOCK_CONST_METHOD0(capacity, std::size_t ());
+    MOCK_CONST_METHOD0(size, std::size_t ());
+    MOCK_CONST_METHOD0(available, std::size_t ());
+    MOCK_CONST_METHOD0(used, std::size_t ());
+    MOCK_CONST_METHOD1(get, get_result (time_duration));
+    MOCK_CONST_METHOD1(recycle, void (list_iterator));
+    MOCK_CONST_METHOD1(waste, void (list_iterator));
+    MOCK_CONST_METHOD0(disable, void ());
+};
+
+typedef pool<resource, mocked_pool_impl> resource_pool;
 typedef resource_pool::handle_ptr resource_handle_ptr;
 
+typedef boost::shared_ptr<resource> resource_ptr;
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
-struct sync_resource_pool : Test {};
+struct sync_resource_pool : Test {
+    std::list<boost::shared_ptr<resource> > resources;
+    mocked_pool_impl::list_iterator resource_iterator;
 
-TEST(sync_resource_pool, create_not_empty_should_succeed) {
-    resource_pool pool(42);
-}
+    sync_resource_pool()
+        : resources(1), resource_iterator(resources.begin()) {}
+};
 
-TEST(sync_resource_pool, check_metrics_for_empty) {
+TEST_F(sync_resource_pool, call_capacity_should_call_impl_capacity) {
     resource_pool pool(1);
-    EXPECT_EQ(pool.capacity(), 1ul);
-    EXPECT_EQ(pool.size(), 0ul);
-    EXPECT_EQ(pool.used(), 0ul);
-    EXPECT_EQ(pool.available(), 0ul);
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), capacity()).WillOnce(Return(0));
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    pool.capacity();
 }
 
-TEST(sync_resource_pool, check_capacity) {
-    const std::size_t capacity = 42;
-    resource_pool pool(capacity);
-    EXPECT_EQ(pool.capacity(), capacity);
-}
-
-TEST(sync_resource_pool, get_auto_recylce_handle_should_succeed) {
+TEST_F(sync_resource_pool, call_size_should_call_impl_size) {
     resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_recycle();
-    EXPECT_TRUE(handle->empty());
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), size()).WillOnce(Return(0));
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    pool.size();
+}
+
+TEST_F(sync_resource_pool, call_available_should_call_impl_available) {
+    resource_pool pool(1);
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), available()).WillOnce(Return(0));
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    pool.available();
+}
+
+TEST_F(sync_resource_pool, call_used_should_call_impl_used) {
+    resource_pool pool(1);
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), used()).WillOnce(Return(0));
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    pool.used();
+}
+
+TEST_F(sync_resource_pool, get_auto_recylce_handle_should_call_recycle) {
+    resource_pool pool(1);
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), get(_)).WillOnce(Return(mocked_pool_impl::get_result(boost::system::error_code(), resource_iterator)));
+    EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    const resource_handle_ptr handle = pool.get_auto_recycle();
+
+    EXPECT_TRUE(handle);
     EXPECT_EQ(handle->error(), boost::system::error_code());
-}
-
-TEST(sync_resource_pool, get_auto_recylce_handle_and_reset_should_succeed) {
-    resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_recycle();
+    EXPECT_FALSE(handle->unusable());
     EXPECT_TRUE(handle->empty());
-    EXPECT_EQ(handle->error(), boost::system::error_code());
-    handle->reset(make_resource());
-    EXPECT_FALSE(handle->empty());
 }
 
-TEST(sync_resource_pool, get_auto_waste_handle_should_succeed) {
+TEST_F(sync_resource_pool, get_auto_waste_handle_should_call_waste) {
     resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_waste();
-    EXPECT_TRUE(handle->empty());
-    EXPECT_EQ(handle->error(), boost::system::error_code());
-    handle->reset(make_resource());
-    EXPECT_FALSE(handle->empty());
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), get(_)).WillOnce(Return(mocked_pool_impl::get_result(boost::system::error_code(), resource_iterator)));
+    EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    const resource_handle_ptr handle = pool.get_auto_waste();
+
+    EXPECT_TRUE(handle);
 }
 
-TEST(sync_resource_pool, check_metrics_for_not_empty) {
-    const std::size_t capacity = 42;
-    resource_pool pool(capacity);
-    EXPECT_EQ(pool.size(), 0ul);
-    EXPECT_EQ(pool.used(), 0ul);
-    EXPECT_EQ(pool.available(), 0ul);
-    {
-        resource_handle_ptr handle = pool.get_auto_recycle();
-        EXPECT_FALSE(handle->unusable());
-        EXPECT_TRUE(handle->empty());
-        EXPECT_EQ(handle->error(), boost::system::error_code());
-        EXPECT_EQ(pool.size(), 1ul);
-        EXPECT_EQ(pool.used(), 1ul);
-        EXPECT_EQ(pool.available(), 0ul);
-        handle->reset(make_resource());
-        EXPECT_FALSE(handle->unusable());
-        EXPECT_FALSE(handle->empty());
-        EXPECT_EQ(pool.size(), 1ul);
-        EXPECT_EQ(pool.used(), 1ul);
-        EXPECT_EQ(pool.available(), 0ul);
-    }
-    EXPECT_EQ(pool.size(), 1ul);
-    EXPECT_EQ(pool.used(), 0ul);
-    EXPECT_EQ(pool.available(), 1ul);
-    {
-        resource_handle_ptr handle1 = pool.get_auto_recycle();
-        resource_handle_ptr handle2 = pool.get_auto_recycle();
-        EXPECT_EQ(pool.size(), 2ul);
-        EXPECT_EQ(pool.used(), 2ul);
-        EXPECT_EQ(pool.available(), 0ul);
-        handle2->reset(make_resource());
-        EXPECT_FALSE(handle2->unusable());
-        EXPECT_FALSE(handle2->empty());
-        EXPECT_EQ(pool.size(), 2ul);
-        EXPECT_EQ(pool.used(), 2ul);
-        EXPECT_EQ(pool.available(), 0ul);
-    }
-    EXPECT_EQ(pool.size(), 2ul);
-    EXPECT_EQ(pool.used(), 0ul);
-    EXPECT_EQ(pool.available(), 2ul);
-    {
-        resource_handle_ptr handle = pool.get_auto_waste();
-        EXPECT_EQ(pool.size(), 2ul);
-        EXPECT_EQ(pool.used(), 1ul);
-        EXPECT_EQ(pool.available(), 1ul);
-    }
-    EXPECT_EQ(pool.size(), 1ul);
-    EXPECT_EQ(pool.used(), 0ul);
-    EXPECT_EQ(pool.available(), 1ul);
-}
-
-TEST(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_succeed) {
+TEST_F(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recycle_once) {
     resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_recycle();
-    handle->reset(make_resource());
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), get(_)).WillOnce(Return(mocked_pool_impl::get_result(boost::system::error_code(), resource_iterator)));
+    EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    const resource_handle_ptr handle = pool.get_auto_recycle();
+
     handle->recycle();
 }
 
-TEST(sync_resource_pool, get_auto_recylce_handle_and_waste_should_succeed) {
+TEST_F(sync_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_once) {
     resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_recycle();
-    handle->reset(make_resource());
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), get(_)).WillOnce(Return(mocked_pool_impl::get_result(boost::system::error_code(), resource_iterator)));
+    EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    const resource_handle_ptr handle = pool.get_auto_recycle();
+
     handle->waste();
 }
 
-TEST(sync_resource_pool, get_auto_waste_handle_and_recycle_should_succeed) {
+TEST_F(sync_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycle_once) {
     resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_waste();
-    handle->reset(make_resource());
-    EXPECT_FALSE(handle->empty());
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), get(_)).WillOnce(Return(mocked_pool_impl::get_result(boost::system::error_code(), resource_iterator)));
+    EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    const resource_handle_ptr handle = pool.get_auto_waste();
+
     handle->recycle();
-    EXPECT_TRUE(handle->empty());
 }
 
-TEST(sync_resource_pool, get_auto_waste_handle_and_waste_should_succeed) {
+TEST_F(sync_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_once) {
     resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_waste();
-    handle->reset(make_resource());
-    EXPECT_FALSE(handle->empty());
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), get(_)).WillOnce(Return(mocked_pool_impl::get_result(boost::system::error_code(), resource_iterator)));
+    EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    const resource_handle_ptr handle = pool.get_auto_waste();
+
     handle->waste();
-    EXPECT_TRUE(handle->empty());
-}
-
-TEST(sync_resource_pool, get_auto_recycle_handle_and_get_recycled_should_throw_exception) {
-    resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_recycle();
-    handle->reset(make_resource());
-    handle->recycle();
-    EXPECT_THROW(handle->get(), error::empty_handle);
-}
-
-TEST(sync_resource_pool, get_auto_recycle_handle_and_recycle_recycled_should_throw_exception) {
-    resource_pool pool(1);
-    resource_handle_ptr handle = pool.get_auto_recycle();
-    handle->reset(make_resource());
-    handle->recycle();
-    EXPECT_THROW(handle->recycle(), error::unusable_handle);
-}
-
-TEST(sync_resource_pool, get_from_pool_with_no_available_and_out_of_capacity_should_return_error) {
-    resource_pool pool(1);
-    resource_handle_ptr first_handle = pool.get_auto_recycle();
-    resource_handle_ptr second_handle = pool.get_auto_recycle();
-    EXPECT_EQ(second_handle->error(), make_error_code(error::get_resource_timeout));
-}
-
-TEST(sync_resource_pool, check_pool_lifetime) {
-    resource_handle_ptr handle;
-    {
-        resource_pool pool(1);
-        handle = pool.get_auto_recycle();
-        handle->reset(make_resource());
-    }
 }
 
 }

@@ -16,8 +16,7 @@ namespace resource_pool {
 namespace sync {
 namespace detail {
 
-template <class Value,
-          class ConditionVariable = boost::condition_variable>
+template <class Value, class ConditionVariable>
 class pool_impl : boost::noncopyable {
 public:
     typedef Value value_type;

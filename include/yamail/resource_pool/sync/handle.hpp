@@ -8,16 +8,17 @@ namespace yamail {
 namespace resource_pool {
 namespace sync {
 
-template <class T>
+template <class T, class I>
 class pool;
 
-template <class T>
-class handle : public resource_pool::handle<sync::pool<T> > {
+template <class Value, class Impl>
+class handle : public resource_pool::handle<sync::pool<Value, Impl> > {
 public:
-    typedef T value_type;
-    typedef resource_pool::handle<sync::pool<value_type> > base;
+    typedef Value value_type;
+    typedef Impl impl_type;
+    typedef resource_pool::handle<sync::pool<value_type, impl_type> > base;
 
-    friend class sync::pool<value_type>;
+    friend class sync::pool<value_type, impl_type>;
 
     const boost::system::error_code& error() const { return _error; }
 

@@ -11,14 +11,15 @@ namespace yamail {
 namespace resource_pool {
 namespace sync {
 
-template <class T>
+template <class Value,
+          class Impl = detail::pool_impl<Value, boost::condition_variable> >
 class pool {
 public:
-    typedef T value_type;
-    typedef detail::pool_impl<value_type> pool_impl;
+    typedef Value value_type;
+    typedef Impl pool_impl;
     typedef typename pool_impl::time_duration time_duration;
     typedef typename pool_impl::seconds seconds;
-    typedef sync::handle<value_type> handle;
+    typedef sync::handle<value_type, pool_impl> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
     pool(std::size_t capacity)
@@ -31,6 +32,8 @@ public:
     std::size_t size() const { return _impl->size(); }
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
+
+    const pool_impl& impl() const { return *_impl; }
 
     handle_ptr get_auto_waste(time_duration wait_duration = seconds(0)) {
         return get_handle(&handle::waste, wait_duration);
