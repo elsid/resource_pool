@@ -40,7 +40,7 @@ public:
     std::size_t available() const;
     std::size_t used() const;
 
-    const condition_variable& has_available_cv() const { return _has_available; }
+    const condition_variable& has_capacity() const { return _has_capacity; }
 
     get_result get(time_duration wait_duration = seconds(0));
     void recycle(list_iterator res_it);
@@ -57,14 +57,15 @@ private:
     list _available;
     list _used;
     const std::size_t _capacity;
-    condition_variable _has_available;
+    condition_variable _has_capacity;
     std::size_t _available_size;
     std::size_t _used_size;
     bool _disabled;
 
     std::size_t size_unsafe() const { return _available_size + _used_size; }
     bool fit_capacity() const { return size_unsafe() < _capacity; }
-    bool has_available() const { return !_available.empty(); }
+    list_iterator alloc_resource(unique_lock& lock);
+    list_iterator reserve_resource(unique_lock& lock);
     bool wait_for(unique_lock& lock, time_duration wait_duration);
 };
 
@@ -92,7 +93,7 @@ void pool_impl<T, C>::recycle(list_iterator res_it) {
     _used.splice(_available.end(), _available, res_it);
     --_used_size;
     ++_available_size;
-    _has_available.notify_one();
+    _has_capacity.notify_one();
 }
 
 template <class T, class C>
@@ -100,45 +101,57 @@ void pool_impl<T, C>::waste(list_iterator res_it) {
     const lock_guard lock(_mutex);
     _used.erase(res_it);
     --_used_size;
-    _has_available.notify_one();
+    _has_capacity.notify_one();
 }
 
 template <class T, class C>
 void pool_impl<T, C>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
-    _has_available.notify_all();
+    _has_capacity.notify_all();
 }
 
 template <class T, class C>
 typename pool_impl<T, C>::get_result pool_impl<T, C>::get(time_duration wait_duration) {
     unique_lock lock(_mutex);
-    if (_disabled) {
-        return std::make_pair(make_error_code(error::disabled), list_iterator());
+    while (true) {
+        if (_disabled) {
+            lock.unlock();
+            return std::make_pair(make_error_code(error::disabled), list_iterator());
+        } else if (!_available.empty()) {
+            return std::make_pair(boost::system::error_code(), alloc_resource(lock));
+        } else if (fit_capacity()) {
+            return std::make_pair(boost::system::error_code(), reserve_resource(lock));
+        }
+        if (!wait_for(lock, wait_duration)) {
+            lock.unlock();
+            return std::make_pair(make_error_code(error::get_resource_timeout),
+                                  list_iterator());
+        }
     }
-    if (_available_size == 0 && fit_capacity()) {
-        const list_iterator res_it = _used.insert(_used.end(), pointer());
-        ++_used_size;
-        return std::make_pair(boost::system::error_code(), res_it);
-    }
-    if (!wait_for(lock, wait_duration)) {
-        return std::make_pair(make_error_code(error::get_resource_timeout),
-            list_iterator());
-    }
-    if (_disabled) {
-        return std::make_pair(make_error_code(error::disabled), list_iterator());
-    }
+}
+
+template <class T, class C>
+typename pool_impl<T, C>::list_iterator pool_impl<T, C>::alloc_resource(unique_lock& lock) {
     const list_iterator res_it = _available.begin();
     _available.splice(_used.end(), _used, res_it);
     --_available_size;
     ++_used_size;
-    return std::make_pair(boost::system::error_code(), res_it);
+    lock.unlock();
+    return res_it;
+}
+
+template <class T, class C>
+typename pool_impl<T, C>::list_iterator pool_impl<T, C>::reserve_resource(unique_lock& lock) {
+    const list_iterator res_it = _used.insert(_used.end(), pointer());
+    ++_used_size;
+    lock.unlock();
+    return res_it;
 }
 
 template <class T, class C>
 bool pool_impl<T, C>::wait_for(unique_lock& lock, time_duration wait_duration) {
-    return _has_available.wait_for(lock, wait_duration,
-        boost::bind(&pool_impl::has_available, this));
+    return _has_capacity.wait_for(lock, wait_duration) == boost::cv_status::no_timeout;
 }
 
 template <class T, class C>
