@@ -16,7 +16,8 @@ struct default_pool_queue {
     typedef Value value_type;
     typedef boost::asio::io_service io_service_t;
     typedef boost::shared_ptr<value_type> pointer;
-    typedef std::list<pointer> list;
+    typedef resource_pool::detail::idle<pointer> idle;
+    typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef detail::queue<callback, io_service_t, time_traits::timer> type;
@@ -49,11 +50,13 @@ public:
     pool(io_service_t& io_service,
          std::size_t capacity,
          std::size_t queue_capacity,
+         time_traits::duration idle_timeout = time_traits::duration::max(),
          const on_catch_handler_exception_type& on_catch_handler_exception = detail::abort())
             : _impl(boost::make_shared<pool_impl>(
                 boost::ref(io_service),
                 capacity,
                 queue_capacity,
+                idle_timeout,
                 on_catch_handler_exception)) {}
 
     ~pool() { _impl->disable(); }

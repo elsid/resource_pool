@@ -10,6 +10,7 @@
 #include <boost/ref.hpp>
 
 #include <yamail/resource_pool/time_traits.hpp>
+#include <yamail/resource_pool/detail/idle.hpp>
 
 namespace tests {
 

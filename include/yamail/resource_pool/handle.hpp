@@ -23,7 +23,7 @@ public:
     virtual ~handle();
 
     bool unusable() const { return _resource_it == list_iterator(); }
-    bool empty() const { return unusable() || !*_resource_it; }
+    bool empty() const { return unusable() || !_resource_it->value; }
     value_type& get();
     const value_type& get() const;
     value_type *operator ->() { return &get(); }
@@ -64,13 +64,13 @@ handle<P>::~handle() {
 template <class P>
 typename handle<P>::value_type& handle<P>::get() {
     assert_not_empty();
-    return **_resource_it;
+    return *_resource_it->value;
 }
 
 template <class P>
 const typename handle<P>::value_type& handle<P>::get() const {
     assert_not_empty();
-    return **_resource_it;
+    return *_resource_it->value;
 }
 
 template <class P>
@@ -90,7 +90,7 @@ void handle<P>::waste() {
 template <class P>
 void handle<P>::reset(const pointer &res) {
     assert_not_unusable();
-    *_resource_it = res;
+    _resource_it->value = res;
 }
 
 template <class P>

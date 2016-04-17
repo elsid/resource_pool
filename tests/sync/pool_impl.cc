@@ -29,38 +29,38 @@ const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 struct sync_resource_pool_impl : Test {};
 
 TEST(sync_resource_pool_impl, create_with_zero_capacity_should_throw_exception) {
-    EXPECT_THROW(resource_pool_impl(0), error::zero_pool_capacity);
+    EXPECT_THROW(resource_pool_impl(0, time_traits::duration::max()), error::zero_pool_capacity);
 }
 
 TEST(sync_resource_pool_impl, create_with_non_zero_capacity_then_check) {
-    resource_pool_impl pool(1);
+    resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.capacity(), 1);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_size_should_be_0) {
-    resource_pool_impl pool(1);
+    resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.size(), 0);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_available_should_be_0) {
-    resource_pool_impl pool(1);
+    resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.available(), 0);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_used_should_be_0) {
-    resource_pool_impl pool(1);
+    resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.used(), 0);
 }
 
 TEST(sync_resource_pool_impl, get_one_should_succeed) {
-    resource_pool_impl pool_impl(1);
+    resource_pool_impl pool_impl(1, time_traits::duration::max());
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
     EXPECT_NE(res.second, resource_ptr_list_iterator());
 }
 
 TEST(sync_resource_pool_impl, get_one_and_recycle_should_succeed) {
-    resource_pool_impl pool_impl(1);
+    resource_pool_impl pool_impl(1, time_traits::duration::max());
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
     EXPECT_NE(res.second, resource_ptr_list_iterator());
@@ -69,7 +69,7 @@ TEST(sync_resource_pool_impl, get_one_and_recycle_should_succeed) {
 }
 
 TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
-    resource_pool_impl pool_impl(1);
+    resource_pool_impl pool_impl(1, time_traits::duration::max());
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
     EXPECT_NE(res.second, resource_ptr_list_iterator());
@@ -78,14 +78,14 @@ TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
 }
 
 TEST(sync_resource_pool_impl, get_more_than_capacity_returns_error) {
-    resource_pool_impl pool_impl(1);
+    resource_pool_impl pool_impl(1, time_traits::duration::max());
     pool_impl.get();
     EXPECT_CALL(pool_impl.has_capacity(), wait_for(_, _)).WillOnce(Return(boost::cv_status::timeout));
     EXPECT_EQ(pool_impl.get().first, make_error_code(error::get_resource_timeout));
 }
 
 TEST(sync_resource_pool_impl, get_after_disable_capacity_returns_error) {
-    resource_pool_impl pool_impl(1);
+    resource_pool_impl pool_impl(1, time_traits::duration::max());
     EXPECT_CALL(pool_impl.has_capacity(), notify_all()).WillOnce(Return());
     pool_impl.disable();
     EXPECT_EQ(pool_impl.get().first, make_error_code(error::disabled));
@@ -115,7 +115,7 @@ struct recycle_resource : handle_resource {
 };
 
 TEST(sync_resource_pool_impl, get_from_pool_and_wait_then_after_recycle_should_allocate) {
-    resource_pool_impl pool(1);
+    resource_pool_impl pool(1, time_traits::duration::max());
     const get_result& first_res = pool.get();
 
     EXPECT_EQ(first_res.first, boost::system::error_code());
@@ -138,7 +138,7 @@ struct waste_resource : handle_resource {
 };
 
 TEST(sync_resource_pool_impl, get_from_pool_and_wait_then_after_waste_should_reserve) {
-    resource_pool_impl pool(1);
+    resource_pool_impl pool(1, time_traits::duration::max());
     const get_result& first_res = pool.get();
 
     EXPECT_EQ(first_res.first, boost::system::error_code());
@@ -169,7 +169,7 @@ struct disable_pool {
 };
 
 TEST(sync_resource_pool_impl, get_from_pool_with_zero_capacity_then_disable_should_return_error) {
-    resource_pool_impl pool(1);
+    resource_pool_impl pool(1, time_traits::duration::max());
     const get_result& first = pool.get();
 
     EXPECT_EQ(first.first, boost::system::error_code());
@@ -182,6 +182,26 @@ TEST(sync_resource_pool_impl, get_from_pool_with_zero_capacity_then_disable_shou
     const get_result& result = pool.get();
 
     EXPECT_EQ(result.first, make_error_code(error::disabled));
+}
+
+TEST(sync_resource_pool_impl, get_one_set_and_recycle_with_zero_idle_timeout_then_get_should_return_empty) {
+    resource_pool_impl pool_impl(1, time_traits::duration(0));
+
+    EXPECT_CALL(pool_impl.has_capacity(), notify_one()).WillOnce(Return());
+
+    const get_result first_res = pool_impl.get();
+    EXPECT_EQ(first_res.first, boost::system::error_code());
+    ASSERT_NE(first_res.second, resource_ptr_list_iterator());
+    first_res.second->value = make_resource();
+    EXPECT_TRUE(first_res.second->value);
+    pool_impl.recycle(first_res.second);
+
+    EXPECT_EQ(pool_impl.available(), 1);
+
+    const get_result second_res = pool_impl.get();
+    EXPECT_EQ(second_res.first, boost::system::error_code());
+    ASSERT_NE(second_res.second, resource_ptr_list_iterator());
+    EXPECT_FALSE(second_res.second->value);
 }
 
 }

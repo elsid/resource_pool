@@ -16,11 +16,12 @@ struct resource {};
 struct mocked_pool_impl {
     typedef resource value_type;
     typedef boost::shared_ptr<value_type> pointer;
-    typedef std::list<pointer> list;
+    typedef yamail::resource_pool::detail::idle<pointer> idle;
+    typedef std::list<idle> list;
     typedef list::iterator list_iterator;
     typedef std::pair<boost::system::error_code, list_iterator> get_result;
 
-    mocked_pool_impl(std::size_t) {}
+    mocked_pool_impl(std::size_t, time_traits::duration) {}
 
     MOCK_CONST_METHOD0(capacity, std::size_t ());
     MOCK_CONST_METHOD0(size, std::size_t ());
@@ -39,7 +40,7 @@ typedef boost::shared_ptr<resource> resource_ptr;
 const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 struct sync_resource_pool : Test {
-    std::list<boost::shared_ptr<resource> > resources;
+    mocked_pool_impl::list resources;
     mocked_pool_impl::list_iterator resource_iterator;
 
     sync_resource_pool()

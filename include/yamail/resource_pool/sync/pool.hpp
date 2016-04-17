@@ -20,8 +20,8 @@ public:
     typedef sync::handle<value_type, pool_impl> handle;
     typedef boost::shared_ptr<handle> handle_ptr;
 
-    pool(std::size_t capacity)
-            : _impl(boost::make_shared<pool_impl>(capacity))
+    pool(std::size_t capacity, time_traits::duration idle_timeout = time_traits::duration::max())
+            : _impl(boost::make_shared<pool_impl>(capacity, idle_timeout))
     {}
 
     ~pool() { _impl->disable(); }

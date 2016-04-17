@@ -11,7 +11,9 @@ using namespace yamail::resource_pool::async;
 struct mocked_pool_impl {
     typedef resource value_type;
     typedef boost::shared_ptr<value_type> pointer;
-    typedef std::list<boost::shared_ptr<value_type> >::iterator list_iterator;
+    typedef yamail::resource_pool::detail::idle<pointer> idle;
+    typedef std::list<boost::shared_ptr<idle> > list;
+    typedef list::iterator list_iterator;
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef boost::function<void (const boost::system::error_code&)> on_catch_handler_exception_type;
 
@@ -24,7 +26,8 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD1(waste, void (list_iterator));
     MOCK_CONST_METHOD0(disable, void ());
 
-    mocked_pool_impl(mocked_io_service&, std::size_t, std::size_t, const on_catch_handler_exception_type&) {}
+    mocked_pool_impl(mocked_io_service&, std::size_t, std::size_t, time_traits::duration,
+                     const on_catch_handler_exception_type&) {}
 };
 
 typedef pool<resource, mocked_io_service, mocked_pool_impl> resource_pool;
@@ -35,7 +38,7 @@ using boost::system::error_code;
 struct async_resource_pool : Test {
     mocked_io_service ios;
     mocked_pool_impl::callback on_get;
-    std::list<boost::shared_ptr<resource> > resources;
+    mocked_pool_impl::list resources;
     mocked_pool_impl::list_iterator resource_iterator;
 
     async_resource_pool()
