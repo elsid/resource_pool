@@ -45,6 +45,11 @@ struct async_resource_pool : Test {
         : resources(1), resource_iterator(resources.begin()) {}
 };
 
+TEST_F(async_resource_pool, create_without_mocks_should_succeed) {
+    boost::asio::io_service ios;
+    pool<resource>(ios, 1, 1);
+}
+
 TEST_F(async_resource_pool, call_capacity_should_call_impl_capacity) {
     resource_pool pool(ios, 0, 0);
 

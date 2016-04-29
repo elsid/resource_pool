@@ -48,6 +48,10 @@ struct sync_resource_pool : Test {
         : resources(1), resource_iterator(resources.begin()) {}
 };
 
+TEST_F(sync_resource_pool, create_without_mocks_should_succeed) {
+    pool<resource>(1);
+}
+
 TEST_F(sync_resource_pool, call_capacity_should_call_impl_capacity) {
     resource_pool pool(1);
 
