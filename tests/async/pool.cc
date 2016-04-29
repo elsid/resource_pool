@@ -129,17 +129,12 @@ TEST_F(async_resource_pool, get_auto_waste_handle_should_call_waste) {
     on_get(error_code(), resource_iterator);
 }
 
-class recycle_resource {
-public:
-    void operator ()(const error_code& err, resource_handle_ptr res) {
+struct recycle_resource {
+    void operator ()(const error_code& err, resource_handle_ptr res) const {
         EXPECT_EQ(err, error_code());
         EXPECT_FALSE(res->unusable());
         res->recycle();
-        handle = res;
     }
-
-private:
-    resource_handle_ptr handle;
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recycle_once) {
@@ -164,17 +159,12 @@ TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycl
     on_get(error_code(), resource_iterator);
 }
 
-class waste_resource {
-public:
-    void operator ()(const error_code& err, resource_handle_ptr res) {
+struct waste_resource {
+    void operator ()(const error_code& err, resource_handle_ptr res) const {
         EXPECT_EQ(err, error_code());
         EXPECT_FALSE(res->unusable());
         res->waste();
-        handle = res;
     }
-
-private:
-    resource_handle_ptr handle;
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_once) {
