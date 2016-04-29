@@ -62,11 +62,13 @@ public:
 
     const queue_type& queue() const { return *_callbacks; }
 
-    void async_call(const boost::function<void ()>& call) {
-        _io_service.post(bind(call_and_catch_exception, _on_catch_handler_exception, call));
+    template <class Callback>
+    void async_call(const Callback& call) {
+        _io_service.post(call_and_catch_exception<Callback>(call, _on_catch_handler_exception));
     }
 
-    void get(const callback& call, time_traits::duration wait_duration = time_traits::duration(0));
+    template <class Callback>
+    void get(const Callback& call, time_traits::duration wait_duration = time_traits::duration(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
     void disable();
@@ -77,6 +79,38 @@ private:
     typedef boost::unique_lock<boost::mutex> unique_lock;
     typedef boost::lock_guard<boost::mutex> lock_guard;
     typedef bool (pool_impl::*serve_request_t)(unique_lock&, const callback&);
+
+    template <class Callback>
+    struct async_callback {
+        Callback call;
+        const boost::system::error_code ec;
+        const list_iterator it;
+
+        async_callback(const Callback& call, const boost::system::error_code& ec, list_iterator it)
+            : call(call), ec(ec), it(it) {}
+
+        void operator ()() {
+            call(ec, it);
+        }
+    };
+
+    template <class Callback>
+    struct call_and_catch_exception {
+        Callback call;
+        on_catch_handler_exception_type on_catch_handler_exception;
+
+        call_and_catch_exception(const Callback& call,
+                                 const on_catch_handler_exception_type& on_catch_handler_exception)
+            : call(call), on_catch_handler_exception(on_catch_handler_exception) {}
+
+        void operator ()() {
+            try {
+                call();
+            } catch (...) {
+                on_catch_handler_exception(make_error_code(error::client_handler_exception));
+            }
+        }
+    };
 
     mutable boost::mutex _mutex;
     list _available;
@@ -95,8 +129,6 @@ private:
     bool reserve_resource(unique_lock& lock, const callback& call);
     bool alloc_resource(unique_lock& lock, const callback& call);
     void perform_one_request(unique_lock& lock, serve_request_t serve);
-    static void call_and_catch_exception(const on_catch_handler_exception_type& on_catch_handler_exception,
-                                         const boost::function<void ()>& call) throw();
 };
 
 template <class V, class I, class O, class Q>
@@ -136,11 +168,12 @@ void pool_impl<V, I, O, Q>::waste(list_iterator res_it) {
 }
 
 template <class V, class I, class O, class Q>
-void pool_impl<V, I, O, Q>::get(const callback& call, time_traits::duration wait_duration) {
+template <class Callback>
+void pool_impl<V, I, O, Q>::get(const Callback& call, time_traits::duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
-        async_call(bind(call, make_error_code(error::disabled), list_iterator()));
+        async_call(async_callback<Callback>(call, make_error_code(error::disabled), list_iterator()));
     } else if (alloc_resource(lock, call)) {
         return;
     } else if (fit_capacity()) {
@@ -148,16 +181,17 @@ void pool_impl<V, I, O, Q>::get(const callback& call, time_traits::duration wait
     } else {
         lock.unlock();
         if (wait_duration.count() == 0) {
-            async_call(bind(call, make_error_code(error::get_resource_timeout),
-                            list_iterator()));
+            async_call(async_callback<Callback>(call, make_error_code(error::get_resource_timeout),
+                                                list_iterator()));
         } else {
-            const boost::function<void ()> expired = bind(call,
+            const async_callback<Callback> expired(call,
                 make_error_code(error::get_resource_timeout), list_iterator());
-            const bool pushed = _callbacks->push(call,
-                bind(call_and_catch_exception, _on_catch_handler_exception, expired), wait_duration);
+            typedef call_and_catch_exception<async_callback<Callback> > expired_callback;
+            const bool pushed = _callbacks->push(call, expired_callback(expired, _on_catch_handler_exception),
+                                                 wait_duration);
             if (!pushed) {
-                async_call(bind(call, make_error_code(error::request_queue_overflow),
-                                list_iterator()));
+                async_call(async_callback<Callback>(call, make_error_code(error::request_queue_overflow),
+                                                    list_iterator()));
             }
         }
     }
@@ -172,8 +206,8 @@ void pool_impl<V, I, O, Q>::disable() {
         if (!_callbacks->pop(call)) {
             break;
         }
-        async_call(bind(call, make_error_code(error::disabled),
-                        list_iterator()));
+        async_call(async_callback<callback>(call, make_error_code(error::disabled),
+                                            list_iterator()));
     }
 }
 
@@ -198,7 +232,7 @@ bool pool_impl<V, I, O, Q>::alloc_resource(unique_lock& lock, const callback& ca
         --_available_size;
         ++_used_size;
         lock.unlock();
-        async_call(bind(call, boost::system::error_code(), res_it));
+        async_call(async_callback<callback>(call, boost::system::error_code(), res_it));
         return true;
     }
     return false;
@@ -209,7 +243,7 @@ bool pool_impl<V, I, O, Q>::reserve_resource(unique_lock& lock, const callback& 
     const list_iterator res_it = _used.insert(_used.end(), idle());
     ++_used_size;
     lock.unlock();
-    async_call(bind(call, boost::system::error_code(), res_it));
+    async_call(async_callback<callback>(call, boost::system::error_code(), res_it));
     return true;
 }
 
@@ -218,17 +252,6 @@ void pool_impl<V, I, O, Q>::perform_one_request(unique_lock& lock, serve_request
     callback call;
     if (_callbacks->pop(call)) {
         (this->*serve)(lock, call);
-    }
-}
-
-template <class V, class I, class O, class Q>
-void pool_impl<V, I, O, Q>::call_and_catch_exception(
-        const on_catch_handler_exception_type& on_catch_handler_exception,
-        const boost::function<void ()>& call) throw() {
-    try {
-        call();
-    } catch (...) {
-        on_catch_handler_exception(make_error_code(error::client_handler_exception));
     }
 }
 

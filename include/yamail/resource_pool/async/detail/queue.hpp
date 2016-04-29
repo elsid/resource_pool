@@ -4,7 +4,6 @@
 #include <list>
 #include <map>
 
-#include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
@@ -64,6 +63,17 @@ private:
 
         expiring_request(const queue::value_type& request, const callback& expired)
                 : request(request), expired(expired) {}
+    };
+
+    struct cancel_callback {
+        const boost::shared_ptr<queue> self;
+
+        cancel_callback(const boost::shared_ptr<queue>& self)
+            : self(self) {}
+
+        void operator ()(const boost::system::error_code& ec) const {
+            self->cancel(ec);
+        }
     };
 
     typedef typename expiring_request::list_it request_list_it;
@@ -132,10 +142,12 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
         return;
     }
     const lock_guard lock(_mutex);
+    const request_multimap_it begin = _expires_at_requests.begin();
     const request_multimap_it end = _expires_at_requests.upper_bound(
         _timer.expires_at());
-    std::for_each(_expires_at_requests.begin(), end,
-                  bind(&queue::cancel_one, this, _1));
+    for (request_multimap_it it = begin; it != end; ++it) {
+        cancel_one(*it);
+    }
     _expires_at_requests.erase(_expires_at_requests.begin(), end);
     update_timer();
 }
@@ -154,7 +166,7 @@ void queue<V, I, T>::update_timer() {
     }
     const time_traits::time_point& eariest_expires_at = _expires_at_requests.begin()->first;
     _timer.expires_at(eariest_expires_at);
-    _timer.async_wait(bind(&queue::cancel, shared_from_this(), _1));
+    _timer.async_wait(cancel_callback(shared_from_this()));
 }
 
 } // namespace detail
