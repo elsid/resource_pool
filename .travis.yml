@@ -1,0 +1,56 @@
+language: cpp
+os: linux
+compiler: gcc
+sudo: true
+cache:
+  ccache: true
+  directories:
+  - ${HOME}/.ccache
+
+addons:
+  apt:
+    packages:
+    - libcurl4-openssl-dev
+    - libelf-dev
+    - libdw-dev
+
+env:
+  global:
+  - USE_C_COMPILERACHE=1
+  - C_COMPILERACHE_COMPRESS=1
+  - C_COMPILERACHE_MAXSIZE=200M
+  - C_COMPILERACHE_CPP2=1
+  - LOCAL=${HOME}/.local
+  - PATH=${LOCAL}/bin:${PATH}
+  - BUILD_TYPE='Debug'
+  - CXX_COMPILER='ccache g++'
+
+before_install:
+- sudo add-apt-repository ppa:apokluda/boost1.53 -y
+- sudo apt-get update
+
+install:
+- sudo apt-get install libboost1.53-all-dev
+
+before_script:
+- export CXX="${CXX_COMPILER}"
+- cmake --version
+- ${CXX} --version
+- cd ${TRAVIS_BUILD_DIR}
+- mkdir -p ${TRAVIS_BUILD_DIR}/build
+- cd ${TRAVIS_BUILD_DIR}/build
+- cmake -DCMAKE_VERBOSE_MAKEFILE=1 -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ${TRAVIS_BUILD_DIR}
+
+script:
+- make -j $(nproc)
+- ctest -V -j $(nproc)
+
+after_success:
+- git clone https://github.com/SimonKagstrom/kcov.git
+- mkdir kcov/build
+- cd kcov/build
+- cmake -DCMAKE_INSTALL_PREFIX:PATH=${LOCAL} ..
+- make -j $(nproc)
+- make install
+- cd ../..
+- kcov --coveralls-id=${TRAVIS_JOB_ID} --include-path ${TRAVIS_BUILD_DIR}/include ${TRAVIS_BUILD_DIR}/build/kcov ${TRAVIS_BUILD_DIR}/build/tests/resource_pool_test
