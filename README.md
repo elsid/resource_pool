@@ -40,7 +40,7 @@ bool empty() const;
 ```
 
 Access to value provides by methods:
-```с++
+```c++
 value_type& get();
 const value_type& get() const;
 value_type *operator ->();
