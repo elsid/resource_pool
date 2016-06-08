@@ -3,12 +3,12 @@
 [![Build Status](https://travis-ci.org/elsid/resource_pool.svg?branch=master)](https://travis-ci.org/elsid/resource_pool)
 [![Coverage Status](https://coveralls.io/repos/github/elsid/resource_pool/badge.svg?branch=master)](https://coveralls.io/github/elsid/resource_pool?branch=master)
 
-Header only library purposed to create pool of some resources like keepalive connections.
+Header only library purposed to create pool of some resources like keep-alive connections.
 Supports sync and async interfaces. Based on boost.
 
 ## Build
 
-Proejct uses CMake. Need only to run tests or examples:
+Project uses CMake. Build need only to run tests or examples:
 ```bash
 mkdir build
 cd build
@@ -66,7 +66,7 @@ To return resource into pool use method:
 void recycle();
 ```
 
-Both methods makes handle unsable that could be checked by method:
+Both methods makes handle unusable that could be checked by method:
 ```c++
 bool unusable() const;
 ```
@@ -93,7 +93,7 @@ Example:
 typedef pool<std::fstream> fstream_pool;
 ```
 
-Object constructing requires capacicty of pool:
+Object constructing requires capacity of pool:
 ```c++
 pool(
     std::size_t capacity,
@@ -170,7 +170,7 @@ Example:
 typedef pool<std::fstream> fstream_pool;
 ```
 
-Object constructing requires reference to io service, capacicty of pool, queue capacity:
+Object constructing requires reference to io service, capacity of pool, queue capacity:
 ```c++
 pool(
     io_service_t& io_service,
