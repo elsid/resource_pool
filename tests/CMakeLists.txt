@@ -4,7 +4,11 @@ if(NOT TARGET googletest)
     set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/external)
 
     if(NOT GOOGLETEST_REPOSITORY)
-        set(GOOGLETEST_REPOSITORY https://github.com/google/googletest.git)
+        if(NOT DEFINED ENV{GOOGLETEST_REPOSITORY})
+            set(GOOGLETEST_REPOSITORY https://github.com/google/googletest.git)
+        else()
+            set(GOOGLETEST_REPOSITORY $ENV{GOOGLETEST_REPOSITORY})
+        endif()
     endif()
 
     ExternalProject_Add(
