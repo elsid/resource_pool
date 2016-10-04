@@ -7,6 +7,8 @@
 
 #include <boost/make_shared.hpp>
 
+#include <iostream>
+
 namespace yamail {
 namespace resource_pool {
 namespace async {
@@ -76,8 +78,8 @@ public:
     static std::size_t assert_capacity(std::size_t value);
 
 private:
-    typedef boost::unique_lock<boost::mutex> unique_lock;
-    typedef boost::lock_guard<boost::mutex> lock_guard;
+    typedef std::unique_lock<std::mutex> unique_lock;
+    typedef std::lock_guard<std::mutex> lock_guard;
     typedef bool (pool_impl::*serve_request_t)(unique_lock&, const callback&);
 
     template <class Callback>
@@ -112,7 +114,7 @@ private:
         }
     };
 
-    mutable boost::mutex _mutex;
+    mutable std::mutex _mutex;
     list _available;
     list _used;
     io_service_t& _io_service;

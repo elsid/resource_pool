@@ -75,14 +75,14 @@ Calling one of these methods for unusable handle throws an exception ```error::u
 
 ### Synchronous pool
 
-Based on ```boost::condition_variable```.
+Based on ```std::condition_variable```.
 
 #### Create pool
 
 Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-L54). Parametrize resource type:
 ```c++
 template <class Value
-          class Impl = detail::pool_impl<Value, boost::condition_variable> >
+          class Impl = detail::pool_impl<Value, std::condition_variable> >
 class pool;
 ```
 

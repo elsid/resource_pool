@@ -6,10 +6,10 @@
 #include <yamail/resource_pool/detail/idle.hpp>
 
 #include <boost/noncopyable.hpp>
-#include <boost/thread/condition_variable.hpp>
-#include <boost/thread/mutex.hpp>
 
+#include <condition_variable>
 #include <list>
+#include <mutex>
 
 namespace yamail {
 namespace resource_pool {
@@ -50,10 +50,10 @@ public:
     static std::size_t assert_capacity(std::size_t value);
 
 private:
-    typedef boost::lock_guard<boost::mutex> lock_guard;
-    typedef boost::unique_lock<boost::mutex> unique_lock;
+    typedef std::lock_guard<std::mutex> lock_guard;
+    typedef std::unique_lock<std::mutex> unique_lock;
 
-    mutable boost::mutex _mutex;
+    mutable std::mutex _mutex;
     list _available;
     list _used;
     const std::size_t _capacity;
@@ -165,7 +165,7 @@ typename pool_impl<T, C>::list_iterator pool_impl<T, C>::reserve_resource(unique
 
 template <class T, class C>
 bool pool_impl<T, C>::wait_for(unique_lock& lock, time_traits::duration wait_duration) {
-    return _has_capacity.wait_for(lock, wait_duration) == boost::cv_status::no_timeout;
+    return _has_capacity.wait_for(lock, wait_duration) == std::cv_status::no_timeout;
 }
 
 template <class T, class C>

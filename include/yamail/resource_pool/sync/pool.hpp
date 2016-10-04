@@ -7,12 +7,14 @@
 
 #include <boost/make_shared.hpp>
 
+#include <condition_variable>
+
 namespace yamail {
 namespace resource_pool {
 namespace sync {
 
 template <class Value,
-          class Impl = detail::pool_impl<Value, boost::condition_variable> >
+          class Impl = detail::pool_impl<Value, std::condition_variable> >
 class pool {
 public:
     typedef Value value_type;

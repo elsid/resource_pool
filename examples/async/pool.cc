@@ -23,9 +23,7 @@ struct on_get {
             }
             handle->reset(file);
         }
-        typedef boost::chrono::steady_clock clock;
-        typedef clock::time_point time_point;
-        handle->get() << (time_point::min() - clock::now()).count() << std::endl;
+        handle->get() << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
         handle->recycle();
     }
 };

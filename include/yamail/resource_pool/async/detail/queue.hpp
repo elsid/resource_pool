@@ -7,18 +7,17 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/lock_guard.hpp>
-#include <boost/thread/mutex.hpp>
 
 #include <list>
 #include <map>
+#include <mutex>
 
 namespace yamail {
 namespace resource_pool {
 namespace async {
 namespace detail {
 
-typedef boost::chrono::steady_clock clock;
+typedef std::chrono::steady_clock clock;
 
 template <class Value,
           class IoService = boost::asio::io_service,
@@ -48,7 +47,7 @@ public:
     bool pop(value_type& req);
 
 private:
-    typedef boost::lock_guard<boost::mutex> lock_guard;
+    typedef std::lock_guard<std::mutex> lock_guard;
 
     struct expiring_request {
         typedef std::list<expiring_request> list;
@@ -80,7 +79,7 @@ private:
     typedef typename expiring_request::multimap_it request_multimap_it;
     typedef typename expiring_request::multimap::value_type request_multimap_value;
 
-    mutable boost::mutex _mutex;
+    mutable std::mutex _mutex;
     typename expiring_request::list _ordered_requests;
     typename expiring_request::multimap _expires_at_requests;
     io_service_t& _io_service;

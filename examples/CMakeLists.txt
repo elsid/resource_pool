@@ -1,11 +1,10 @@
-find_package(Boost REQUIRED system thread chrono)
+find_package(Boost REQUIRED system thread)
 
 set(LIBRARIES
     -lrt
     -pthread
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
-    ${Boost_CHRONO_LIBRARY}
 )
 
 add_executable(async_pool async/pool.cc)

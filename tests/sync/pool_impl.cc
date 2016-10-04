@@ -19,7 +19,7 @@ struct resource {};
 struct mocked_condition_variable {
     MOCK_CONST_METHOD0(notify_one, void ());
     MOCK_CONST_METHOD0(notify_all, void ());
-    MOCK_CONST_METHOD2(wait_for, boost::cv_status (boost::unique_lock<boost::mutex>&, time_traits::duration));
+    MOCK_CONST_METHOD2(wait_for, std::cv_status (std::unique_lock<std::mutex>&, time_traits::duration));
 };
 
 typedef boost::shared_ptr<resource> resource_ptr;
@@ -83,7 +83,7 @@ TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
 TEST(sync_resource_pool_impl, get_more_than_capacity_returns_error) {
     resource_pool_impl pool_impl(1, time_traits::duration::max());
     pool_impl.get();
-    EXPECT_CALL(pool_impl.has_capacity(), wait_for(_, _)).WillOnce(Return(boost::cv_status::timeout));
+    EXPECT_CALL(pool_impl.has_capacity(), wait_for(_, _)).WillOnce(Return(std::cv_status::timeout));
     EXPECT_EQ(pool_impl.get().first, make_error_code(error::get_resource_timeout));
 }
 
@@ -104,11 +104,11 @@ struct handle_resource {
     handle_resource(resource_pool_impl& pool, resource_ptr_list_iterator res_it, strategy_type strategy)
         : pool(pool), res_it(res_it), strategy(strategy) {}
 
-    boost::cv_status operator ()(boost::unique_lock<boost::mutex>& lock, time_traits::duration) const {
+    std::cv_status operator ()(std::unique_lock<std::mutex>& lock, time_traits::duration) const {
         lock.unlock();
         (pool.*strategy)(res_it);
         lock.lock();
-        return boost::cv_status::no_timeout;
+        return std::cv_status::no_timeout;
     }
 };
 
@@ -163,11 +163,11 @@ struct disable_pool {
 
     disable_pool(resource_pool_impl& pool) : pool(pool) {}
 
-    boost::cv_status operator ()(boost::unique_lock<boost::mutex>& lock, time_traits::duration) const {
+    std::cv_status operator ()(std::unique_lock<std::mutex>& lock, time_traits::duration) const {
         lock.unlock();
         pool.disable();
         lock.lock();
-        return boost::cv_status::no_timeout;
+        return std::cv_status::no_timeout;
     }
 };
 

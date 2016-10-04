@@ -1,6 +1,7 @@
 #include <yamail/resource_pool/sync/pool.hpp>
 
 #include <fstream>
+#include <iostream>
 
 typedef yamail::resource_pool::sync::pool<std::ofstream> ofstream_pool;
 typedef yamail::resource_pool::time_traits time_traits;
@@ -22,8 +23,6 @@ int main() {
         }
         handle->reset(file);
     }
-    typedef boost::chrono::steady_clock clock;
-    typedef clock::time_point time_point;
-    handle->get() << (time_point::min() - clock::now()).count() << std::endl;
+    handle->get() << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
     return 0;
 }
