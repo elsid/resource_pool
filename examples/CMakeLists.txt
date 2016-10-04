@@ -1,10 +1,9 @@
-find_package(Boost REQUIRED system thread)
+find_package(Boost REQUIRED system)
 
 set(LIBRARIES
     -lrt
     -pthread
     ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
 )
 
 add_executable(async_pool async/pool.cc)

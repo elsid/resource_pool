@@ -30,7 +30,7 @@ if(NOT TARGET googletest)
     link_directories(${binary_dir}/googlemock)
 endif()
 
-find_package(Boost REQUIRED system thread chrono)
+find_package(Boost REQUIRED system)
 
 add_executable(resource_pool_test
     main.cc

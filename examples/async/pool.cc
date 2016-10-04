@@ -1,8 +1,7 @@
 #include <yamail/resource_pool/async/pool.hpp>
 
-#include <boost/thread.hpp>
-
 #include <fstream>
+#include <thread>
 
 typedef yamail::resource_pool::async::pool<std::ofstream> ofstream_pool;
 typedef yamail::resource_pool::time_traits time_traits;
@@ -31,7 +30,7 @@ struct on_get {
 int main() {
     boost::asio::io_service service;
     boost::asio::io_service::work work(service);
-    boost::thread worker(boost::bind(&boost::asio::io_service::run, boost::ref(service)));
+    std::thread worker([&] { return service.run(); });
     ofstream_pool pool(service, 1, 10);
     pool.get_auto_waste(on_get(), time_traits::duration::max());
     service.stop();
