@@ -60,17 +60,6 @@ private:
                 : request(request), expired(expired) {}
     };
 
-    struct cancel_callback {
-        const std::shared_ptr<queue> self;
-
-        cancel_callback(const std::shared_ptr<queue>& self)
-            : self(self) {}
-
-        void operator ()(const boost::system::error_code& ec) const {
-            self->cancel(ec);
-        }
-    };
-
     typedef typename expiring_request::list_it request_list_it;
     typedef typename expiring_request::multimap_it request_multimap_it;
     typedef typename expiring_request::multimap::value_type request_multimap_value;
@@ -161,7 +150,12 @@ void queue<V, I, T>::update_timer() {
     }
     const time_traits::time_point& eariest_expires_at = _expires_at_requests.begin()->first;
     _timer.expires_at(eariest_expires_at);
-    _timer.async_wait(cancel_callback(shared_from_this()));
+    std::weak_ptr<queue> weak(shared_from_this());
+    _timer.async_wait([weak] (const boost::system::error_code& ec) {
+        if (const auto locked = weak.lock()) {
+            locked->cancel(ec);
+        }
+    });
 }
 
 } // namespace detail
