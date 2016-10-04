@@ -3,8 +3,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <boost/function.hpp>
-
 namespace {
 
 using namespace testing;
@@ -26,7 +24,7 @@ typedef pool_impl<resource, mocked_condition_variable> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
 
-const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
+const std::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 struct sync_resource_pool_impl : Test {};
 

@@ -4,8 +4,6 @@
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/time_traits.hpp>
 
-#include <boost/function.hpp>
-
 #include <list>
 #include <map>
 #include <mutex>
@@ -26,7 +24,7 @@ public:
     typedef Value value_type;
     typedef IoService io_service_t;
     typedef Timer timer_t;
-    typedef boost::function<void ()> callback;
+    typedef std::function<void ()> callback;
 
     queue(io_service_t& io_service, std::size_t capacity)
             : _io_service(io_service), _capacity(capacity), _timer(io_service) {}

@@ -36,7 +36,7 @@ public:
     typedef resource_pool::detail::idle<pointer> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
-    typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
+    typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef Queue queue_type;
     typedef OnCatchHandlerException on_catch_handler_exception_type;
 
@@ -48,7 +48,7 @@ public:
             : _io_service(io_service),
               _capacity(assert_capacity(capacity)),
               _idle_timeout(idle_timeout),
-              _callbacks(std::make_shared<queue_type>(boost::ref(io_service), queue_capacity)),
+              _callbacks(std::make_shared<queue_type>(io_service, queue_capacity)),
               _on_catch_handler_exception(on_catch_handler_exception),
               _available_size(0),
               _used_size(0),

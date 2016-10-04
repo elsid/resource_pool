@@ -10,8 +10,8 @@ using namespace yamail::resource_pool::async::detail;
 
 struct mocked_queue {
     typedef std::list<detail::idle<std::shared_ptr<resource> > >::iterator list_iterator;
-    typedef boost::function<void (const boost::system::error_code&, list_iterator)> value_type;
-    typedef boost::function<void ()> callback;
+    typedef std::function<void (const boost::system::error_code&, list_iterator)> value_type;
+    typedef std::function<void ()> callback;
 
     MOCK_CONST_METHOD3(push, bool (const value_type&, const callback&, time_traits::duration));
     MOCK_CONST_METHOD1(pop, bool (value_type&));
@@ -45,13 +45,13 @@ typedef std::shared_ptr<mocked_callback> mocked_callback_ptr;
 struct async_resource_pool_impl : Test {
     mocked_io_service ios;
 
-    boost::function<void ()> on_get;
-    boost::function<void ()> on_first_get;
-    boost::function<void ()> on_second_get;
+    std::function<void ()> on_get;
+    std::function<void ()> on_first_get;
+    std::function<void ()> on_second_get;
 
     mocked_queue::value_type on_get_res;
 
-    boost::function<void ()> on_expired;
+    std::function<void ()> on_expired;
 };
 
 TEST_F(async_resource_pool_impl, create_with_zero_capacity_should_throw_exception) {

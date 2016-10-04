@@ -7,17 +7,12 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <boost/function.hpp>
-#include <boost/ref.hpp>
-
 #include <list>
 
 namespace tests {
 
 using namespace testing;
 using namespace yamail::resource_pool;
-
-using boost::ref;
 
 struct resource {};
 
@@ -28,7 +23,7 @@ struct request {
 typedef std::shared_ptr<resource> resource_ptr;
 
 struct mocked_io_service {
-    MOCK_METHOD1(post, void (boost::function<void ()>));
+    MOCK_METHOD1(post, void (std::function<void ()>));
 };
 
 class mocked_on_catch_handler_exception {

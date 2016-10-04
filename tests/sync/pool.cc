@@ -3,8 +3,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <boost/function.hpp>
-
 namespace {
 
 using namespace testing;

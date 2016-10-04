@@ -14,8 +14,8 @@ struct mocked_pool_impl {
     typedef yamail::resource_pool::detail::idle<pointer> idle;
     typedef std::list<std::shared_ptr<idle> > list;
     typedef list::iterator list_iterator;
-    typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
-    typedef boost::function<void (const boost::system::error_code&)> on_catch_handler_exception_type;
+    typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
+    typedef std::function<void (const boost::system::error_code&)> on_catch_handler_exception_type;
 
     MOCK_CONST_METHOD0(capacity, std::size_t ());
     MOCK_CONST_METHOD0(size, std::size_t ());

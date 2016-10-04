@@ -19,7 +19,7 @@ struct default_pool_queue {
     typedef resource_pool::detail::idle<pointer> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
-    typedef boost::function<void (const boost::system::error_code&, list_iterator)> callback;
+    typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef detail::queue<callback, io_service_t, time_traits::timer> type;
 };
 
@@ -51,7 +51,7 @@ public:
          time_traits::duration idle_timeout = time_traits::duration::max(),
          const on_catch_handler_exception_type& on_catch_handler_exception = detail::abort())
             : _impl(std::make_shared<pool_impl>(
-                boost::ref(io_service),
+                io_service,
                 capacity,
                 queue_capacity,
                 idle_timeout,

@@ -13,7 +13,7 @@ struct mocked_timer {
 
     MOCK_CONST_METHOD0(expires_at, time_traits::time_point ());
     MOCK_CONST_METHOD1(expires_at, void (const time_traits::time_point&));
-    MOCK_CONST_METHOD1(async_wait, void (boost::function<void (boost::system::error_code)>));
+    MOCK_CONST_METHOD1(async_wait, void (std::function<void (boost::system::error_code)>));
 };
 
 typedef queue<request, mocked_io_service, mocked_timer> request_queue;
@@ -30,12 +30,12 @@ typedef std::shared_ptr<mocked_callback> mocked_callback_ptr;
 struct async_request_queue : Test {
     mocked_io_service ios;
     mocked_callback_ptr expired;
-    boost::function<void (error_code)> on_async_wait;
+    std::function<void (error_code)> on_async_wait;
 
     async_request_queue() : expired(std::make_shared<mocked_callback>()) {}
 
     request_queue_ptr make_queue(std::size_t capacity) {
-        return std::make_shared<request_queue>(ref(ios), capacity);
+        return std::make_shared<request_queue>(ios, capacity);
     }
 };
 
