@@ -3,25 +3,37 @@
 
 #include <yamail/resource_pool/error.hpp>
 
-#include <boost/noncopyable.hpp>
-
 #include <memory>
 
 namespace yamail {
 namespace resource_pool {
 
 template <class Pool>
-class handle : boost::noncopyable {
+class handle {
 public:
     typedef Pool pool;
     typedef typename pool::pool_impl pool_impl;
     typedef typename pool_impl::value_type value_type;
     typedef typename pool_impl::pointer pointer;
     typedef void (handle::*strategy)();
+    typedef std::shared_ptr<pool_impl> pool_impl_ptr;
+    typedef typename pool_impl::list_iterator list_iterator;
 
     friend pool;
 
+    handle(const handle& other) = delete;
+    handle(handle&& other);
+
+    handle(const pool_impl_ptr& pool_impl,
+           strategy use_strategy,
+           list_iterator resource_it)
+            : _pool_impl(pool_impl), _use_strategy(use_strategy),
+              _resource_it(resource_it) {}
+
     virtual ~handle();
+
+    handle& operator =(const handle& other) = delete;
+    handle& operator =(handle&& other);
 
     bool unusable() const { return _resource_it == list_iterator(); }
     bool empty() const { return unusable() || !_resource_it->value; }
@@ -36,16 +48,6 @@ public:
     void waste();
     void reset(const pointer& res);
 
-protected:
-    typedef std::shared_ptr<pool_impl> pool_impl_ptr;
-    typedef typename pool_impl::list_iterator list_iterator;
-
-    handle(const pool_impl_ptr& pool_impl,
-           strategy use_strategy,
-           list_iterator resource_it)
-            : _pool_impl(pool_impl), _use_strategy(use_strategy),
-              _resource_it(resource_it) {}
-
 private:
     pool_impl_ptr _pool_impl;
     strategy _use_strategy;
@@ -56,10 +58,27 @@ private:
 };
 
 template <class P>
+handle<P>::handle(handle&& other)
+    : _pool_impl(other._pool_impl),
+      _use_strategy(other._use_strategy),
+      _resource_it(other._resource_it) {
+    other._resource_it = list_iterator();
+}
+
+template <class P>
 handle<P>::~handle() {
     if (!unusable()) {
         (this->*_use_strategy)();
     }
+}
+
+template <class P>
+handle<P>& handle<P>::operator =(handle&& other) {
+    _pool_impl = other._pool_impl;
+    _use_strategy = other._use_strategy;
+    _resource_it = other._resource_it;
+    other._resource_it = list_iterator();
+    return *this;
 }
 
 template <class P>

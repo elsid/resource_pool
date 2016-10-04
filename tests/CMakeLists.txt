@@ -35,6 +35,7 @@ find_package(Boost REQUIRED system)
 add_executable(resource_pool_test
     main.cc
     error.cc
+    handle.cc
     time_traits.cc
     sync/pool.cc
     sync/pool_impl.cc
