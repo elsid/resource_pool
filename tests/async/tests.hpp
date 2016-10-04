@@ -8,7 +8,6 @@
 #include <gmock/gmock.h>
 
 #include <boost/function.hpp>
-#include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 
 #include <list>
@@ -19,7 +18,6 @@ using namespace testing;
 using namespace yamail::resource_pool;
 
 using boost::ref;
-using boost::make_shared;
 
 struct resource {};
 
@@ -27,7 +25,7 @@ struct request {
     int value;
 };
 
-typedef boost::shared_ptr<resource> resource_ptr;
+typedef std::shared_ptr<resource> resource_ptr;
 
 struct mocked_io_service {
     MOCK_METHOD1(post, void (boost::function<void ()>));
@@ -48,7 +46,7 @@ public:
     }
 
 private:
-    boost::shared_ptr<impl_type> _impl;
+    std::shared_ptr<impl_type> _impl;
 };
 
 } // namespace tests

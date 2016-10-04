@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <boost/make_shared.hpp>
 #include <boost/function.hpp>
 
 namespace {
@@ -12,13 +11,11 @@ using namespace testing;
 using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::sync;
 
-using boost::make_shared;
-
 struct resource {};
 
 struct mocked_pool_impl {
     typedef resource value_type;
-    typedef boost::shared_ptr<value_type> pointer;
+    typedef std::shared_ptr<value_type> pointer;
     typedef yamail::resource_pool::detail::idle<pointer> idle;
     typedef std::list<idle> list;
     typedef list::iterator list_iterator;
@@ -39,8 +36,8 @@ struct mocked_pool_impl {
 typedef pool<resource, mocked_pool_impl> resource_pool;
 typedef resource_pool::handle_ptr resource_handle_ptr;
 
-typedef boost::shared_ptr<resource> resource_ptr;
-const boost::function<resource_ptr ()> make_resource = make_shared<resource>;
+typedef std::shared_ptr<resource> resource_ptr;
+const auto make_resource = std::make_shared<resource>;
 
 struct sync_resource_pool : Test {
     mocked_pool_impl::list resources;

@@ -5,8 +5,6 @@
 #include <yamail/resource_pool/detail/idle.hpp>
 #include <yamail/resource_pool/async/detail/queue.hpp>
 
-#include <boost/make_shared.hpp>
-
 #include <iostream>
 
 namespace yamail {
@@ -34,7 +32,7 @@ class pool_impl : boost::noncopyable {
 public:
     typedef Value value_type;
     typedef IoService io_service_t;
-    typedef boost::shared_ptr<value_type> pointer;
+    typedef std::shared_ptr<value_type> pointer;
     typedef resource_pool::detail::idle<pointer> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
@@ -50,7 +48,7 @@ public:
             : _io_service(io_service),
               _capacity(assert_capacity(capacity)),
               _idle_timeout(idle_timeout),
-              _callbacks(boost::make_shared<queue_type>(boost::ref(io_service), queue_capacity)),
+              _callbacks(std::make_shared<queue_type>(boost::ref(io_service), queue_capacity)),
               _on_catch_handler_exception(on_catch_handler_exception),
               _available_size(0),
               _used_size(0),
@@ -120,7 +118,7 @@ private:
     io_service_t& _io_service;
     const std::size_t _capacity;
     const time_traits::duration _idle_timeout;
-    boost::shared_ptr<queue_type> _callbacks;
+    std::shared_ptr<queue_type> _callbacks;
     on_catch_handler_exception_type _on_catch_handler_exception;
     std::size_t _available_size;
     std::size_t _used_size;

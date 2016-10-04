@@ -4,7 +4,8 @@
 #include <yamail/resource_pool/error.hpp>
 
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+
+#include <memory>
 
 namespace yamail {
 namespace resource_pool {
@@ -36,7 +37,7 @@ public:
     void reset(const pointer& res);
 
 protected:
-    typedef boost::shared_ptr<pool_impl> pool_impl_ptr;
+    typedef std::shared_ptr<pool_impl> pool_impl_ptr;
     typedef typename pool_impl::list_iterator list_iterator;
 
     handle(const pool_impl_ptr& pool_impl,

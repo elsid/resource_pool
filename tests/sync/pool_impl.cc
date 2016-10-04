@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <boost/make_shared.hpp>
 #include <boost/function.hpp>
 
 namespace {
@@ -12,7 +11,7 @@ using namespace testing;
 using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::sync::detail;
 
-using boost::make_shared;
+using std::make_shared;
 
 struct resource {};
 
@@ -22,7 +21,7 @@ struct mocked_condition_variable {
     MOCK_CONST_METHOD2(wait_for, std::cv_status (std::unique_lock<std::mutex>&, time_traits::duration));
 };
 
-typedef boost::shared_ptr<resource> resource_ptr;
+typedef std::shared_ptr<resource> resource_ptr;
 typedef pool_impl<resource, mocked_condition_variable> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;

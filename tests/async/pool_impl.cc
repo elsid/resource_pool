@@ -9,7 +9,7 @@ using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::async::detail;
 
 struct mocked_queue {
-    typedef std::list<detail::idle<boost::shared_ptr<resource> > >::iterator list_iterator;
+    typedef std::list<detail::idle<std::shared_ptr<resource> > >::iterator list_iterator;
     typedef boost::function<void (const boost::system::error_code&, list_iterator)> value_type;
     typedef boost::function<void ()> callback;
 
@@ -40,7 +40,7 @@ struct mocked_callback {
     MOCK_CONST_METHOD2(call, void (const error_code&, resource_ptr_list_iterator));
 };
 
-typedef boost::shared_ptr<mocked_callback> mocked_callback_ptr;
+typedef std::shared_ptr<mocked_callback> mocked_callback_ptr;
 
 struct async_resource_pool_impl : Test {
     mocked_io_service ios;
@@ -136,7 +136,7 @@ private:
 TEST_F(async_resource_pool_impl, get_one_should_call_callback) {
     resource_pool_impl pool(ios, 1, 0, time_traits::duration::max(), mocked_on_catch_handler_exception());
 
-    mocked_callback_ptr get = make_shared<mocked_callback>();
+    mocked_callback_ptr get = std::make_shared<mocked_callback>();
 
     InSequence s;
 
@@ -351,7 +351,7 @@ public:
     void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
         ASSERT_NE(res, resource_ptr_list_iterator());
-        res->value = make_shared<resource>();
+        res->value = std::make_shared<resource>();
         pool.recycle(res);
     }
 

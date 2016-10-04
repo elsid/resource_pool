@@ -15,7 +15,7 @@ template <class Value>
 struct default_pool_queue {
     typedef Value value_type;
     typedef boost::asio::io_service io_service_t;
-    typedef boost::shared_ptr<value_type> pointer;
+    typedef std::shared_ptr<value_type> pointer;
     typedef resource_pool::detail::idle<pointer> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
@@ -42,7 +42,7 @@ public:
     typedef IoService io_service_t;
     typedef Impl pool_impl;
     typedef resource_pool::handle<pool> handle;
-    typedef boost::shared_ptr<handle> handle_ptr;
+    typedef std::shared_ptr<handle> handle_ptr;
     typedef typename pool_impl::on_catch_handler_exception_type on_catch_handler_exception_type;
 
     pool(io_service_t& io_service,
@@ -50,7 +50,7 @@ public:
          std::size_t queue_capacity,
          time_traits::duration idle_timeout = time_traits::duration::max(),
          const on_catch_handler_exception_type& on_catch_handler_exception = detail::abort())
-            : _impl(boost::make_shared<pool_impl>(
+            : _impl(std::make_shared<pool_impl>(
                 boost::ref(io_service),
                 capacity,
                 queue_capacity,
@@ -81,7 +81,7 @@ public:
 private:
     typedef typename pool_impl::list_iterator list_iterator;
     typedef typename handle::strategy strategy;
-    typedef typename boost::shared_ptr<pool_impl> pool_impl_ptr;
+    typedef typename std::shared_ptr<pool_impl> pool_impl_ptr;
 
     pool_impl_ptr _impl;
 

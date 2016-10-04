@@ -21,7 +21,7 @@ class pool_impl : boost::noncopyable {
 public:
     typedef Value value_type;
     typedef ConditionVariable condition_variable;
-    typedef boost::shared_ptr<value_type> pointer;
+    typedef std::shared_ptr<value_type> pointer;
     typedef resource_pool::detail::idle<pointer> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;

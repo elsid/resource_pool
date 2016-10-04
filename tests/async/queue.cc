@@ -17,7 +17,7 @@ struct mocked_timer {
 };
 
 typedef queue<request, mocked_io_service, mocked_timer> request_queue;
-typedef boost::shared_ptr<request_queue> request_queue_ptr;
+typedef std::shared_ptr<request_queue> request_queue_ptr;
 
 using boost::system::error_code;
 
@@ -25,17 +25,17 @@ struct mocked_callback {
     MOCK_CONST_METHOD0(call, void ());
 };
 
-typedef boost::shared_ptr<mocked_callback> mocked_callback_ptr;
+typedef std::shared_ptr<mocked_callback> mocked_callback_ptr;
 
 struct async_request_queue : Test {
     mocked_io_service ios;
     mocked_callback_ptr expired;
     boost::function<void (error_code)> on_async_wait;
 
-    async_request_queue() : expired(make_shared<mocked_callback>()) {}
+    async_request_queue() : expired(std::make_shared<mocked_callback>()) {}
 
     request_queue_ptr make_queue(std::size_t capacity) {
-        return make_shared<request_queue>(ref(ios), capacity);
+        return std::make_shared<request_queue>(ref(ios), capacity);
     }
 };
 

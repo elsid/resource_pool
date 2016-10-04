@@ -27,10 +27,10 @@ Include as subdirectory into your CMake project or copy folder include.
 
 ### Handle
 
-The wrapper contains ```boost::shared_ptr``` of resource type.
+The wrapper contains ```std::shared_ptr``` of resource type.
 Declared as type [handle](include/yamail/resource_pool/handle.hpp#L12-L59).
 Constructs with one of strategies that uses in destructor:
-* waste -- resets ```boost::shared_ptr``` value if handle is usable.
+* waste -- resets ```std::shared_ptr``` value if handle is usable.
 * recycle -- returns resource to pool if handle is usable.
 
 Pool contains slots for resources that means handle may contains pointer to some client object or ```nullptr```.
@@ -53,7 +53,7 @@ const value_type &operator *() const;
 
 Value of handle changes by method:
 ```c++
-void reset(const boost::shared_ptr<value_type>& res);
+void reset(const std::shared_ptr<value_type>& res);
 ```
 
 To drop resource use method:
@@ -86,7 +86,7 @@ template <class Value
 class pool;
 ```
 
-Pool holds ```boost::shared_ptr``` of resource type. Type wrapping isn't necessary.
+Pool holds ```std::shared_ptr``` of resource type. Type wrapping isn't necessary.
 
 Example:
 ```c++
@@ -121,14 +121,14 @@ If new handle is not usable error value will be not ok.
 
 Use one of these methods:
 ```c++
-boost::shared_ptr<handle> get_auto_waste(
+std::shared_ptr<handle> get_auto_waste(
     time_traits::duration wait_duration = time_traits::duration(0)
 );
 ```
 returns resource handle when it will be available with auto waste strategy.
 
 ```c++
-boost::shared_ptr<handle> get_auto_recycle(
+std::shared_ptr<handle> get_auto_recycle(
     time_traits::duration wait_duration = time_traits::duration(0)
 );
 ```
@@ -138,7 +138,7 @@ Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
 
 Example:
 ```c++
-boost::shared_ptr<handle> h = pool.get(time_traits::duration(1));
+std::shared_ptr<handle> h = pool.get(time_traits::duration(1));
 if (h->error()) {
     std::cerr << "Cant't get resource: " << h->error().message() << std::endl;
     return;
@@ -163,7 +163,7 @@ template <class Value,
 class pool;
 ```
 
-Pool holds ```boost::shared_ptr``` of resource type. Type wrapping isn't necessary.
+Pool holds ```std::shared_ptr``` of resource type. Type wrapping isn't necessary.
 
 Example:
 ```c++
@@ -212,7 +212,7 @@ Type ```Callback``` must provide interface:
 ```c++
 void operator ()(
     const boost::system::error_code&,
-    const boost::shared_ptr<handle>&
+    const std::shared_ptr<handle>&
 );
 ```
 
@@ -223,9 +223,9 @@ If error occurs ```ec``` will be not ok and ```handle``` will be nullptr.
 Example:
 ```c++
 struct on_create_resource {
-    boost::shared_ptr<handle> h;
+    std::shared_ptr<handle> h;
 
-    on_create_resource(const boost::shared_ptr<handle>& h) : h(h) {}
+    on_create_resource(const std::shared_ptr<handle>& h) : h(h) {}
 
     void operator ()(const boost::system::error_code& ec, const handle::pointer& r) {
         if (ec) {
@@ -239,7 +239,7 @@ struct on_create_resource {
 
 struct handle_get {
     void operator ()(const boost::system::error_code& ec,
-                     const boost::shared_ptr<handle>& h) {
+                     const std::shared_ptr<handle>& h) {
         if (ec) {
             std::cerr << "Cant't get resource: " << ec.message() << std::endl;
             return;

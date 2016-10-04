@@ -14,9 +14,9 @@ int main() {
         return -1;
     }
     if (handle->empty()) {
-        boost::shared_ptr<std::ofstream> file;
+        std::shared_ptr<std::ofstream> file;
         try {
-            file = boost::make_shared<std::ofstream>("pool.log", std::ios::app);
+            file = std::make_shared<std::ofstream>("pool.log", std::ios::app);
         } catch (const std::exception& exception) {
             std::cerr << "Open file pool.log error: " << exception.what() << std::endl;
             return -1;

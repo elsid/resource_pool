@@ -4,9 +4,7 @@
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/time_traits.hpp>
 
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
-#include <boost/shared_ptr.hpp>
 
 #include <list>
 #include <map>
@@ -22,7 +20,7 @@ typedef std::chrono::steady_clock clock;
 template <class Value,
           class IoService = boost::asio::io_service,
           class Timer = time_traits::timer >
-class queue : public boost::enable_shared_from_this<queue<Value, IoService, Timer> >,
+class queue : public std::enable_shared_from_this<queue<Value, IoService, Timer> >,
     boost::noncopyable {
 public:
     typedef Value value_type;
@@ -33,8 +31,8 @@ public:
     queue(io_service_t& io_service, std::size_t capacity)
             : _io_service(io_service), _capacity(capacity), _timer(io_service) {}
 
-    boost::shared_ptr<queue> shared_from_this() {
-        return boost::enable_shared_from_this<queue>::shared_from_this();
+    std::shared_ptr<queue> shared_from_this() {
+        return std::enable_shared_from_this<queue>::shared_from_this();
     }
 
     std::size_t capacity() const { return _capacity; }
@@ -65,9 +63,9 @@ private:
     };
 
     struct cancel_callback {
-        const boost::shared_ptr<queue> self;
+        const std::shared_ptr<queue> self;
 
-        cancel_callback(const boost::shared_ptr<queue>& self)
+        cancel_callback(const std::shared_ptr<queue>& self)
             : self(self) {}
 
         void operator ()(const boost::system::error_code& ec) const {
