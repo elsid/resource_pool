@@ -138,7 +138,7 @@ Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
 
 Example:
 ```c++
-boost::shared<handle> h = pool.get(time_traits::duration(1));
+boost::shared_ptr<handle> h = pool.get(time_traits::duration(1));
 if (h->error()) {
     std::cerr << "Cant't get resource: " << h->error().message() << std::endl;
     return;
