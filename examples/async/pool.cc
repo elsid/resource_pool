@@ -1,8 +1,8 @@
-#include <fstream>
+#include <yamail/resource_pool/async/pool.hpp>
 
 #include <boost/thread.hpp>
 
-#include <yamail/resource_pool/async/pool.hpp>
+#include <fstream>
 
 typedef yamail::resource_pool::async::pool<std::ofstream> ofstream_pool;
 typedef yamail::resource_pool::time_traits time_traits;

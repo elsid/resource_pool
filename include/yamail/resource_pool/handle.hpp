@@ -1,10 +1,10 @@
 #ifndef YAMAIL_RESOURCE_POOL_HANDLE_HPP
 #define YAMAIL_RESOURCE_POOL_HANDLE_HPP
 
+#include <yamail/resource_pool/error.hpp>
+
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
-
-#include <yamail/resource_pool/error.hpp>
 
 namespace yamail {
 namespace resource_pool {

@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
-
 #include <yamail/resource_pool/time_traits.hpp>
+
+#include <gtest/gtest.h>
 
 namespace {
 

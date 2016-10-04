@@ -1,16 +1,17 @@
 #ifndef YAMAIL_RESOURCE_POOL_TEST_ASYNC_TESTS_HPP
 #define YAMAIL_RESOURCE_POOL_TEST_ASYNC_TESTS_HPP
 
+#include <yamail/resource_pool/time_traits.hpp>
+#include <yamail/resource_pool/detail/idle.hpp>
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <list>
-
+#include <boost/function.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 
-#include <yamail/resource_pool/time_traits.hpp>
-#include <yamail/resource_pool/detail/idle.hpp>
+#include <list>
 
 namespace tests {
 

@@ -1,8 +1,8 @@
 #ifndef YAMAIL_RESOURCE_POOL_ASYNC_DETAIL_QUEUE_HPP
 #define YAMAIL_RESOURCE_POOL_ASYNC_DETAIL_QUEUE_HPP
 
-#include <list>
-#include <map>
+#include <yamail/resource_pool/error.hpp>
+#include <yamail/resource_pool/time_traits.hpp>
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
@@ -10,8 +10,8 @@
 #include <boost/thread/lock_guard.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/time_traits.hpp>
+#include <list>
+#include <map>
 
 namespace yamail {
 namespace resource_pool {

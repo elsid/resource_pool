@@ -1,8 +1,10 @@
-#include <boost/make_shared.hpp>
-#include <boost/function.hpp>
+#include <yamail/resource_pool/sync/pool.hpp>
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <yamail/resource_pool/sync/pool.hpp>
+
+#include <boost/make_shared.hpp>
+#include <boost/function.hpp>
 
 namespace {
 

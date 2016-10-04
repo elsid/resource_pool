@@ -1,15 +1,15 @@
 #ifndef YAMAIL_RESOURCE_POOL_SYNC_DETAIL_POOL_IMPL_HPP
 #define YAMAIL_RESOURCE_POOL_SYNC_DETAIL_POOL_IMPL_HPP
 
-#include <list>
+#include <yamail/resource_pool/error.hpp>
+#include <yamail/resource_pool/time_traits.hpp>
+#include <yamail/resource_pool/detail/idle.hpp>
 
 #include <boost/noncopyable.hpp>
 #include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/time_traits.hpp>
-#include <yamail/resource_pool/detail/idle.hpp>
+#include <list>
 
 namespace yamail {
 namespace resource_pool {

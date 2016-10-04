@@ -1,6 +1,6 @@
-#include <fstream>
-
 #include <yamail/resource_pool/sync/pool.hpp>
+
+#include <fstream>
 
 typedef yamail::resource_pool::sync::pool<std::ofstream> ofstream_pool;
 typedef yamail::resource_pool::time_traits time_traits;

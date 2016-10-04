@@ -1,6 +1,6 @@
-#include <yamail/resource_pool/async/detail/pool_impl.hpp>
-
 #include "tests.hpp"
+
+#include <yamail/resource_pool/async/detail/pool_impl.hpp>
 
 namespace {
 

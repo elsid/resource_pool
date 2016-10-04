@@ -1,11 +1,11 @@
 #ifndef YAMAIL_RESOURCE_POOL_SYNC_POOL_HPP
 #define YAMAIL_RESOURCE_POOL_SYNC_POOL_HPP
 
-#include <boost/make_shared.hpp>
-
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/sync/handle.hpp>
 #include <yamail/resource_pool/sync/detail/pool_impl.hpp>
+
+#include <boost/make_shared.hpp>
 
 namespace yamail {
 namespace resource_pool {

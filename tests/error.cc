@@ -1,6 +1,8 @@
-#include <limits>
-#include <gtest/gtest.h>
 #include <yamail/resource_pool/error.hpp>
+
+#include <gtest/gtest.h>
+
+#include <limits>
 
 namespace {
 

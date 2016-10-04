@@ -1,11 +1,11 @@
 #ifndef YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 #define YAMAIL_RESOURCE_POOL_ASYNC_POOL_HPP
 
-#include <iostream>
-
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/handle.hpp>
 #include <yamail/resource_pool/async/detail/pool_impl.hpp>
+
+#include <iostream>
 
 namespace yamail {
 namespace resource_pool {
