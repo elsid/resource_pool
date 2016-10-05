@@ -29,10 +29,6 @@ public:
     queue(io_service_t& io_service, std::size_t capacity)
             : _io_service(io_service), _capacity(capacity), _timer(io_service) {}
 
-    std::shared_ptr<queue> shared_from_this() {
-        return std::enable_shared_from_this<queue>::shared_from_this();
-    }
-
     std::size_t capacity() const { return _capacity; }
     std::size_t size() const;
     bool empty() const;
@@ -146,7 +142,7 @@ void queue<V, I, T>::update_timer() {
     }
     const time_traits::time_point& eariest_expires_at = _expires_at_requests.begin()->first;
     _timer.expires_at(eariest_expires_at);
-    std::weak_ptr<queue> weak(shared_from_this());
+    std::weak_ptr<queue> weak(this->shared_from_this());
     _timer.async_wait([weak] (const boost::system::error_code& ec) {
         if (const auto locked = weak.lock()) {
             locked->cancel(ec);
