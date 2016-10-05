@@ -24,7 +24,6 @@ public:
     typedef Value value_type;
     typedef IoService io_service_t;
     typedef Timer timer_t;
-    typedef std::function<void ()> callback;
 
     queue(io_service_t& io_service, std::size_t capacity)
             : _io_service(io_service), _capacity(capacity), _timer(io_service) {}
@@ -34,7 +33,8 @@ public:
     bool empty() const;
     const timer_t& timer() const { return _timer; }
 
-    bool push(const value_type& req, const callback& req_expired,
+    template <class Callback>
+    bool push(const value_type& req, const Callback& req_expired,
               time_traits::duration wait_duration);
     bool pop(value_type& req);
 
@@ -46,6 +46,7 @@ private:
         typedef typename list::iterator list_it;
         typedef std::multimap<time_traits::time_point, const expiring_request*> multimap;
         typedef typename multimap::iterator multimap_it;
+        typedef std::function<void ()> callback;
 
         queue::value_type request;
         callback expired;
@@ -84,7 +85,8 @@ bool queue<V, I, T>::empty() const {
 }
 
 template <class V, class I, class T>
-bool queue<V, I, T>::push(const value_type& req_data, const callback& req_expired,
+template <class Callback>
+bool queue<V, I, T>::push(const value_type& req_data, const Callback& req_expired,
         time_traits::duration wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
