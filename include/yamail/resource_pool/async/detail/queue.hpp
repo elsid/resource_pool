@@ -60,8 +60,6 @@ private:
                 : request(request), expired(expired) {}
     };
 
-    typedef typename expiring_request::list_it request_list_it;
-    typedef typename expiring_request::multimap_it request_multimap_it;
     typedef typename expiring_request::multimap::value_type request_multimap_value;
 
     mutable std::mutex _mutex;
@@ -96,8 +94,7 @@ bool queue<V, I, T>::push(const value_type& req_data, const callback& req_expire
     if (!fit_capacity()) {
         return false;
     }
-    request_list_it order_it = _ordered_requests.insert(
-        _ordered_requests.end(), expiring_request(req_data, req_expired));
+    auto order_it = _ordered_requests.insert(_ordered_requests.end(), expiring_request(req_data, req_expired));
     expiring_request& req = *order_it;
     req.order_it = order_it;
     req.expires_at_it = _expires_at_requests.insert(
@@ -126,10 +123,9 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
         return;
     }
     const lock_guard lock(_mutex);
-    const request_multimap_it begin = _expires_at_requests.begin();
-    const request_multimap_it end = _expires_at_requests.upper_bound(
-        _timer.expires_at());
-    for (request_multimap_it it = begin; it != end; ++it) {
+    const auto begin = _expires_at_requests.begin();
+    const auto end = _expires_at_requests.upper_bound(_timer.expires_at());
+    for (auto it = begin; it != end; ++it) {
         cancel_one(*it);
     }
     _expires_at_requests.erase(_expires_at_requests.begin(), end);
