@@ -10,8 +10,7 @@ using namespace yamail::resource_pool::async;
 
 struct mocked_pool_impl {
     typedef resource value_type;
-    typedef std::shared_ptr<value_type> pointer;
-    typedef yamail::resource_pool::detail::idle<pointer> idle;
+    typedef yamail::resource_pool::detail::idle<value_type> idle;
     typedef std::list<idle> list;
     typedef list::iterator list_iterator;
     typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;

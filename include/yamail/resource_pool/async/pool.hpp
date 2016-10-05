@@ -15,8 +15,7 @@ template <class Value>
 struct default_pool_queue {
     typedef Value value_type;
     typedef boost::asio::io_service io_service_t;
-    typedef std::shared_ptr<value_type> pointer;
-    typedef resource_pool::detail::idle<pointer> idle;
+    typedef resource_pool::detail::idle<value_type> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
     typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;

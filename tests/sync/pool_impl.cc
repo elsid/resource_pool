@@ -19,12 +19,9 @@ struct mocked_condition_variable {
     MOCK_CONST_METHOD2(wait_for, std::cv_status (std::unique_lock<std::mutex>&, time_traits::duration));
 };
 
-typedef std::shared_ptr<resource> resource_ptr;
 typedef pool_impl<resource, mocked_condition_variable> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
-
-const std::function<resource_ptr ()> make_resource = make_shared<resource>;
 
 struct sync_resource_pool_impl : Test {};
 
@@ -192,7 +189,7 @@ TEST(sync_resource_pool_impl, get_one_set_and_recycle_with_zero_idle_timeout_the
     const get_result first_res = pool_impl.get();
     EXPECT_EQ(first_res.first, boost::system::error_code());
     ASSERT_NE(first_res.second, resource_ptr_list_iterator());
-    first_res.second->value = make_resource();
+    first_res.second->value = resource {};
     EXPECT_TRUE(first_res.second->value);
     pool_impl.recycle(first_res.second);
 

@@ -9,12 +9,17 @@ using namespace testing;
 using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::sync;
 
-struct resource {};
+struct resource {
+    resource() = default;
+    resource(const resource&) = delete;
+    resource(resource&&) = default;
+    resource& operator =(const resource&) = delete;
+    resource& operator =(resource&&) = default;
+};
 
 struct mocked_pool_impl {
     typedef resource value_type;
-    typedef std::shared_ptr<value_type> pointer;
-    typedef yamail::resource_pool::detail::idle<pointer> idle;
+    typedef yamail::resource_pool::detail::idle<value_type> idle;
     typedef std::list<idle> list;
     typedef list::iterator list_iterator;
     typedef std::pair<boost::system::error_code, list_iterator> get_result;
@@ -32,9 +37,6 @@ struct mocked_pool_impl {
 };
 
 typedef pool<resource, mocked_pool_impl> resource_pool;
-
-typedef std::shared_ptr<resource> resource_ptr;
-const auto make_resource = std::make_shared<resource>;
 
 struct sync_resource_pool : Test {
     mocked_pool_impl::list resources;
@@ -106,7 +108,7 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_should_call_recycle) {
     EXPECT_EQ(handle.error(), boost::system::error_code());
     EXPECT_FALSE(handle.unusable());
     EXPECT_TRUE(handle.empty());
-    EXPECT_NO_THROW(handle.reset(make_resource()));
+    EXPECT_NO_THROW(handle.reset(resource {}));
     EXPECT_NO_THROW(handle.get());
 }
 

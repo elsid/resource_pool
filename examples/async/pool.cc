@@ -13,14 +13,14 @@ struct on_get {
             return;
         }
         if (handle.empty()) {
-            std::shared_ptr<std::ofstream> file;
+            std::ofstream file;
             try {
-                file = std::make_shared<std::ofstream>("pool.log", std::ios::app);
+                file = std::ofstream("pool.log", std::ios::app);
             } catch (const std::exception& exception) {
                 std::cerr << "Open file pool.log error: " << exception.what() << std::endl;
                 return;
             }
-            handle.reset(file);
+            handle.reset(std::move(file));
         }
         handle.get() << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
         handle.recycle();

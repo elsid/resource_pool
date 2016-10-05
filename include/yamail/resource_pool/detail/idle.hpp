@@ -3,6 +3,8 @@
 
 #include <yamail/resource_pool/time_traits.hpp>
 
+#include <boost/optional.hpp>
+
 namespace yamail {
 namespace resource_pool {
 namespace detail {
@@ -11,7 +13,7 @@ template <class Value>
 struct idle {
     typedef Value value_type;
 
-    value_type value;
+    boost::optional<value_type> value;
     time_traits::time_point drop_time;
 
     idle(time_traits::time_point drop_time = time_traits::time_point::max())

@@ -14,13 +14,17 @@ namespace tests {
 using namespace testing;
 using namespace yamail::resource_pool;
 
-struct resource {};
+struct resource {
+    resource() = default;
+    resource(const resource&) = delete;
+    resource(resource&&) = default;
+    resource& operator =(const resource&) = delete;
+    resource& operator =(resource&&) = default;
+};
 
 struct request {
     int value;
 };
-
-typedef std::shared_ptr<resource> resource_ptr;
 
 struct mocked_io_service {
     MOCK_METHOD1(post, void (std::function<void ()>));

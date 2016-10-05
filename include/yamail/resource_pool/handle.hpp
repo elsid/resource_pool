@@ -14,7 +14,6 @@ public:
     typedef Pool pool;
     typedef typename pool::pool_impl pool_impl;
     typedef typename pool_impl::value_type value_type;
-    typedef typename pool_impl::pointer pointer;
     typedef void (handle::*strategy)();
     typedef std::shared_ptr<pool_impl> pool_impl_ptr;
     typedef typename pool_impl::list_iterator list_iterator;
@@ -45,7 +44,7 @@ public:
 
     void recycle();
     void waste();
-    void reset(const pointer& res);
+    void reset(value_type&& res);
 
 private:
     pool_impl_ptr _pool_impl;
@@ -107,9 +106,9 @@ void handle<P>::waste() {
 }
 
 template <class P>
-void handle<P>::reset(const pointer &res) {
+void handle<P>::reset(value_type &&res) {
     assert_not_unusable();
-    _resource_it->value = res;
+    _resource_it->value = std::move(res);
 }
 
 template <class P>

@@ -27,13 +27,13 @@ Include as subdirectory into your CMake project or copy folder include.
 
 ### Handle
 
-The handle contains iterator to ```std::shared_ptr``` of resource value in pool.
+The handle contains iterator to ```boost::optional``` of resource value in pool.
 Declared as type [handle](include/yamail/resource_pool/handle.hpp#L12-L59).
 Constructs with one of strategies that uses in destructor:
 * waste -- resets iterator if handle is usable.
 * recycle -- returns iterator to pool if handle is usable.
 
-Pool contains slots for resources that means handle iterator may refers to empty ```std::shared_ptr```.
+Pool contains slots for resources that means handle iterator may refers to empty ```boost::optional```.
 Client always must check value before using by method:
 ```c++
 bool empty() const;
@@ -53,7 +53,7 @@ const value_type &operator *() const;
 
 Value of handle changes by method:
 ```c++
-void reset(const std::shared_ptr<value_type>& res);
+void reset(value_type&& res);
 ```
 
 To drop resource use method:
@@ -86,7 +86,7 @@ template <class Value
 class pool;
 ```
 
-Pool holds ```std::shared_ptr``` of resource type.
+Pool holds ```boost::optional``` of resource type.
 
 Example:
 ```c++
@@ -163,7 +163,7 @@ template <class Value,
 class pool;
 ```
 
-Pool holds ```std::shared_ptr``` of resource type.
+Pool holds ```boost::optional``` of resource type.
 
 Example:
 ```c++
@@ -227,12 +227,12 @@ struct on_create_resource {
 
     on_create_resource(handle h) : h(std::move(h)) {}
 
-    void operator ()(const boost::system::error_code& ec, const std::shard_ptr<handle::value_type>& r) {
+    void operator ()(const boost::system::error_code& ec, handle::value_type&& r) {
         if (ec) {
             std::cerr << "Cant't create resource: " << ec.message() << std::endl;
             return;
         }
-        h.reset(r);
+        h.reset(std::move(r));
         use_resource(h.get());
     }
 };

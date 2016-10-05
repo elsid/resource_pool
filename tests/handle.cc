@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include <boost/optional.hpp>
+
 #include <list>
 
 namespace {
@@ -11,16 +13,23 @@ using namespace testing;
 
 struct handle_test : Test {};
 
-struct resource {};
+struct resource {
+    int value = 0;
+
+    resource(int value = 0) : value(value) {}
+    resource(const resource&) = delete;
+    resource(resource&&) = default;
+    resource& operator =(const resource &) = delete;
+    resource& operator =(resource &&) = default;
+};
 
 struct idle {
-    std::shared_ptr<resource> value;
+    boost::optional<resource> value;
 };
 
 struct pool {
     struct pool_impl {
         typedef resource value_type;
-        typedef std::shared_ptr<resource> pointer;
         typedef std::list<idle>::iterator list_iterator;
 
         MOCK_METHOD1(waste, void (list_iterator));
@@ -32,7 +41,8 @@ struct pool {
 typedef yamail::resource_pool::handle<pool> resource_handle;
 
 TEST(handle_test, construct_usable_should_be_not_unusable) {
-    std::list<idle> resources({idle {}});
+    std::list<idle> resources;
+    resources.emplace_back(idle {});
     const auto pool_impl = std::make_shared<pool::pool_impl>();
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_FALSE(handle.unusable());
@@ -40,7 +50,8 @@ TEST(handle_test, construct_usable_should_be_not_unusable) {
 }
 
 TEST(handle_test, construct_usable_and_move_than_source_should_be_unusable) {
-    std::list<idle> resources({idle {}});
+    std::list<idle> resources;
+    resources.emplace_back(idle {});
     const auto pool_impl = std::make_shared<pool::pool_impl>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     const resource_handle dst = std::move(src);
@@ -50,7 +61,8 @@ TEST(handle_test, construct_usable_and_move_than_source_should_be_unusable) {
 }
 
 TEST(handle_test, construct_usable_and_move_over_assign_than_source_should_be_unusable) {
-    std::list<idle> resources({idle {}});
+    std::list<idle> resources;
+    resources.emplace_back(idle {});
     const auto pool_impl = std::make_shared<pool::pool_impl>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     resource_handle dst(pool_impl, &resource_handle::waste, resources.end());
@@ -61,19 +73,22 @@ TEST(handle_test, construct_usable_and_move_over_assign_than_source_should_be_un
 }
 
 TEST(handle_test, construct_usable_than_get_should_return_value) {
-    const auto res = std::make_shared<resource>();
-    std::list<idle> resources({idle {res}});
+    std::list<idle> resources;
+    resources.emplace_back(idle {resource(42)});
     auto pool_impl = std::make_shared<pool::pool_impl>();
     resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
-    EXPECT_EQ(&handle.get(), res.get());
+    EXPECT_EQ(42, handle->value);
+    EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 
 TEST(handle_test, construct_usable_than_get_const_should_return_value) {
-    const auto res = std::make_shared<resource>();
-    std::list<idle> resources({idle {res}});
+    std::list<idle> resources;
+    resources.emplace_back(idle {resource(42)});
     auto pool_impl = std::make_shared<pool::pool_impl>();
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
-    EXPECT_EQ(&handle.get(), res.get());
+    EXPECT_EQ(42, handle->value);
+    EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
+
 }
 
 }

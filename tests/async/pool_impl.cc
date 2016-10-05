@@ -9,7 +9,7 @@ using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::async::detail;
 
 struct mocked_queue {
-    typedef std::list<detail::idle<std::shared_ptr<resource> > >::iterator list_iterator;
+    typedef std::list<detail::idle<resource>>::iterator list_iterator;
     typedef std::function<void (const boost::system::error_code&, list_iterator)> value_type;
     typedef std::function<void ()> callback;
 
@@ -351,7 +351,7 @@ public:
     void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
         ASSERT_NE(res, resource_ptr_list_iterator());
-        res->value = std::make_shared<resource>();
+        res->value = resource {};
         pool.recycle(res);
     }
 
