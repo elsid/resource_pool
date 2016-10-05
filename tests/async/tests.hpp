@@ -21,7 +21,10 @@ using boost::ref;
 using boost::make_shared;
 
 struct resource {};
-struct request {};
+
+struct request {
+    int value;
+};
 
 typedef boost::shared_ptr<resource> resource_ptr;
 

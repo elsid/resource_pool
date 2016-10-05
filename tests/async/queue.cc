@@ -86,7 +86,7 @@ TEST_F(async_request_queue, push_then_timeout_request_queue_should_be_empty) {
     EXPECT_CALL(queue->timer(), expires_at(_)).WillOnce(SaveArg<0>(&expire_time));
     EXPECT_CALL(queue->timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
 
-    ASSERT_TRUE(queue->push(request(), callback(expired), time_traits::duration(0)));
+    ASSERT_TRUE(queue->push(request {0}, callback(expired), time_traits::duration(0)));
 
     EXPECT_CALL(queue->timer(), expires_at()).WillOnce(Return(expire_time));
     EXPECT_CALL(ios, post(_)).WillOnce(InvokeArgument<0>());
@@ -106,21 +106,22 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     EXPECT_CALL(queue->timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
     EXPECT_CALL(*expired, call()).Times(0);
 
-    EXPECT_TRUE(queue->push(request(), callback(expired), time_traits::duration(1)));
+    EXPECT_TRUE(queue->push(request {42}, callback(expired), time_traits::duration(1)));
 
     using namespace boost::system::errc;
 
     on_async_wait(error_code(make_error_code(operation_canceled)));
 
     EXPECT_FALSE(queue->empty());
-    request_queue::value_type result;
+    request_queue::value_type result {0};
     EXPECT_TRUE(queue->pop(result));
+    EXPECT_EQ(result.value, 42);
 }
 
 TEST_F(async_request_queue, push_into_queue_with_null_capacity_should_return_error) {
     request_queue_ptr queue = make_queue(0);
 
-    const bool result = queue->push(request(), callback(expired), time_traits::duration(0));
+    const bool result = queue->push(request {0}, callback(expired), time_traits::duration(0));
     EXPECT_FALSE(result);
 }
 
@@ -128,7 +129,7 @@ TEST_F(async_request_queue, pop_from_empty_should_return_error) {
     request_queue_ptr queue = make_queue(1);
 
     EXPECT_TRUE(queue->empty());
-    request_queue::value_type result;
+    request_queue::value_type result {0};
     EXPECT_FALSE(queue->pop(result));
 }
 
