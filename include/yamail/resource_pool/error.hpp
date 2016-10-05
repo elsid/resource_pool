@@ -3,6 +3,8 @@
 
 #include <boost/system/error_code.hpp>
 
+#include <sstream>
+
 namespace yamail {
 namespace resource_pool {
 namespace error {
@@ -24,7 +26,6 @@ enum code {
     get_resource_timeout,
     request_queue_overflow,
     disabled,
-    client_handler_exception
 };
 
 namespace detail {
@@ -34,7 +35,7 @@ public:
     const char* name() const throw() { return "yamail::resource_pool::error::detail::category"; }
 
     std::string message(int value) const {
-        switch (value) {
+        switch (code(value)) {
             case ok:
                 return "no error";
             case get_resource_timeout:
@@ -43,11 +44,10 @@ public:
                 return "request queue overflow";
             case disabled:
                 return "resource pool is disabled";
-            case client_handler_exception:
-                return "exception in client handler";
-            default:
-                return "resource pool error";
         }
+        std::ostringstream error;
+        error << "no message for yamail::resource_pool::error: " << value;
+        throw std::logic_error(error.str());
     }
 };
 

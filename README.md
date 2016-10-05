@@ -176,8 +176,7 @@ pool(
     io_service_t& io_service,
     std::size_t capacity,
     std::size_t queue_capacity,
-    time_traits::duration idle_timeout = time_traits::duration::max(),
-    const on_catch_handler_exception_type& on_catch_handler_exception = detail::abort()
+    time_traits::duration idle_timeout = time_traits::duration::max()
 );
 ```
 

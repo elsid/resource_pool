@@ -27,7 +27,6 @@ struct default_pool_impl {
     typedef typename detail::pool_impl<
         Value,
         IoService,
-        detail::abort,
         typename default_pool_queue<Value>::type
     > type;
 };
@@ -41,19 +40,16 @@ public:
     typedef IoService io_service_t;
     typedef Impl pool_impl;
     typedef resource_pool::handle<pool> handle;
-    typedef typename pool_impl::on_catch_handler_exception_type on_catch_handler_exception_type;
 
     pool(io_service_t& io_service,
          std::size_t capacity,
          std::size_t queue_capacity,
-         time_traits::duration idle_timeout = time_traits::duration::max(),
-         const on_catch_handler_exception_type& on_catch_handler_exception = detail::abort())
+         time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(
                 io_service,
                 capacity,
                 queue_capacity,
-                idle_timeout,
-                on_catch_handler_exception)) {}
+                idle_timeout)) {}
 
     ~pool() { _impl->disable(); }
 

@@ -12,22 +12,7 @@ namespace resource_pool {
 namespace async {
 namespace detail {
 
-class abort {
-public:
-    typedef void (*impl_type)();
-
-    abort(impl_type impl = std::abort) : impl_(impl) {}
-
-    void operator ()(const boost::system::error_code& ec) const throw() {
-        std::cerr << "yamail::resource_pool::async::detail::pool_impl fatal error: " << ec.message() << std::endl;
-        impl_();
-    }
-
-private:
-    impl_type impl_;
-};
-
-template <class Value, class IoService, class OnCatchHandlerException, class Queue>
+template <class Value, class IoService, class Queue>
 class pool_impl : boost::noncopyable {
 public:
     typedef Value value_type;
@@ -37,18 +22,15 @@ public:
     typedef typename list::iterator list_iterator;
     typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef Queue queue_type;
-    typedef OnCatchHandlerException on_catch_handler_exception_type;
 
     pool_impl(io_service_t& io_service,
               std::size_t capacity,
               std::size_t queue_capacity,
-              time_traits::duration idle_timeout,
-              const on_catch_handler_exception_type& on_catch_handler_exception)
+              time_traits::duration idle_timeout)
             : _io_service(io_service),
               _capacity(assert_capacity(capacity)),
               _idle_timeout(idle_timeout),
               _callbacks(std::make_shared<queue_type>(io_service, queue_capacity)),
-              _on_catch_handler_exception(on_catch_handler_exception),
               _available_size(0),
               _used_size(0),
               _disabled(false)
@@ -63,7 +45,7 @@ public:
 
     template <class Callback>
     void async_call(const Callback& call) {
-        _io_service.post(call_and_catch_exception<Callback>(call, _on_catch_handler_exception));
+        _io_service.post(call);
     }
 
     template <class Callback>
@@ -93,24 +75,6 @@ private:
         }
     };
 
-    template <class Callback>
-    struct call_and_catch_exception {
-        Callback call;
-        on_catch_handler_exception_type on_catch_handler_exception;
-
-        call_and_catch_exception(const Callback& call,
-                                 const on_catch_handler_exception_type& on_catch_handler_exception)
-            : call(call), on_catch_handler_exception(on_catch_handler_exception) {}
-
-        void operator ()() {
-            try {
-                call();
-            } catch (...) {
-                on_catch_handler_exception(make_error_code(error::client_handler_exception));
-            }
-        }
-    };
-
     mutable std::mutex _mutex;
     list _available;
     list _used;
@@ -118,7 +82,6 @@ private:
     const std::size_t _capacity;
     const time_traits::duration _idle_timeout;
     std::shared_ptr<queue_type> _callbacks;
-    on_catch_handler_exception_type _on_catch_handler_exception;
     std::size_t _available_size;
     std::size_t _used_size;
     bool _disabled;
@@ -130,26 +93,26 @@ private:
     void perform_one_request(unique_lock& lock, serve_request_t serve);
 };
 
-template <class V, class I, class O, class Q>
-std::size_t pool_impl<V, I, O, Q>::size() const {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::size() const {
     const lock_guard lock(_mutex);
     return size_unsafe();
 }
 
-template <class V, class I, class O, class Q>
-std::size_t pool_impl<V, I, O, Q>::available() const {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::available() const {
     const lock_guard lock(_mutex);
     return _available_size;
 }
 
-template <class V, class I, class O, class Q>
-std::size_t pool_impl<V, I, O, Q>::used() const {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::used() const {
     const lock_guard lock(_mutex);
     return _used_size;
 }
 
-template <class V, class I, class O, class Q>
-void pool_impl<V, I, O, Q>::recycle(list_iterator res_it) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::recycle(list_iterator res_it) {
     res_it->drop_time = time_traits::add(time_traits::now(), _idle_timeout);
     unique_lock lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
@@ -158,17 +121,17 @@ void pool_impl<V, I, O, Q>::recycle(list_iterator res_it) {
     perform_one_request(lock, &pool_impl::alloc_resource);
 }
 
-template <class V, class I, class O, class Q>
-void pool_impl<V, I, O, Q>::waste(list_iterator res_it) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
     _used.erase(res_it);
     --_used_size;
     perform_one_request(lock, &pool_impl::reserve_resource);
 }
 
-template <class V, class I, class O, class Q>
+template <class V, class I, class Q>
 template <class Callback>
-void pool_impl<V, I, O, Q>::get(const Callback& call, time_traits::duration wait_duration) {
+void pool_impl<V, I, Q>::get(const Callback& call, time_traits::duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
@@ -185,9 +148,7 @@ void pool_impl<V, I, O, Q>::get(const Callback& call, time_traits::duration wait
         } else {
             const async_callback<Callback> expired(call,
                 make_error_code(error::get_resource_timeout), list_iterator());
-            typedef call_and_catch_exception<async_callback<Callback> > expired_callback;
-            const bool pushed = _callbacks->push(call, expired_callback(expired, _on_catch_handler_exception),
-                                                 wait_duration);
+            const bool pushed = _callbacks->push(call, expired, wait_duration);
             if (!pushed) {
                 async_call(async_callback<Callback>(call, make_error_code(error::request_queue_overflow),
                                                     list_iterator()));
@@ -196,8 +157,8 @@ void pool_impl<V, I, O, Q>::get(const Callback& call, time_traits::duration wait
     }
 }
 
-template <class V, class I, class O, class Q>
-void pool_impl<V, I, O, Q>::disable() {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     while (true) {
@@ -210,16 +171,16 @@ void pool_impl<V, I, O, Q>::disable() {
     }
 }
 
-template <class V, class I, class O, class Q>
-std::size_t pool_impl<V, I, O, Q>::assert_capacity(std::size_t value) {
+template <class V, class I, class Q>
+std::size_t pool_impl<V, I, Q>::assert_capacity(std::size_t value) {
     if (value == 0) {
         throw error::zero_pool_capacity();
     }
     return value;
 }
 
-template <class V, class I, class O, class Q>
-bool pool_impl<V, I, O, Q>::alloc_resource(unique_lock& lock, const callback& call) {
+template <class V, class I, class Q>
+bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, const callback& call) {
     while (!_available.empty()) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
@@ -237,8 +198,8 @@ bool pool_impl<V, I, O, Q>::alloc_resource(unique_lock& lock, const callback& ca
     return false;
 }
 
-template <class V, class I, class O, class Q>
-bool pool_impl<V, I, O, Q>::reserve_resource(unique_lock& lock, const callback& call) {
+template <class V, class I, class Q>
+bool pool_impl<V, I, Q>::reserve_resource(unique_lock& lock, const callback& call) {
     const list_iterator res_it = _used.insert(_used.end(), idle());
     ++_used_size;
     lock.unlock();
@@ -246,8 +207,8 @@ bool pool_impl<V, I, O, Q>::reserve_resource(unique_lock& lock, const callback& 
     return true;
 }
 
-template <class V, class I, class O, class Q>
-void pool_impl<V, I, O, Q>::perform_one_request(unique_lock& lock, serve_request_t serve) {
+template <class V, class I, class Q>
+void pool_impl<V, I, Q>::perform_one_request(unique_lock& lock, serve_request_t serve) {
     callback call;
     if (_callbacks->pop(call)) {
         (this->*serve)(lock, call);
