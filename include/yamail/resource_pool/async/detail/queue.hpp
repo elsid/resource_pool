@@ -123,9 +123,7 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec) {
     const lock_guard lock(_mutex);
     const auto begin = _expires_at_requests.begin();
     const auto end = _expires_at_requests.upper_bound(_timer.expires_at());
-    for (auto it = begin; it != end; ++it) {
-        cancel_one(*it);
-    }
+    std::for_each(begin, end, [&] (const request_multimap_value& v) { this->cancel_one(v); });
     _expires_at_requests.erase(_expires_at_requests.begin(), end);
     update_timer();
 }
