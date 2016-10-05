@@ -18,7 +18,6 @@ public:
     typedef Value value_type;
     typedef Impl pool_impl;
     typedef sync::handle<value_type, pool_impl> handle;
-    typedef std::shared_ptr<handle> handle_ptr;
 
     pool(std::size_t capacity, time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(capacity, idle_timeout))
@@ -33,11 +32,11 @@ public:
 
     const pool_impl& impl() const { return *_impl; }
 
-    handle_ptr get_auto_waste(time_traits::duration wait_duration = time_traits::duration(0)) {
+    handle get_auto_waste(time_traits::duration wait_duration = time_traits::duration(0)) {
         return get_handle(&handle::waste, wait_duration);
     }
 
-    handle_ptr get_auto_recycle(time_traits::duration wait_duration = time_traits::duration(0)) {
+    handle get_auto_recycle(time_traits::duration wait_duration = time_traits::duration(0)) {
         return get_handle(&handle::recycle, wait_duration);
     }
 
@@ -47,9 +46,9 @@ private:
 
     pool_impl_ptr _impl;
 
-    handle_ptr get_handle(strategy use_strategy, time_traits::duration wait_duration) {
+    handle get_handle(strategy use_strategy, time_traits::duration wait_duration) {
         const typename pool_impl::get_result& res = _impl->get(wait_duration);
-        return handle_ptr(new handle(_impl, use_strategy, res.second, res.first));
+        return handle(_impl, use_strategy, res.second, res.first);
     }
 };
 

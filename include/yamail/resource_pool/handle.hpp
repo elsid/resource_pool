@@ -19,8 +19,7 @@ public:
     typedef std::shared_ptr<pool_impl> pool_impl_ptr;
     typedef typename pool_impl::list_iterator list_iterator;
 
-    friend pool;
-
+    handle() = default;
     handle(const handle& other) = delete;
     handle(handle&& other);
 

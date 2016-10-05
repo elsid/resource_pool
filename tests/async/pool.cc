@@ -12,7 +12,7 @@ struct mocked_pool_impl {
     typedef resource value_type;
     typedef std::shared_ptr<value_type> pointer;
     typedef yamail::resource_pool::detail::idle<pointer> idle;
-    typedef std::list<std::shared_ptr<idle> > list;
+    typedef std::list<idle> list;
     typedef list::iterator list_iterator;
     typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef std::function<void (const boost::system::error_code&)> on_catch_handler_exception_type;
@@ -31,7 +31,6 @@ struct mocked_pool_impl {
 };
 
 typedef pool<resource, mocked_io_service, mocked_pool_impl> resource_pool;
-typedef std::shared_ptr<resource_pool::handle> resource_handle_ptr;
 
 using boost::system::error_code;
 
@@ -99,9 +98,9 @@ public:
     check_error(const error_code& error) : error(error) {}
     check_error(const error::code& error) : error(make_error_code(error)) {}
 
-    void operator ()(const error_code& err, const resource_handle_ptr& res) const {
+    void operator ()(const error_code& err, resource_pool::handle res) const {
         EXPECT_EQ(err, error);
-        EXPECT_EQ(bool(res), error == error_code());
+        EXPECT_EQ(res.unusable(), error != error_code());
     }
 
 private:
@@ -135,10 +134,10 @@ TEST_F(async_resource_pool, get_auto_waste_handle_should_call_waste) {
 }
 
 struct recycle_resource {
-    void operator ()(const error_code& err, resource_handle_ptr res) const {
+    void operator ()(const error_code& err, resource_pool::handle res) const {
         EXPECT_EQ(err, error_code());
-        EXPECT_FALSE(res->unusable());
-        res->recycle();
+        EXPECT_FALSE(res.unusable());
+        res.recycle();
     }
 };
 
@@ -165,10 +164,10 @@ TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycl
 }
 
 struct waste_resource {
-    void operator ()(const error_code& err, resource_handle_ptr res) const {
+    void operator ()(const error_code& err, resource_pool::handle res) const {
         EXPECT_EQ(err, error_code());
-        EXPECT_FALSE(res->unusable());
-        res->waste();
+        EXPECT_FALSE(res.unusable());
+        res.waste();
     }
 };
 

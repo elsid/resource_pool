@@ -42,7 +42,6 @@ public:
     typedef IoService io_service_t;
     typedef Impl pool_impl;
     typedef resource_pool::handle<pool> handle;
-    typedef std::shared_ptr<handle> handle_ptr;
     typedef typename pool_impl::on_catch_handler_exception_type on_catch_handler_exception_type;
 
     pool(io_service_t& io_service,
@@ -86,40 +85,16 @@ private:
     pool_impl_ptr _impl;
 
     template <class Callback>
-    struct fill_handle_callback {
-        typedef void (*fill_handle_type)(Callback,
-                                         const handle_ptr&,
-                                         const boost::system::error_code&,
-                                         list_iterator);
-
-        const fill_handle_type fill_handle;
-        const Callback call;
-        const handle_ptr handle;
-
-        fill_handle_callback(fill_handle_type fill_handle, const Callback& call, const handle_ptr& handle)
-            : fill_handle(fill_handle), call(call), handle(handle) {}
-
-        void operator ()(const boost::system::error_code& ec, list_iterator it) {
-            fill_handle(call, handle, ec, it);
-        }
-    };
-
-    template <class Callback>
-    void get(const Callback& call, strategy use_strategy,
-            time_traits::duration wait_duration) {
-        const handle_ptr h(new handle(_impl, use_strategy, list_iterator()));
-        _impl->get(fill_handle_callback<Callback>(fill_handle<Callback>, call, h),
-                   wait_duration);
-    }
-
-    template <class Callback>
-    static void fill_handle(Callback call, const handle_ptr& h,
-            const boost::system::error_code& ec, list_iterator res) {
-        if (ec) {
-            return call(ec, handle_ptr());
-        }
-        h->_resource_it = res;
-        call(ec, h);
+    void get(Callback call, strategy use_strategy, time_traits::duration wait_duration) {
+        const auto impl = _impl;
+        const auto on_get = [impl, use_strategy, call] (const boost::system::error_code& ec, list_iterator res) mutable {
+            if (ec) {
+                call(ec, handle());
+            } else {
+                call(ec, handle(impl, use_strategy, res));
+            }
+        };
+        _impl->get(on_get, wait_duration);
     }
 };
 

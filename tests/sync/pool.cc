@@ -32,7 +32,6 @@ struct mocked_pool_impl {
 };
 
 typedef pool<resource, mocked_pool_impl> resource_pool;
-typedef resource_pool::handle_ptr resource_handle_ptr;
 
 typedef std::shared_ptr<resource> resource_ptr;
 const auto make_resource = std::make_shared<resource>;
@@ -102,14 +101,13 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_should_call_recycle) {
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    const resource_handle_ptr handle = pool.get_auto_recycle();
+    auto handle = pool.get_auto_recycle();
 
-    EXPECT_TRUE(handle);
-    EXPECT_EQ(handle->error(), boost::system::error_code());
-    EXPECT_FALSE(handle->unusable());
-    EXPECT_TRUE(handle->empty());
-    EXPECT_NO_THROW(handle->reset(make_resource()));
-    EXPECT_NO_THROW(handle->get());
+    EXPECT_EQ(handle.error(), boost::system::error_code());
+    EXPECT_FALSE(handle.unusable());
+    EXPECT_TRUE(handle.empty());
+    EXPECT_NO_THROW(handle.reset(make_resource()));
+    EXPECT_NO_THROW(handle.get());
 }
 
 TEST_F(sync_resource_pool, get_auto_waste_handle_should_call_waste) {
@@ -121,9 +119,9 @@ TEST_F(sync_resource_pool, get_auto_waste_handle_should_call_waste) {
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    const resource_handle_ptr handle = pool.get_auto_waste();
+    const auto handle = pool.get_auto_waste();
 
-    EXPECT_TRUE(handle);
+    EXPECT_FALSE(handle.unusable());
 }
 
 TEST_F(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recycle_once) {
@@ -135,14 +133,14 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recyc
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    const resource_handle_ptr handle = pool.get_auto_recycle();
+    auto handle = pool.get_auto_recycle();
 
-    handle->recycle();
+    handle.recycle();
 
-    EXPECT_TRUE(handle->unusable());
-    EXPECT_THROW(handle->recycle(), error::unusable_handle);
-    EXPECT_TRUE(handle->empty());
-    EXPECT_THROW(handle->get(), error::empty_handle);
+    EXPECT_TRUE(handle.unusable());
+    EXPECT_THROW(handle.recycle(), error::unusable_handle);
+    EXPECT_TRUE(handle.empty());
+    EXPECT_THROW(handle.get(), error::empty_handle);
 }
 
 TEST_F(sync_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_once) {
@@ -154,9 +152,9 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_o
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    const resource_handle_ptr handle = pool.get_auto_recycle();
+    auto handle = pool.get_auto_recycle();
 
-    handle->waste();
+    handle.waste();
 }
 
 TEST_F(sync_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycle_once) {
@@ -168,9 +166,9 @@ TEST_F(sync_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycle
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    const resource_handle_ptr handle = pool.get_auto_waste();
+    auto handle = pool.get_auto_waste();
 
-    handle->recycle();
+    handle.recycle();
 }
 
 TEST_F(sync_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_once) {
@@ -182,9 +180,9 @@ TEST_F(sync_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_onc
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    const resource_handle_ptr handle = pool.get_auto_waste();
+    auto handle = pool.get_auto_waste();
 
-    handle->waste();
+    handle.waste();
 }
 
 }

@@ -7,12 +7,12 @@ typedef yamail::resource_pool::async::pool<std::ofstream> ofstream_pool;
 typedef yamail::resource_pool::time_traits time_traits;
 
 struct on_get {
-    void operator ()(const boost::system::error_code& ec, ofstream_pool::handle_ptr handle) {
+    void operator ()(const boost::system::error_code& ec, ofstream_pool::handle handle) {
         if (ec) {
             std::cerr << ec.message() << std::endl;
             return;
         }
-        if (handle->empty()) {
+        if (handle.empty()) {
             std::shared_ptr<std::ofstream> file;
             try {
                 file = std::make_shared<std::ofstream>("pool.log", std::ios::app);
@@ -20,10 +20,10 @@ struct on_get {
                 std::cerr << "Open file pool.log error: " << exception.what() << std::endl;
                 return;
             }
-            handle->reset(file);
+            handle.reset(file);
         }
-        handle->get() << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
-        handle->recycle();
+        handle.get() << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
+        handle.recycle();
     }
 };
 

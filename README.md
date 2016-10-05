@@ -27,13 +27,13 @@ Include as subdirectory into your CMake project or copy folder include.
 
 ### Handle
 
-The wrapper contains ```std::shared_ptr``` of resource type.
+The handle contains iterator to ```std::shared_ptr``` of resource value in pool.
 Declared as type [handle](include/yamail/resource_pool/handle.hpp#L12-L59).
 Constructs with one of strategies that uses in destructor:
-* waste -- resets ```std::shared_ptr``` value if handle is usable.
-* recycle -- returns resource to pool if handle is usable.
+* waste -- resets iterator if handle is usable.
+* recycle -- returns iterator to pool if handle is usable.
 
-Pool contains slots for resources that means handle may contains pointer to some client object or ```nullptr```.
+Pool contains slots for resources that means handle iterator may refers to empty ```std::shared_ptr```.
 Client always must check value before using by method:
 ```c++
 bool empty() const;
@@ -86,7 +86,7 @@ template <class Value
 class pool;
 ```
 
-Pool holds ```std::shared_ptr``` of resource type. Type wrapping isn't necessary.
+Pool holds ```std::shared_ptr``` of resource type.
 
 Example:
 ```c++
@@ -121,14 +121,14 @@ If new handle is not usable error value will be not ok.
 
 Use one of these methods:
 ```c++
-std::shared_ptr<handle> get_auto_waste(
+handle get_auto_waste(
     time_traits::duration wait_duration = time_traits::duration(0)
 );
 ```
 returns resource handle when it will be available with auto waste strategy.
 
 ```c++
-std::shared_ptr<handle> get_auto_recycle(
+handle get_auto_recycle(
     time_traits::duration wait_duration = time_traits::duration(0)
 );
 ```
@@ -138,13 +138,13 @@ Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
 
 Example:
 ```c++
-std::shared_ptr<handle> h = pool.get(time_traits::duration(1));
-if (h->error()) {
-    std::cerr << "Cant't get resource: " << h->error().message() << std::endl;
+handle h = pool.get(time_traits::duration(1));
+if (h.error()) {
+    std::cerr << "Cant't get resource: " << h.error().message() << std::endl;
     return;
 }
-if (h->empty()) {
-    h->reset(create_resource());
+if (h.empty()) {
+    h.reset(create_resource());
 }
 use_resource(h.get());
 ```
@@ -163,7 +163,7 @@ template <class Value,
 class pool;
 ```
 
-Pool holds ```std::shared_ptr``` of resource type. Type wrapping isn't necessary.
+Pool holds ```std::shared_ptr``` of resource type.
 
 Example:
 ```c++
@@ -212,42 +212,41 @@ Type ```Callback``` must provide interface:
 ```c++
 void operator ()(
     const boost::system::error_code&,
-    const std::shared_ptr<handle>&
+    handle
 );
 ```
 
 Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
 
-If error occurs ```ec``` will be not ok and ```handle``` will be nullptr.
+If error occurs ```ec``` will be not ok and ```handle``` will be unusable.
 
 Example:
 ```c++
 struct on_create_resource {
-    std::shared_ptr<handle> h;
+    handle h;
 
-    on_create_resource(const std::shared_ptr<handle>& h) : h(h) {}
+    on_create_resource(handle h) : h(std::move(h)) {}
 
-    void operator ()(const boost::system::error_code& ec, const handle::pointer& r) {
+    void operator ()(const boost::system::error_code& ec, const std::shard_ptr<handle::value_type>& r) {
         if (ec) {
             std::cerr << "Cant't create resource: " << ec.message() << std::endl;
             return;
         }
-        h->reset(r);
-        use_resource(h->get());
+        h.reset(r);
+        use_resource(h.get());
     }
 };
 
 struct handle_get {
-    void operator ()(const boost::system::error_code& ec,
-                     const std::shared_ptr<handle>& h) {
+    void operator ()(const boost::system::error_code& ec, handle h) {
         if (ec) {
             std::cerr << "Cant't get resource: " << ec.message() << std::endl;
             return;
         }
-        if (h->empty()) {
-            async_create_resource(on_create_resource(h));
+        if (h.empty()) {
+            async_create_resource(on_create_resource(std::move(h)));
         } else {
-            use_resource(h->get());
+            use_resource(h.get());
         }
     }
 };
