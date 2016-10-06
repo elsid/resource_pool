@@ -9,7 +9,10 @@ cache:
 
 addons:
   apt:
+    sources:
+    - ubuntu-toolchain-r-test
     packages:
+    - g++-6
     - libcurl4-openssl-dev
     - libelf-dev
     - libdw-dev
@@ -23,19 +26,19 @@ env:
   - LOCAL=${HOME}/.local
   - PATH=${LOCAL}/bin:${PATH}
   - BUILD_TYPE='Debug'
-  - CXX_COMPILER='ccache g++'
-
-before_install:
-- sudo add-apt-repository ppa:apokluda/boost1.53 -y
-- sudo apt-get update
-
-install:
-- sudo apt-get install libboost1.53-all-dev
+  - CXX_COMPILER='ccache g++-6'
 
 before_script:
 - export CXX="${CXX_COMPILER}"
 - cmake --version
 - ${CXX} --version
+- wget -O boost_1_56_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1.56.0/boost_1_56_0.tar.gz/download
+- tar xzf boost_1_56_0.tar.gz
+- cd boost_1_56_0
+- ./bootstrap.sh --with-libraries=system
+- mkdir build
+- ./b2 --build-dir=build
+- sudo ./b2 --build-dir=build install
 - cd ${TRAVIS_BUILD_DIR}
 - mkdir -p ${TRAVIS_BUILD_DIR}/build
 - cd ${TRAVIS_BUILD_DIR}/build
