@@ -14,6 +14,13 @@
 namespace yamail {
 namespace resource_pool {
 namespace sync {
+
+struct stats {
+    std::size_t size;
+    std::size_t available;
+    std::size_t used;
+};
+
 namespace detail {
 
 template <class Value, class ConditionVariable>
@@ -38,6 +45,7 @@ public:
     std::size_t size() const;
     std::size_t available() const;
     std::size_t used() const;
+    sync::stats stats() const;
 
     const condition_variable& has_capacity() const { return _has_capacity; }
 
@@ -85,6 +93,12 @@ template <class T, class C>
 std::size_t pool_impl<T, C>::used() const {
     const lock_guard lock(_mutex);
     return _used_size;
+}
+
+template <class T, class C>
+sync::stats pool_impl<T, C>::stats() const {
+    const lock_guard lock(_mutex);
+    return sync::stats {size_unsafe(), _available_size, _used_size};
 }
 
 template <class T, class C>

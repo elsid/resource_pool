@@ -15,6 +15,7 @@ struct mocked_queue {
 
     MOCK_CONST_METHOD3(push, bool (const value_type&, const callback&, time_traits::duration));
     MOCK_CONST_METHOD1(pop, bool (value_type&));
+    MOCK_CONST_METHOD0(size, std::size_t ());
 
     mocked_queue(mocked_io_service&, std::size_t) {}
 };
@@ -77,6 +78,20 @@ TEST_F(async_resource_pool_impl, create_const_then_check_available_should_be_0) 
 TEST_F(async_resource_pool_impl, create_const_then_check_used_should_be_0) {
     const resource_pool_impl pool(ios, 1, 0, time_traits::duration::max());
     EXPECT_EQ(pool.used(), 0);
+}
+
+TEST_F(async_resource_pool_impl, create_const_then_check_stats_should_be_0_0_0_0) {
+    const resource_pool_impl pool(ios, 1, 0, time_traits::duration::max());
+    const async::stats expected {0, 0, 0, 0};
+
+    EXPECT_CALL(pool.queue(), size()).WillOnce(Return(0));
+
+    const auto actual = pool.stats();
+
+    EXPECT_EQ(actual.size, expected.size);
+    EXPECT_EQ(actual.available, expected.available);
+    EXPECT_EQ(actual.used, expected.used);
+    EXPECT_EQ(actual.queue_size, expected.queue_size);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_call_queue_should_succeed) {

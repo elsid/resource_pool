@@ -10,6 +10,14 @@
 namespace yamail {
 namespace resource_pool {
 namespace async {
+
+struct stats {
+    std::size_t size;
+    std::size_t available;
+    std::size_t used;
+    std::size_t queue_size;
+};
+
 namespace detail {
 
 template <class Value, class IoService, class Queue>
@@ -40,6 +48,7 @@ public:
     std::size_t size() const;
     std::size_t available() const;
     std::size_t used() const;
+    async::stats stats() const;
 
     const queue_type& queue() const { return *_callbacks; }
 
@@ -97,6 +106,12 @@ template <class V, class I, class Q>
 std::size_t pool_impl<V, I, Q>::used() const {
     const lock_guard lock(_mutex);
     return _used_size;
+}
+
+template <class V, class I, class Q>
+async::stats pool_impl<V, I, Q>::stats() const {
+    const lock_guard lock(_mutex);
+    return async::stats {size_unsafe(), _available_size, _used_size, _callbacks->size()};
 }
 
 template <class V, class I, class Q>

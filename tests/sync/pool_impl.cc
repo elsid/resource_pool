@@ -49,6 +49,16 @@ TEST(sync_resource_pool_impl, create_then_check_used_should_be_0) {
     EXPECT_EQ(pool.used(), 0);
 }
 
+TEST(sync_resource_pool_impl, create_const_then_check_stats_should_be_0_0_0) {
+    resource_pool_impl pool(1, time_traits::duration::max());
+    const sync::stats expected {0, 0, 0};
+    const auto actual = pool.stats();
+
+    EXPECT_EQ(actual.size, expected.size);
+    EXPECT_EQ(actual.available, expected.available);
+    EXPECT_EQ(actual.used, expected.used);
+}
+
 TEST(sync_resource_pool_impl, get_one_should_succeed) {
     resource_pool_impl pool_impl(1, time_traits::duration::max());
     const get_result res = pool_impl.get();

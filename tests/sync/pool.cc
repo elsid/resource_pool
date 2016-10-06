@@ -30,6 +30,7 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD0(size, std::size_t ());
     MOCK_CONST_METHOD0(available, std::size_t ());
     MOCK_CONST_METHOD0(used, std::size_t ());
+    MOCK_CONST_METHOD0(stats, sync::stats ());
     MOCK_CONST_METHOD1(get, get_result (time_traits::duration));
     MOCK_CONST_METHOD1(recycle, void (list_iterator));
     MOCK_CONST_METHOD1(waste, void (list_iterator));
@@ -92,6 +93,17 @@ TEST_F(sync_resource_pool, call_used_should_call_impl_used) {
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
     pool.used();
+}
+
+TEST_F(sync_resource_pool, call_stats_should_call_impl_stats) {
+    const resource_pool pool(1);
+
+    InSequence s;
+
+    EXPECT_CALL(pool.impl(), stats()).WillOnce(Return(sync::stats {0, 0, 0}));
+    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+
+    pool.stats();
 }
 
 TEST_F(sync_resource_pool, move_than_dtor_should_call_disable_only_for_destination) {

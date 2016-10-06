@@ -39,6 +39,7 @@ public:
     std::size_t size() const { return _impl->size(); }
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
+    sync::stats stats() const { return _impl->stats(); }
 
     const pool_impl& impl() const { return *_impl; }
 

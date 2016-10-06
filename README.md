@@ -79,7 +79,7 @@ Based on ```std::condition_variable```.
 
 #### Create pool
 
-Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-63). Parametrize resource type:
+Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-64). Parametrize resource type:
 ```c++
 template <class Value
           class Impl = detail::pool_impl<Value, std::condition_variable> >
@@ -155,7 +155,7 @@ Based on ```boost::asio::io_service```. Uses async queue with deadline timer to 
 
 #### Create pool
 
-Use type [async::pool](include/yamail/resource_pool/async/pool.hpp#L34-L104). Parametrize resource type:
+Use type [async::pool](include/yamail/resource_pool/async/pool.hpp#L34-L105). Parametrize resource type:
 ```c++
 template <class Value,
           class IoService = boost::asio::io_service,
