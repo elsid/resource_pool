@@ -12,9 +12,9 @@ Project uses CMake. Build need only to run tests or examples:
 ```bash
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+cmake ..
 make -j $(nproc)
-ctest -V -j $(nproc)
+ctest -V
 examples/sync_pool
 examples/async_pool
 ```
