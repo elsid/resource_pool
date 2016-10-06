@@ -28,7 +28,7 @@ Include as subdirectory into your CMake project or copy folder include.
 ### Handle
 
 The handle contains iterator to ```boost::optional``` of resource value in pool.
-Declared as type [handle](include/yamail/resource_pool/handle.hpp#L12-L59).
+Declared as type [handle](include/yamail/resource_pool/handle.hpp#L11-L58).
 Constructs with one of strategies that uses in destructor:
 * waste -- resets iterator if handle is usable.
 * recycle -- returns iterator to pool if handle is usable.
@@ -79,7 +79,7 @@ Based on ```std::condition_variable```.
 
 #### Create pool
 
-Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-L54). Parametrize resource type:
+Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-53). Parametrize resource type:
 ```c++
 template <class Value
           class Impl = detail::pool_impl<Value, std::condition_variable> >
@@ -109,7 +109,7 @@ fstream_pool pool(42);
 #### Specific handle
 
 Declared as type [sync::handle](include/yamail/resource_pool/sync/handle.hpp#L14-L33)
-based on type [handle](include/yamail/resource_pool/handle.hpp#L12-L59).
+based on type [handle](include/yamail/resource_pool/handle.hpp#L11-L58).
 Contains extra method to get error code:
 ```c++
 const boost::system::error_code& error() const;
@@ -155,7 +155,7 @@ Based on ```boost::asio::io_service```. Uses async queue with deadline timer to 
 
 #### Create pool
 
-Use type [async::pool](include/yamail/resource_pool/async/pool.hpp#L36-L124). Parametrize resource type:
+Use type [async::pool](include/yamail/resource_pool/async/pool.hpp#L34-L94). Parametrize resource type:
 ```c++
 template <class Value,
           class IoService = boost::asio::io_service,
