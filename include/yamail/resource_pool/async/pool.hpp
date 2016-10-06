@@ -34,7 +34,7 @@ struct default_pool_impl {
 template <class Value,
           class IoService = boost::asio::io_service,
           class Impl = typename default_pool_impl<Value, IoService>::type >
-class pool : boost::noncopyable {
+class pool {
 public:
     typedef Value value_type;
     typedef IoService io_service_t;
@@ -51,7 +51,17 @@ public:
                 queue_capacity,
                 idle_timeout)) {}
 
-    ~pool() { _impl->disable(); }
+    pool(const pool&) = delete;
+    pool(pool&&) = default;
+
+    ~pool() {
+        if (_impl) {
+            _impl->disable();
+        }
+    }
+
+    pool& operator =(const pool&) = delete;
+    pool& operator =(pool&&) = default;
 
     std::size_t capacity() const { return _impl->capacity(); }
     std::size_t size() const { return _impl->size(); }

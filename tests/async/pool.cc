@@ -90,6 +90,16 @@ TEST_F(async_resource_pool, call_used_should_call_impl_used) {
     pool.used();
 }
 
+TEST_F(async_resource_pool, move_than_dtor_should_call_disable_only_for_destination) {
+    resource_pool src(ios, 0, 0);
+
+    EXPECT_CALL(src.impl(), disable()).Times(0);
+
+    const auto dst = std::move(src);
+
+    EXPECT_CALL(dst.impl(), disable()).WillOnce(Return());
+}
+
 class check_error {
 public:
     check_error(const error_code& error) : error(error) {}

@@ -23,7 +23,17 @@ public:
             : _impl(std::make_shared<pool_impl>(capacity, idle_timeout))
     {}
 
-    ~pool() { _impl->disable(); }
+    pool(const pool&) = delete;
+    pool(pool&&) = default;
+
+    ~pool() {
+        if (_impl) {
+            _impl->disable();
+        }
+    }
+
+    pool& operator =(const pool&) = delete;
+    pool& operator =(pool&&) = default;
 
     std::size_t capacity() const { return _impl->capacity(); }
     std::size_t size() const { return _impl->size(); }
