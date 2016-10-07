@@ -2,7 +2,7 @@
 #define YAMAIL_RESOURCE_POOL_SYNC_POOL_HPP
 
 #include <yamail/resource_pool/error.hpp>
-#include <yamail/resource_pool/sync/handle.hpp>
+#include <yamail/resource_pool/handle.hpp>
 #include <yamail/resource_pool/sync/detail/pool_impl.hpp>
 
 #include <condition_variable>
@@ -17,7 +17,8 @@ class pool {
 public:
     typedef Value value_type;
     typedef Impl pool_impl;
-    typedef sync::handle<value_type, pool_impl> handle;
+    typedef resource_pool::handle<pool> handle;
+    typedef std::pair<boost::system::error_code, handle> get_result;
 
     pool(std::size_t capacity, time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(capacity, idle_timeout))
@@ -43,23 +44,23 @@ public:
 
     const pool_impl& impl() const { return *_impl; }
 
-    handle get_auto_waste(time_traits::duration wait_duration = time_traits::duration(0)) {
+    get_result get_auto_waste(time_traits::duration wait_duration = time_traits::duration(0)) {
         return get_handle(&handle::waste, wait_duration);
     }
 
-    handle get_auto_recycle(time_traits::duration wait_duration = time_traits::duration(0)) {
+    get_result get_auto_recycle(time_traits::duration wait_duration = time_traits::duration(0)) {
         return get_handle(&handle::recycle, wait_duration);
     }
 
 private:
+    typedef typename handle::strategy strategy;
     typedef std::shared_ptr<pool_impl> pool_impl_ptr;
-    typedef void (handle::base::*strategy)();
 
     pool_impl_ptr _impl;
 
-    handle get_handle(strategy use_strategy, time_traits::duration wait_duration) {
+    get_result get_handle(strategy use_strategy, time_traits::duration wait_duration) {
         const typename pool_impl::get_result& res = _impl->get(wait_duration);
-        return handle(_impl, use_strategy, res.second, res.first);
+        return std::make_pair(res.first, handle(_impl, use_strategy, res.second));
     }
 };
 

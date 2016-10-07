@@ -106,29 +106,18 @@ Example:
 fstream_pool pool(42);
 ```
 
-#### Specific handle
-
-Declared as type [sync::handle](include/yamail/resource_pool/sync/handle.hpp#L14-L33)
-based on type [handle](include/yamail/resource_pool/handle.hpp#L11-L58).
-Contains extra method to get error code:
-```c++
-const boost::system::error_code& error() const;
-```
-
-If new handle is not usable error value will be not ok.
-
 #### Get handle
 
 Use one of these methods:
 ```c++
-handle get_auto_waste(
+std::pair<boost::system::error_code, handle> get_auto_waste(
     time_traits::duration wait_duration = time_traits::duration(0)
 );
 ```
 returns resource handle when it will be available with auto waste strategy.
 
 ```c++
-handle get_auto_recycle(
+std::pair<boost::system::error_code, handle> get_auto_recycle(
     time_traits::duration wait_duration = time_traits::duration(0)
 );
 ```
@@ -138,11 +127,13 @@ Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
 
 Example:
 ```c++
-handle h = pool.get(time_traits::duration(1));
-if (h.error()) {
-    std::cerr << "Cant't get resource: " << h.error().message() << std::endl;
+auto r = pool.get(time_traits::duration(1));
+const auto& ec = r.first;
+if (ec) {
+    std::cerr << "Cant't get resource: " << ec.message() << std::endl;
     return;
 }
+auto& h = r.second;
 if (h.empty()) {
     h.reset(create_resource());
 }

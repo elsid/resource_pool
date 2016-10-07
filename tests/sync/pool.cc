@@ -125,9 +125,11 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_should_call_recycle) {
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    auto handle = pool.get_auto_recycle();
+    auto res = pool.get_auto_recycle();
+    auto& ec = res.first;
+    auto& handle = res.second;
 
-    EXPECT_EQ(handle.error(), boost::system::error_code());
+    EXPECT_EQ(ec, boost::system::error_code());
     EXPECT_FALSE(handle.unusable());
     EXPECT_TRUE(handle.empty());
     EXPECT_NO_THROW(handle.reset(resource {}));
@@ -143,7 +145,8 @@ TEST_F(sync_resource_pool, get_auto_waste_handle_should_call_waste) {
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    const auto handle = pool.get_auto_waste();
+    const auto res = pool.get_auto_waste();
+    const auto& handle = res.second;
 
     EXPECT_FALSE(handle.unusable());
 }
@@ -157,7 +160,8 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recyc
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    auto handle = pool.get_auto_recycle();
+    auto res = pool.get_auto_recycle();
+    auto& handle = res.second;
 
     handle.recycle();
 
@@ -176,7 +180,8 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_o
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    auto handle = pool.get_auto_recycle();
+    auto res = pool.get_auto_recycle();
+    auto& handle = res.second;
 
     handle.waste();
 }
@@ -190,7 +195,8 @@ TEST_F(sync_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycle
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    auto handle = pool.get_auto_waste();
+    auto res = pool.get_auto_waste();
+    auto& handle = res.second;
 
     handle.recycle();
 }
@@ -204,7 +210,8 @@ TEST_F(sync_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_onc
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    auto handle = pool.get_auto_waste();
+    auto res = pool.get_auto_waste();
+    auto& handle = res.second;
 
     handle.waste();
 }
