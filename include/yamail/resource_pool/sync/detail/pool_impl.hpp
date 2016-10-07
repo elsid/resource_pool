@@ -5,8 +5,6 @@
 #include <yamail/resource_pool/time_traits.hpp>
 #include <yamail/resource_pool/detail/idle.hpp>
 
-#include <boost/noncopyable.hpp>
-
 #include <condition_variable>
 #include <list>
 #include <mutex>
@@ -24,7 +22,7 @@ struct stats {
 namespace detail {
 
 template <class Value, class ConditionVariable>
-class pool_impl : boost::noncopyable {
+class pool_impl {
 public:
     typedef Value value_type;
     typedef ConditionVariable condition_variable;
