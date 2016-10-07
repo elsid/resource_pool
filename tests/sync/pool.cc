@@ -52,7 +52,7 @@ TEST_F(sync_resource_pool, create_without_mocks_should_succeed) {
 }
 
 TEST_F(sync_resource_pool, call_capacity_should_call_impl_capacity) {
-    resource_pool pool(1);
+    const resource_pool pool(1);
 
     InSequence s;
 
@@ -63,7 +63,7 @@ TEST_F(sync_resource_pool, call_capacity_should_call_impl_capacity) {
 }
 
 TEST_F(sync_resource_pool, call_size_should_call_impl_size) {
-    resource_pool pool(1);
+    const resource_pool pool(1);
 
     InSequence s;
 
@@ -74,7 +74,7 @@ TEST_F(sync_resource_pool, call_size_should_call_impl_size) {
 }
 
 TEST_F(sync_resource_pool, call_available_should_call_impl_available) {
-    resource_pool pool(1);
+    const resource_pool pool(1);
 
     InSequence s;
 
@@ -85,7 +85,7 @@ TEST_F(sync_resource_pool, call_available_should_call_impl_available) {
 }
 
 TEST_F(sync_resource_pool, call_used_should_call_impl_used) {
-    resource_pool pool(1);
+    const resource_pool pool(1);
 
     InSequence s;
 

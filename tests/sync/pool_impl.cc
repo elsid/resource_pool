@@ -30,27 +30,27 @@ TEST(sync_resource_pool_impl, create_with_zero_capacity_should_throw_exception) 
 }
 
 TEST(sync_resource_pool_impl, create_with_non_zero_capacity_then_check) {
-    resource_pool_impl pool(1, time_traits::duration::max());
+    const resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.capacity(), 1);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_size_should_be_0) {
-    resource_pool_impl pool(1, time_traits::duration::max());
+    const resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.size(), 0);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_available_should_be_0) {
-    resource_pool_impl pool(1, time_traits::duration::max());
+    const resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.available(), 0);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_used_should_be_0) {
-    resource_pool_impl pool(1, time_traits::duration::max());
+    const resource_pool_impl pool(1, time_traits::duration::max());
     EXPECT_EQ(pool.used(), 0);
 }
 
 TEST(sync_resource_pool_impl, create_const_then_check_stats_should_be_0_0_0) {
-    resource_pool_impl pool(1, time_traits::duration::max());
+    const resource_pool_impl pool(1, time_traits::duration::max());
     const sync::stats expected {0, 0, 0};
     const auto actual = pool.stats();
 
