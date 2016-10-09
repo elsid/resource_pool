@@ -15,6 +15,7 @@ if(NOT TARGET googletest)
         googletest
         GIT_REPOSITORY ${GOOGLETEST_REPOSITORY}
         TIMEOUT 1
+        CONFIGURE_COMMAND cmake -DCMAKE_BUILD_TYPE=Release ../googletest
         INSTALL_COMMAND ""
         UPDATE_COMMAND ""
         LOG_DOWNLOAD ON
