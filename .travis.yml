@@ -2,6 +2,7 @@ language: cpp
 os: linux
 compiler: gcc
 sudo: true
+dist: trusty
 cache:
   ccache: true
   directories:
@@ -47,6 +48,7 @@ before_script:
 script:
 - make -j $(nproc)
 - ctest -V -j $(nproc)
+- cat ${TRAVIS_BUILD_DIR}/build/external/src/google_benchmark-stamp/google_benchmark-configure-*.log
 
 after_success:
 - git clone https://github.com/SimonKagstrom/kcov.git
