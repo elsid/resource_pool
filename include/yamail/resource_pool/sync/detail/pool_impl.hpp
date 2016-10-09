@@ -36,8 +36,11 @@ public:
               _idle_timeout(idle_timeout),
               _available_size(0),
               _used_size(0),
-              _disabled(false)
-    {}
+              _disabled(false) {
+        for (std::size_t i = 0; i < _capacity; ++i) {
+            _wasted.emplace_back(idle());
+        }
+    }
 
     std::size_t capacity() const { return _capacity; }
     std::size_t size() const;
@@ -61,6 +64,7 @@ private:
     mutable std::mutex _mutex;
     list _available;
     list _used;
+    list _wasted;
     const std::size_t _capacity;
     const time_traits::duration _idle_timeout;
     condition_variable _has_capacity;
@@ -111,8 +115,9 @@ void pool_impl<T, C>::recycle(list_iterator res_it) {
 
 template <class T, class C>
 void pool_impl<T, C>::waste(list_iterator res_it) {
+    res_it->value.reset();
     const lock_guard lock(_mutex);
-    _used.erase(res_it);
+    _used.splice(_wasted.end(), _wasted, res_it);
     --_used_size;
     _has_capacity.notify_one();
 }
@@ -153,7 +158,8 @@ typename pool_impl<T, C>::list_iterator pool_impl<T, C>::alloc_resource(unique_l
     while (!_available.empty()) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
-            _available.erase(res_it);
+            res_it->value.reset();
+            _available.splice(_wasted.end(), _wasted, res_it);
             --_available_size;
             continue;
         }
@@ -168,7 +174,8 @@ typename pool_impl<T, C>::list_iterator pool_impl<T, C>::alloc_resource(unique_l
 
 template <class T, class C>
 typename pool_impl<T, C>::list_iterator pool_impl<T, C>::reserve_resource(unique_lock& lock) {
-    const list_iterator res_it = _used.insert(_used.end(), idle());
+    const list_iterator res_it = _wasted.begin();
+    _wasted.splice(_used.end(), _used, res_it);
     ++_used_size;
     lock.unlock();
     return res_it;

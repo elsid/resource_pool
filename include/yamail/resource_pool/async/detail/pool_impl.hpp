@@ -41,8 +41,11 @@ public:
               _callbacks(std::make_shared<queue_type>(io_service, queue_capacity)),
               _available_size(0),
               _used_size(0),
-              _disabled(false)
-    {}
+              _disabled(false) {
+        for (std::size_t i = 0; i < _capacity; ++i) {
+            _wasted.emplace_back(idle());
+        }
+    }
 
     std::size_t capacity() const { return _capacity; }
     std::size_t size() const;
@@ -73,6 +76,7 @@ private:
     mutable std::mutex _mutex;
     list _available;
     list _used;
+    list _wasted;
     io_service_t& _io_service;
     const std::size_t _capacity;
     const time_traits::duration _idle_timeout;
@@ -126,8 +130,9 @@ void pool_impl<V, I, Q>::recycle(list_iterator res_it) {
 
 template <class V, class I, class Q>
 void pool_impl<V, I, Q>::waste(list_iterator res_it) {
+    res_it->value.reset();
     unique_lock lock(_mutex);
-    _used.erase(res_it);
+    _used.splice(_wasted.end(), _wasted, res_it);
     --_used_size;
     perform_one_request(lock, &pool_impl::reserve_resource);
 }
@@ -194,7 +199,8 @@ bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, Callback call) {
     while (!_available.empty()) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
-            _available.erase(res_it);
+            res_it->value.reset();
+            _available.splice(_wasted.end(), _wasted, res_it);
             --_available_size;
             continue;
         }
@@ -213,7 +219,8 @@ bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, Callback call) {
 template <class V, class I, class Q>
 template <class Callback>
 bool pool_impl<V, I, Q>::reserve_resource(unique_lock& lock, Callback call) {
-    const list_iterator res_it = _used.insert(_used.end(), idle());
+    const list_iterator res_it = _wasted.begin();
+    _wasted.splice(_used.end(), _used, res_it);
     ++_used_size;
     lock.unlock();
     async_call([call, res_it] () mutable {
