@@ -28,7 +28,7 @@ Include as subdirectory into your CMake project or copy folder include.
 ### Handle
 
 The handle contains iterator to ```boost::optional``` of resource value in pool.
-Declared as type [handle](include/yamail/resource_pool/handle.hpp#L11-L58).
+Declared as type [handle](include/yamail/resource_pool/handle.hpp#L11-L56).
 Constructs with one of strategies that uses in destructor:
 * waste -- resets iterator if handle is usable.
 * recycle -- returns iterator to pool if handle is usable.
@@ -79,7 +79,7 @@ Based on ```std::condition_variable```.
 
 #### Create pool
 
-Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-64). Parametrize resource type:
+Use type [sync::pool](include/yamail/resource_pool/sync/pool.hpp#L14-L65). Parametrize resource type:
 ```c++
 template <class Value
           class Impl = detail::pool_impl<Value, std::condition_variable> >
@@ -130,7 +130,7 @@ Example:
 auto r = pool.get(time_traits::duration(1));
 const auto& ec = r.first;
 if (ec) {
-    std::cerr << "Cant't get resource: " << ec.message() << std::endl;
+    std::cerr << "Can't get resource: " << ec.message() << std::endl;
     return;
 }
 auto& h = r.second;
@@ -219,7 +219,7 @@ struct on_create_resource {
 
     void operator ()(const boost::system::error_code& ec, handle::value_type&& r) {
         if (ec) {
-            std::cerr << "Cant't create resource: " << ec.message() << std::endl;
+            std::cerr << "Can't create resource: " << ec.message() << std::endl;
             return;
         }
         h.reset(std::move(r));
@@ -230,7 +230,7 @@ struct on_create_resource {
 struct handle_get {
     void operator ()(const boost::system::error_code& ec, handle h) {
         if (ec) {
-            std::cerr << "Cant't get resource: " << ec.message() << std::endl;
+            std::cerr << "Can't get resource: " << ec.message() << std::endl;
             return;
         }
         if (h.empty()) {
