@@ -2,8 +2,9 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 
-typedef yamail::resource_pool::sync::pool<std::ofstream> ofstream_pool;
+typedef yamail::resource_pool::sync::pool<std::unique_ptr<std::ofstream>> ofstream_pool;
 typedef yamail::resource_pool::time_traits time_traits;
 
 int main() {
@@ -16,15 +17,15 @@ int main() {
     }
     auto& handle = res.second;
     if (handle.empty()) {
-        std::ofstream file;
+        std::unique_ptr<std::ofstream> file;
         try {
-            file = std::ofstream("pool.log", std::ios::app);
+            file.reset(new std::ofstream("pool.log", std::ios::app));
         } catch (const std::exception& exception) {
             std::cerr << "Open file pool.log error: " << exception.what() << std::endl;
             return -1;
         }
         handle.reset(std::move(file));
     }
-    handle.get() << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
+    *(handle.get()) << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
     return 0;
 }

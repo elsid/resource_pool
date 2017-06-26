@@ -3,8 +3,9 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <memory>
 
-typedef yamail::resource_pool::async::pool<std::ofstream> ofstream_pool;
+typedef yamail::resource_pool::async::pool<std::unique_ptr<std::ofstream>> ofstream_pool;
 typedef yamail::resource_pool::time_traits time_traits;
 
 struct on_get {
@@ -14,16 +15,16 @@ struct on_get {
             return;
         }
         if (handle.empty()) {
-            std::ofstream file;
+            std::unique_ptr<std::ofstream> file;
             try {
-                file = std::ofstream("pool.log", std::ios::app);
+                file.reset(new std::ofstream("pool.log", std::ios::app));
             } catch (const std::exception& exception) {
                 std::cerr << "Open file pool.log error: " << exception.what() << std::endl;
                 return;
             }
             handle.reset(std::move(file));
         }
-        handle.get() << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
+        *(handle.get()) << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
         handle.recycle();
     }
 };
