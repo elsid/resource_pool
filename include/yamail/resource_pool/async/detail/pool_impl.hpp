@@ -38,13 +38,28 @@ public:
             : _io_service(io_service),
               _capacity(assert_capacity(capacity)),
               _idle_timeout(idle_timeout),
-              _callbacks(std::make_shared<queue_type>(io_service, queue_capacity)),
-              _available_size(0),
-              _used_size(0),
-              _disabled(false) {
+              _callbacks(std::make_shared<queue_type>(_io_service, queue_capacity)) {
+
         for (std::size_t i = 0; i < _capacity; ++i) {
             _wasted.emplace_back(idle());
         }
+    }
+
+    template <typename Iter>
+    pool_impl(io_service_t& io_service,
+              Iter first, Iter last,
+              std::size_t queue_capacity,
+              time_traits::duration idle_timeout)
+            : _io_service(io_service),
+              _capacity(assert_capacity(std::distance(first, last))),
+              _idle_timeout(idle_timeout),
+              _callbacks(std::make_shared<queue_type>(_io_service, queue_capacity)) {
+
+        const auto drop_time = time_traits::add(time_traits::now(), _idle_timeout);
+        std::transform(first, last, std::back_inserter(_available), [&](value_type item) {
+            return idle {std::move(item), drop_time};
+        });
+        _available_size = _capacity;
     }
 
     std::size_t capacity() const { return _capacity; }
@@ -81,9 +96,9 @@ private:
     const std::size_t _capacity;
     const time_traits::duration _idle_timeout;
     std::shared_ptr<queue_type> _callbacks;
-    std::size_t _available_size;
-    std::size_t _used_size;
-    bool _disabled;
+    std::size_t _available_size = 0;
+    std::size_t _used_size = 0;
+    bool _disabled = false;
 
     std::size_t size_unsafe() const { return _available_size + _used_size; }
     bool fit_capacity() const { return size_unsafe() < _capacity; }

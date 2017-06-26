@@ -51,6 +51,17 @@ public:
                 queue_capacity,
                 idle_timeout)) {}
 
+    template <typename Iter>
+    pool(io_service_t& io_service,
+         Iter first, Iter last,
+         std::size_t queue_capacity,
+         time_traits::duration idle_timeout = time_traits::duration::max())
+            : _impl(std::make_shared<pool_impl>(
+                io_service,
+                first, last,
+                queue_capacity,
+                idle_timeout)) {}
+
     pool(const pool&) = delete;
     pool(pool&&) = default;
 

@@ -18,6 +18,8 @@ struct idle {
 
     idle(time_traits::time_point drop_time = time_traits::time_point::max())
         : drop_time(drop_time) {}
+    idle(value_type&& value, time_traits::time_point drop_time)
+        : value(std::move(value)), drop_time(drop_time) {}
 };
 
 } // namespace detail

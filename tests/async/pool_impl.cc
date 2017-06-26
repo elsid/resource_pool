@@ -80,6 +80,28 @@ TEST_F(async_resource_pool_impl, create_const_then_check_used_should_be_0) {
     EXPECT_EQ(pool.used(), 0);
 }
 
+TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_capacity_should_be_2) {
+    std::vector<resource> res;
+    res.emplace_back();
+    res.emplace_back();
+    const resource_pool_impl pool(ios,
+        std::make_move_iterator(std::begin(res)), std::make_move_iterator(std::end(res)),
+        0, time_traits::duration::max());
+
+    EXPECT_EQ(pool.capacity(), 2);
+}
+
+TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_size_should_be_2) {
+    std::vector<resource> res;
+    res.emplace_back();
+    res.emplace_back();
+    const resource_pool_impl pool(ios,
+        std::make_move_iterator(std::begin(res)), std::make_move_iterator(std::end(res)),
+        0, time_traits::duration::max());
+
+    EXPECT_EQ(pool.size(), 2);
+}
+
 TEST_F(async_resource_pool_impl, create_const_then_check_stats_should_be_0_0_0_0) {
     const resource_pool_impl pool(ios, 1, 0, time_traits::duration::max());
     const async::stats expected {0, 0, 0, 0};
