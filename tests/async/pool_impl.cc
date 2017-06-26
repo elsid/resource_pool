@@ -239,6 +239,25 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make
     EXPECT_EQ(pool.available(), 1);
 }
 
+TEST_F(async_resource_pool_impl, get_twice_and_recycle_with_zero_idle_timeout_should_use_queue_and_make_one_available_resource) {
+    resource_pool_impl pool(ios, 1, 0, time_traits::duration(0));
+
+    InSequence s;
+
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(pool.queue(), push(_, _, _)).WillOnce(DoAll(SaveArg<0>(&on_get_res), Return(true)));
+    pool.get(recycle_resource(pool));
+    pool.get(recycle_resource(pool), time_traits::duration(1));
+
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(DoAll(SetArgReferee<0>(on_get_res), Return(true)));
+    EXPECT_CALL(ios, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    EXPECT_CALL(pool.queue(), pop(_)).WillOnce(Return(false));
+    on_first_get();
+    on_second_get();
+
+    EXPECT_EQ(pool.available(), 1);
+}
+
 TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) {
     resource_pool_impl pool(ios, 1, 0, time_traits::duration::max());
 

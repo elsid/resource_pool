@@ -246,7 +246,9 @@ template <class V, class I, class Q>
 void pool_impl<V, I, Q>::perform_one_request(unique_lock& lock, serve_request_t serve) {
     callback call;
     if (_callbacks->pop(call)) {
-        (this->*serve)(lock, call);
+        if (!(this->*serve)(lock, call)) {
+            reserve_resource(lock, call);
+        }
     }
 }
 
