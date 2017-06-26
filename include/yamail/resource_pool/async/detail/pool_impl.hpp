@@ -5,8 +5,6 @@
 #include <yamail/resource_pool/detail/idle.hpp>
 #include <yamail/resource_pool/async/detail/queue.hpp>
 
-#include <iostream>
-
 namespace yamail {
 namespace resource_pool {
 namespace async {

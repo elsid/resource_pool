@@ -5,8 +5,6 @@
 #include <yamail/resource_pool/handle.hpp>
 #include <yamail/resource_pool/async/detail/pool_impl.hpp>
 
-#include <iostream>
-
 namespace yamail {
 namespace resource_pool {
 namespace async {

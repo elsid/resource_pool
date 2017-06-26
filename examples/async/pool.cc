@@ -1,6 +1,7 @@
 #include <yamail/resource_pool/async/pool.hpp>
 
 #include <fstream>
+#include <iostream>
 #include <thread>
 
 typedef yamail::resource_pool::async::pool<std::ofstream> ofstream_pool;
