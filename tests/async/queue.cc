@@ -12,6 +12,7 @@ struct mocked_timer {
     mocked_timer(mocked_io_service&) {}
 
     MOCK_CONST_METHOD0(expires_at, time_traits::time_point ());
+    MOCK_CONST_METHOD0(cancel, void ());
     MOCK_CONST_METHOD1(expires_at, void (const time_traits::time_point&));
     MOCK_CONST_METHOD1(async_wait, void (std::function<void (boost::system::error_code)>));
 };
@@ -91,6 +92,7 @@ TEST_F(async_request_queue, push_then_timeout_request_queue_should_be_empty) {
     EXPECT_CALL(queue->timer(), expires_at()).WillOnce(Return(expire_time));
     EXPECT_CALL(ios, post(_)).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(*expired, call()).WillOnce(Return());
+    EXPECT_CALL(queue->timer(), cancel()).WillOnce(Return());
 
     on_async_wait(error_code());
 
@@ -104,6 +106,7 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
 
     EXPECT_CALL(queue->timer(), expires_at(_)).WillOnce(Return());
     EXPECT_CALL(queue->timer(), async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
+    EXPECT_CALL(queue->timer(), cancel()).WillOnce(Return());
     EXPECT_CALL(*expired, call()).Times(0);
 
     request req {42};

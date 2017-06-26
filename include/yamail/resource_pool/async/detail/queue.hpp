@@ -138,6 +138,7 @@ void queue<V, I, T>::cancel_one(const request_multimap_value &pair) {
 template <class V, class I, class T>
 void queue<V, I, T>::update_timer() {
     if (_expires_at_requests.empty()) {
+        _timer.cancel();
         return;
     }
     const time_traits::time_point& eariest_expires_at = _expires_at_requests.begin()->first;

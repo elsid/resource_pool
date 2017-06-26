@@ -42,7 +42,7 @@ typedef yamail::resource_pool::handle<pool> resource_handle;
 
 TEST(handle_test, construct_usable_should_be_not_unusable) {
     std::list<idle> resources;
-    resources.emplace_back(idle {});
+    resources.emplace_back(idle());
     const auto pool_impl = std::make_shared<pool::pool_impl>();
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_FALSE(handle.unusable());
@@ -51,7 +51,7 @@ TEST(handle_test, construct_usable_should_be_not_unusable) {
 
 TEST(handle_test, construct_usable_and_move_than_source_should_be_unusable) {
     std::list<idle> resources;
-    resources.emplace_back(idle {});
+    resources.emplace_back(idle());
     const auto pool_impl = std::make_shared<pool::pool_impl>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     const resource_handle dst = std::move(src);
@@ -62,7 +62,7 @@ TEST(handle_test, construct_usable_and_move_than_source_should_be_unusable) {
 
 TEST(handle_test, construct_usable_and_move_over_assign_than_source_should_be_unusable) {
     std::list<idle> resources;
-    resources.emplace_back(idle {});
+    resources.emplace_back(idle());
     const auto pool_impl = std::make_shared<pool::pool_impl>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     resource_handle dst(pool_impl, &resource_handle::waste, resources.end());
