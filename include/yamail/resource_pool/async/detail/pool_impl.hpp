@@ -4,6 +4,8 @@
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/detail/idle.hpp>
 #include <yamail/resource_pool/async/detail/queue.hpp>
+#include <boost/asio/spawn.hpp>
+#include <type_traits>
 
 namespace yamail {
 namespace resource_pool {
@@ -251,6 +253,27 @@ void pool_impl<V, I, Q>::perform_one_request(unique_lock& lock, serve_request_t 
         }
     }
 }
+
+// Helper template to deduce the true type of a handler, capture a local copy
+// of the handler, and then create an async_result for the handler.
+template <typename Handler, typename Signature>
+struct async_result_init
+{
+    explicit async_result_init(Handler orig_handler)
+    : handler(std::move(orig_handler)),
+      result(handler)
+    {
+    }
+
+    using handler_type = typename ::boost::asio::handler_type<Handler, Signature>::type;
+    handler_type handler;
+    ::boost::asio::async_result<handler_type> result;
+};
+
+template <typename Handler, typename Signature>
+using async_return_type = typename ::boost::asio::async_result<
+      typename ::boost::asio::handler_type<Handler, Signature>::type
+    >::type;
 
 } // namespace detail
 } // namespace async

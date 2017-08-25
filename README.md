@@ -183,7 +183,7 @@ Use one of these methods:
 ```c++
 template <class Callback>
 void get_auto_waste(
-    const Callback& call,
+    Callback call,
     const time_traits::duration& wait_duration = time_traits::duration(0)
 );
 ```
@@ -192,7 +192,7 @@ returns resource handle when it will be available with auto waste strategy.
 ```c++
 template <class Callback>
 void get_auto_recycle(
-    const Callback& call,
+    Callback call,
     const time_traits::duration& wait_duration = time_traits::duration(0)
 );
 ```
@@ -205,12 +205,13 @@ void operator ()(
     handle
 );
 ```
+or it can be any valid completion token from **Boost.Asio** like ```boost::asio::yield_context```, ```boost::asio::use_future``` and so on.
 
 Recommends to use ```get_auto_waste``` and explicit call ```recycle```.
 
 If error occurs ```ec``` will be not ok and ```handle``` will be unusable.
 
-Example:
+Example with classic callbacks:
 ```c++
 struct on_create_resource {
     handle h;
@@ -243,3 +244,18 @@ struct handle_get {
 
 pool.get(handle_get(), time_traits::duration(1));
 ```
+
+Example with Boost.Coroutines:
+```c++
+boost::asio::spawn(io, [&](boost::asio::yield_context yield) {
+    auto h = pool.get(yield, time_traits::duration(1));
+    if (h.empty()) {
+        h.reset(create_resource(yield));
+    }
+    use_resource(h.get());
+}
+```
+
+##Examples
+
+Source code can be found in [examples](examples) directory.
