@@ -1,3 +1,8 @@
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Werror -std=c++11")
+
+include_directories(SYSTEM ${RESOURCE_POOL_DEPENDENCY_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
 if(NOT TARGET google_benchmark)
     include(ExternalProject)
 
@@ -33,13 +38,11 @@ endif()
 add_executable(resource_pool_benchmark_async async.cc)
 add_dependencies(resource_pool_benchmark_async google_benchmark)
 
-find_package(Boost REQUIRED system)
-
 set(LIBRARIES
     -lrt
     -pthread
     benchmark
-    ${Boost_SYSTEM_LIBRARY}
+    ${RESOURCE_POOL_DEPENDENCY_LIBRARIES}
 )
 
 target_link_libraries(resource_pool_benchmark_async ${LIBRARIES})

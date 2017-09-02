@@ -1,0 +1,24 @@
+include(find_resource_pool_dependencies)
+
+if(RESOURCE_POOL_INCLUDE_DIR AND RESOURCE_POOL_LIBRARIES)
+  set(RESOURCE_POOL_FIND_QUIETLY TRUE)
+endif()
+
+find_path(RESOURCE_POOL_INCLUDE_DIR
+  NAMES yamail/resource_pool.hpp
+  HINTS ${CMAKE_INSTALL_PREFIX}/include)
+
+set(RESOURCE_POOL_LIBRARIES "")
+
+find_resource_pool_dependencies()
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(RESOURCE_POOL DEFAULT_MSG
+  RESOURCE_POOL_INCLUDE_DIR)
+
+if(RESOURCE_POOL_FOUND)
+  list(APPEND RESOURCE_POOL_INCLUDE_DIR ${RESOURCE_POOL_DEPENDENCY_INCLUDE_DIRS})
+  list(APPEND RESOURCE_POOL_LIBRARIES ${RESOURCE_POOL_DEPENDENCY_LIBRARIES})
+endif()
+
+mark_as_advanced(RESOURCE_POOL_INCLUDE_DIR RESOURCE_POOL_LIBRARIES)
