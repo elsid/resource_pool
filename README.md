@@ -256,6 +256,6 @@ boost::asio::spawn(io, [&](boost::asio::yield_context yield) {
 }
 ```
 
-##Examples
+## Examples
 
 Source code can be found in [examples](examples) directory.
