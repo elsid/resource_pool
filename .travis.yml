@@ -36,7 +36,7 @@ before_script:
 - wget -O boost_1_56_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1.56.0/boost_1_56_0.tar.gz/download
 - tar xzf boost_1_56_0.tar.gz
 - cd boost_1_56_0
-- ./bootstrap.sh --with-libraries=system
+- ./bootstrap.sh --with-libraries=system,thread,context,coroutine
 - mkdir build
 - ./b2 --build-dir=build
 - sudo ./b2 --build-dir=build install
