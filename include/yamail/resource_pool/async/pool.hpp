@@ -49,7 +49,20 @@ public:
                 queue_capacity,
                 idle_timeout)) {}
 
-    template <typename Iter>
+    template <class Generator>
+    pool(io_service_t& io_service,
+         Generator&& gen_value,
+         std::size_t capacity,
+         std::size_t queue_capacity,
+         time_traits::duration idle_timeout = time_traits::duration::max())
+            : _impl(std::make_shared<pool_impl>(
+                io_service,
+                std::forward<Generator>(gen_value),
+                capacity,
+                queue_capacity,
+                idle_timeout)) {}
+
+    template <class Iter>
     pool(io_service_t& io_service,
          Iter first, Iter last,
          std::size_t queue_capacity,

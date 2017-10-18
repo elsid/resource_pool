@@ -45,21 +45,34 @@ public:
         }
     }
 
-    template <typename Iter>
+    template <class Generator>
     pool_impl(io_service_t& io_service,
-              Iter first, Iter last,
+              Generator&& gen_value,
+              std::size_t capacity,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout)
             : _io_service(io_service),
-              _capacity(assert_capacity(std::distance(first, last))),
+              _capacity(assert_capacity(capacity)),
               _idle_timeout(idle_timeout),
               _callbacks(std::make_shared<queue_type>(_io_service, queue_capacity)) {
 
         const auto drop_time = time_traits::add(time_traits::now(), _idle_timeout);
-        std::transform(first, last, std::back_inserter(_available), [&](value_type item) {
-            return idle {std::move(item), drop_time};
-        });
+        for (std::size_t i = 0; i < _capacity; ++i) {
+            _available.emplace_back(gen_value(), drop_time);
+        }
         _available_size = _capacity;
+    }
+
+    template <class Iter>
+    pool_impl(io_service_t& io_service,
+              Iter first, Iter last,
+              std::size_t queue_capacity,
+              time_traits::duration idle_timeout)
+            : pool_impl(io_service,
+                    [&]{ return std::move(*first++); },
+                    std::distance(first, last),
+                    queue_capacity,
+                    idle_timeout) {
     }
 
     std::size_t capacity() const { return _capacity; }
