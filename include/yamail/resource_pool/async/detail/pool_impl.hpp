@@ -60,7 +60,6 @@ public:
         for (std::size_t i = 0; i < _capacity; ++i) {
             _available.emplace_back(gen_value(), drop_time);
         }
-        _available_size = _capacity;
     }
 
     template <class Iter>
@@ -109,11 +108,9 @@ private:
     const std::size_t _capacity;
     const time_traits::duration _idle_timeout;
     std::shared_ptr<queue_type> _callbacks;
-    std::size_t _available_size = 0;
-    std::size_t _used_size = 0;
     bool _disabled = false;
 
-    std::size_t size_unsafe() const { return _available_size + _used_size; }
+    std::size_t size_unsafe() const { return _available.size() + _used.size(); }
     bool fit_capacity() const { return size_unsafe() < _capacity; }
     template <class Callback>
     bool reserve_resource(unique_lock& lock, Callback call);
@@ -131,19 +128,19 @@ std::size_t pool_impl<V, I, Q>::size() const {
 template <class V, class I, class Q>
 std::size_t pool_impl<V, I, Q>::available() const {
     const lock_guard lock(_mutex);
-    return _available_size;
+    return _available.size();
 }
 
 template <class V, class I, class Q>
 std::size_t pool_impl<V, I, Q>::used() const {
     const lock_guard lock(_mutex);
-    return _used_size;
+    return _used.size();
 }
 
 template <class V, class I, class Q>
 async::stats pool_impl<V, I, Q>::stats() const {
     const lock_guard lock(_mutex);
-    return async::stats {size_unsafe(), _available_size, _used_size, _callbacks->size()};
+    return async::stats {size_unsafe(), _available.size(), _used.size(), _callbacks->size()};
 }
 
 template <class V, class I, class Q>
@@ -151,8 +148,6 @@ void pool_impl<V, I, Q>::recycle(list_iterator res_it) {
     res_it->drop_time = time_traits::add(time_traits::now(), _idle_timeout);
     unique_lock lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
-    --_used_size;
-    ++_available_size;
     perform_one_request(lock, &pool_impl::alloc_resource);
 }
 
@@ -161,7 +156,6 @@ void pool_impl<V, I, Q>::waste(list_iterator res_it) {
     res_it->value.reset();
     unique_lock lock(_mutex);
     _used.splice(_wasted.end(), _wasted, res_it);
-    --_used_size;
     perform_one_request(lock, &pool_impl::reserve_resource);
 }
 
@@ -229,12 +223,9 @@ bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, Callback call) {
         if (res_it->drop_time <= time_traits::now()) {
             res_it->value.reset();
             _available.splice(_wasted.end(), _wasted, res_it);
-            --_available_size;
             continue;
         }
         _available.splice(_used.end(), _used, res_it);
-        --_available_size;
-        ++_used_size;
         lock.unlock();
         async_call([call, res_it] () mutable {
             call(boost::system::error_code(), res_it);
@@ -249,7 +240,6 @@ template <class Callback>
 bool pool_impl<V, I, Q>::reserve_resource(unique_lock& lock, Callback call) {
     const list_iterator res_it = _wasted.begin();
     _wasted.splice(_used.end(), _used, res_it);
-    ++_used_size;
     lock.unlock();
     async_call([call, res_it] () mutable {
         call(boost::system::error_code(), res_it);
