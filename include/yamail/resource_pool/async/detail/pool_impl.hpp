@@ -147,7 +147,7 @@ template <class V, class I, class Q>
 void pool_impl<V, I, Q>::recycle(list_iterator res_it) {
     res_it->drop_time = time_traits::add(time_traits::now(), _idle_timeout);
     unique_lock lock(_mutex);
-    _used.splice(_available.end(), _available, res_it);
+    _available.splice(_available.end(), _used, res_it);
     perform_one_request(lock, &pool_impl::alloc_resource);
 }
 
@@ -155,7 +155,7 @@ template <class V, class I, class Q>
 void pool_impl<V, I, Q>::waste(list_iterator res_it) {
     res_it->value.reset();
     unique_lock lock(_mutex);
-    _used.splice(_wasted.end(), _wasted, res_it);
+    _wasted.splice(_wasted.end(), _used, res_it);
     perform_one_request(lock, &pool_impl::reserve_resource);
 }
 
@@ -222,10 +222,10 @@ bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, Callback call) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
             res_it->value.reset();
-            _available.splice(_wasted.end(), _wasted, res_it);
+            _wasted.splice(_wasted.end(), _available, res_it);
             continue;
         }
-        _available.splice(_used.end(), _used, res_it);
+        _used.splice(_used.end(), _available, res_it);
         lock.unlock();
         async_call([call, res_it] () mutable {
             call(boost::system::error_code(), res_it);
@@ -239,7 +239,7 @@ template <class V, class I, class Q>
 template <class Callback>
 bool pool_impl<V, I, Q>::reserve_resource(unique_lock& lock, Callback call) {
     const list_iterator res_it = _wasted.begin();
-    _wasted.splice(_used.end(), _used, res_it);
+    _used.splice(_used.end(), _wasted, res_it);
     lock.unlock();
     async_call([call, res_it] () mutable {
         call(boost::system::error_code(), res_it);
