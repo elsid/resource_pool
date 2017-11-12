@@ -31,14 +31,12 @@ public:
     typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
     typedef Queue queue_type;
 
-    pool_impl(io_service_t& io_service,
-              std::size_t capacity,
+    pool_impl(std::size_t capacity,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout)
-            : _io_service(io_service),
-              _capacity(assert_capacity(capacity)),
+            : _capacity(assert_capacity(capacity)),
               _idle_timeout(idle_timeout),
-              _callbacks(std::make_shared<queue_type>(_io_service, queue_capacity)) {
+              _callbacks(std::make_shared<queue_type>(queue_capacity)) {
 
         for (std::size_t i = 0; i < _capacity; ++i) {
             _wasted.emplace_back(idle());
@@ -46,15 +44,13 @@ public:
     }
 
     template <class Generator>
-    pool_impl(io_service_t& io_service,
-              Generator&& gen_value,
+    pool_impl(Generator&& gen_value,
               std::size_t capacity,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout)
-            : _io_service(io_service),
-              _capacity(assert_capacity(capacity)),
+            : _capacity(assert_capacity(capacity)),
               _idle_timeout(idle_timeout),
-              _callbacks(std::make_shared<queue_type>(_io_service, queue_capacity)) {
+              _callbacks(std::make_shared<queue_type>(queue_capacity)) {
 
         const auto drop_time = time_traits::add(time_traits::now(), _idle_timeout);
         for (std::size_t i = 0; i < _capacity; ++i) {
@@ -63,12 +59,10 @@ public:
     }
 
     template <class Iter>
-    pool_impl(io_service_t& io_service,
-              Iter first, Iter last,
+    pool_impl(Iter first, Iter last,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout)
-            : pool_impl(io_service,
-                    [&]{ return std::move(*first++); },
+            : pool_impl([&]{ return std::move(*first++); },
                     std::distance(first, last),
                     queue_capacity,
                     idle_timeout) {
@@ -83,12 +77,7 @@ public:
     const queue_type& queue() const { return *_callbacks; }
 
     template <class Callback>
-    void async_call(Callback&& call) {
-        _io_service.post(std::forward<Callback>(call));
-    }
-
-    template <class Callback>
-    void get(Callback call, time_traits::duration wait_duration = time_traits::duration(0));
+    void get(io_service_t& io_service, Callback call, time_traits::duration wait_duration = time_traits::duration(0));
     void recycle(list_iterator res_it);
     void waste(list_iterator res_it);
     void disable();
@@ -98,13 +87,11 @@ public:
 private:
     typedef std::unique_lock<std::mutex> unique_lock;
     typedef std::lock_guard<std::mutex> lock_guard;
-    typedef bool (pool_impl::*serve_request_t)(unique_lock&, const callback&);
 
     mutable std::mutex _mutex;
     list _available;
     list _used;
     list _wasted;
-    io_service_t& _io_service;
     const std::size_t _capacity;
     const time_traits::duration _idle_timeout;
     std::shared_ptr<queue_type> _callbacks;
@@ -113,10 +100,11 @@ private:
     std::size_t size_unsafe() const { return _available.size() + _used.size(); }
     bool fit_capacity() const { return size_unsafe() < _capacity; }
     template <class Callback>
-    bool reserve_resource(unique_lock& lock, Callback call);
+    bool reserve_resource(io_service_t& io_service, unique_lock& lock, Callback call);
     template <class Callback>
-    bool alloc_resource(unique_lock& lock, Callback call);
-    void perform_one_request(unique_lock& lock, serve_request_t serve);
+    bool alloc_resource(io_service_t& io_service, unique_lock& lock, Callback call);
+    template <class Serve>
+    void perform_one_request(unique_lock& lock, Serve&& serve);
 };
 
 template <class V, class I, class Q>
@@ -148,7 +136,7 @@ void pool_impl<V, I, Q>::recycle(list_iterator res_it) {
     res_it->drop_time = time_traits::add(time_traits::now(), _idle_timeout);
     unique_lock lock(_mutex);
     _available.splice(_available.end(), _used, res_it);
-    perform_one_request(lock, &pool_impl::alloc_resource);
+    perform_one_request(lock, [&] (io_service_t& ios, const callback& call) { return alloc_resource(ios, lock, call); });
 }
 
 template <class V, class I, class Q>
@@ -156,35 +144,35 @@ void pool_impl<V, I, Q>::waste(list_iterator res_it) {
     res_it->value.reset();
     unique_lock lock(_mutex);
     _wasted.splice(_wasted.end(), _used, res_it);
-    perform_one_request(lock, &pool_impl::reserve_resource);
+    perform_one_request(lock, [&] (io_service_t& ios, const callback& call) { return reserve_resource(ios, lock, call); });
 }
 
 template <class V, class I, class Q>
 template <class Callback>
-void pool_impl<V, I, Q>::get(Callback call, time_traits::duration wait_duration) {
+void pool_impl<V, I, Q>::get(io_service_t& io_service, Callback call, time_traits::duration wait_duration) {
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
-        async_call([call] () mutable {
+        io_service.post([call] () mutable {
             call(make_error_code(error::disabled), list_iterator());
         });
-    } else if (alloc_resource(lock, call)) {
+    } else if (alloc_resource(io_service, lock, call)) {
         return;
     } else if (fit_capacity()) {
-        reserve_resource(lock, call);
+        reserve_resource(io_service, lock, call);
     } else {
         lock.unlock();
         if (wait_duration.count() == 0) {
-            async_call([call] () mutable {
+            io_service.post([call] () mutable {
                 call(make_error_code(error::get_resource_timeout), list_iterator());
             });
         } else {
             const auto expired = [call] () mutable {
                 call(make_error_code(error::get_resource_timeout), list_iterator());
             };
-            const bool pushed = _callbacks->push(call, expired, wait_duration);
+            const bool pushed = _callbacks->push(io_service, call, expired, wait_duration);
             if (!pushed) {
-                async_call([call] () mutable {
+                io_service.post([call] () mutable {
                     call(make_error_code(error::request_queue_overflow), list_iterator());
                 });
             }
@@ -197,11 +185,12 @@ void pool_impl<V, I, Q>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     while (true) {
+        io_service_t* io_service;
         callback call;
-        if (!_callbacks->pop(call)) {
+        if (!_callbacks->pop(io_service, call)) {
             break;
         }
-        async_call([call] {
+        io_service->post([call] {
             call(make_error_code(error::disabled), list_iterator());
         });
     }
@@ -217,7 +206,7 @@ std::size_t pool_impl<V, I, Q>::assert_capacity(std::size_t value) {
 
 template <class V, class I, class Q>
 template <class Callback>
-bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, Callback call) {
+bool pool_impl<V, I, Q>::alloc_resource(io_service_t& io_service, unique_lock& lock, Callback call) {
     while (!_available.empty()) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
@@ -227,7 +216,7 @@ bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, Callback call) {
         }
         _used.splice(_used.end(), _available, res_it);
         lock.unlock();
-        async_call([call, res_it] () mutable {
+        io_service.post([call, res_it] () mutable {
             call(boost::system::error_code(), res_it);
         });
         return true;
@@ -237,22 +226,24 @@ bool pool_impl<V, I, Q>::alloc_resource(unique_lock& lock, Callback call) {
 
 template <class V, class I, class Q>
 template <class Callback>
-bool pool_impl<V, I, Q>::reserve_resource(unique_lock& lock, Callback call) {
+bool pool_impl<V, I, Q>::reserve_resource(io_service_t& io_service, unique_lock& lock, Callback call) {
     const list_iterator res_it = _wasted.begin();
     _used.splice(_used.end(), _wasted, res_it);
     lock.unlock();
-    async_call([call, res_it] () mutable {
+    io_service.post([call, res_it] () mutable {
         call(boost::system::error_code(), res_it);
     });
     return true;
 }
 
 template <class V, class I, class Q>
-void pool_impl<V, I, Q>::perform_one_request(unique_lock& lock, serve_request_t serve) {
+template <class Serve>
+void pool_impl<V, I, Q>::perform_one_request(unique_lock& lock, Serve&& serve) {
+    io_service_t* io_service;
     callback call;
-    if (_callbacks->pop(call)) {
-        if (!(this->*serve)(lock, call)) {
-            reserve_resource(lock, call);
+    if (_callbacks->pop(io_service, call)) {
+        if (!serve(*io_service, call)) {
+            reserve_resource(*io_service, lock, call);
         }
     }
 }
@@ -275,7 +266,7 @@ struct async_result_init
 
 template <typename Handler, typename Signature>
 using async_return_type = typename ::boost::asio::async_result<
-      typename ::boost::asio::handler_type<Handler, Signature>::type
+        typename ::boost::asio::handler_type<Handler, Signature>::type
     >::type;
 
 } // namespace detail

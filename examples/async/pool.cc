@@ -33,8 +33,8 @@ int main() {
     boost::asio::io_service service;
     boost::asio::io_service::work work(service);
     std::thread worker([&] { return service.run(); });
-    ofstream_pool pool(service, 1, 10);
-    pool.get_auto_waste(on_get(), time_traits::duration::max());
+    ofstream_pool pool(1, 10);
+    pool.get_auto_waste(service, on_get(), time_traits::duration::max());
     service.stop();
     worker.join();
     return 0;

@@ -39,36 +39,30 @@ public:
     typedef Impl pool_impl;
     typedef resource_pool::handle<pool> handle;
 
-    pool(io_service_t& io_service,
-         std::size_t capacity,
+    pool(std::size_t capacity,
          std::size_t queue_capacity,
          time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(
-                io_service,
                 capacity,
                 queue_capacity,
                 idle_timeout)) {}
 
     template <class Generator>
-    pool(io_service_t& io_service,
-         Generator&& gen_value,
+    pool(Generator&& gen_value,
          std::size_t capacity,
          std::size_t queue_capacity,
          time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(
-                io_service,
                 std::forward<Generator>(gen_value),
                 capacity,
                 queue_capacity,
                 idle_timeout)) {}
 
     template <class Iter>
-    pool(io_service_t& io_service,
-         Iter first, Iter last,
+    pool(Iter first, Iter last,
          std::size_t queue_capacity,
          time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(
-                io_service,
                 first, last,
                 queue_capacity,
                 idle_timeout)) {}
@@ -98,18 +92,18 @@ public:
     using return_type = detail::async_return_type<Callback, cb_signature>;
 
     template <class Callback>
-    return_type<Callback> get_auto_waste(Callback call,
+    return_type<Callback> get_auto_waste(io_service_t& io_service, Callback call,
                         time_traits::duration wait_duration = time_traits::duration(0)) {
         async_result_init<Callback> init(std::move(call));
-        get(init.handler, &handle::waste, wait_duration);
+        get(io_service, init.handler, &handle::waste, wait_duration);
         return init.result.get();
     }
 
     template <class Callback>
-    return_type<Callback> get_auto_recycle(Callback call,
+    return_type<Callback> get_auto_recycle(io_service_t& io_service, Callback call,
                           time_traits::duration wait_duration = time_traits::duration(0)) {
         async_result_init<Callback> init(std::move(call));
-        get(init.handler, &handle::recycle, wait_duration);
+        get(io_service, init.handler, &handle::recycle, wait_duration);
         return init.result.get();
     }
 
@@ -124,7 +118,7 @@ private:
     pool_impl_ptr _impl;
 
     template <class Callback>
-    void get(Callback call, strategy use_strategy, time_traits::duration wait_duration) {
+    void get(io_service_t &io_service, Callback call, strategy use_strategy, time_traits::duration wait_duration) {
         const auto impl = _impl;
         const auto on_get = [impl, use_strategy, call] (const boost::system::error_code& ec, list_iterator res) mutable {
             if (ec) {
@@ -133,7 +127,7 @@ private:
                 call(ec, handle(impl, use_strategy, res));
             }
         };
-        _impl->get(on_get, wait_duration);
+        _impl->get(io_service, on_get, wait_duration);
     }
 };
 

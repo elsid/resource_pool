@@ -20,12 +20,12 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD0(available, std::size_t ());
     MOCK_CONST_METHOD0(used, std::size_t ());
     MOCK_CONST_METHOD0(stats, async::stats ());
-    MOCK_CONST_METHOD2(get, void (const callback&, time_traits::duration));
+    MOCK_CONST_METHOD3(get, void (mocked_io_service&, const callback&, time_traits::duration));
     MOCK_CONST_METHOD1(recycle, void (list_iterator));
     MOCK_CONST_METHOD1(waste, void (list_iterator));
     MOCK_CONST_METHOD0(disable, void ());
 
-    mocked_pool_impl(mocked_io_service&, std::size_t, std::size_t, time_traits::duration) {}
+    mocked_pool_impl(std::size_t, std::size_t, time_traits::duration) {}
 };
 
 typedef pool<resource, mocked_io_service, mocked_pool_impl> resource_pool;
@@ -44,11 +44,11 @@ struct async_resource_pool : Test {
 
 TEST_F(async_resource_pool, create_without_mocks_should_succeed) {
     boost::asio::io_service ios;
-    pool<resource>(ios, 1, 1);
+    pool<resource>(1, 1);
 }
 
 TEST_F(async_resource_pool, call_capacity_should_call_impl_capacity) {
-    const resource_pool pool(ios, 0, 0);
+    const resource_pool pool(0, 0);
 
     InSequence s;
 
@@ -59,7 +59,7 @@ TEST_F(async_resource_pool, call_capacity_should_call_impl_capacity) {
 }
 
 TEST_F(async_resource_pool, call_size_should_call_impl_size) {
-    const resource_pool pool(ios, 0, 0);
+    const resource_pool pool(0, 0);
 
     InSequence s;
 
@@ -70,7 +70,7 @@ TEST_F(async_resource_pool, call_size_should_call_impl_size) {
 }
 
 TEST_F(async_resource_pool, call_available_should_call_impl_available) {
-    const resource_pool pool(ios, 0, 0);
+    const resource_pool pool(0, 0);
 
     InSequence s;
 
@@ -81,7 +81,7 @@ TEST_F(async_resource_pool, call_available_should_call_impl_available) {
 }
 
 TEST_F(async_resource_pool, call_used_should_call_impl_used) {
-    const resource_pool pool(ios, 0, 0);
+    const resource_pool pool(0, 0);
 
     InSequence s;
 
@@ -92,7 +92,7 @@ TEST_F(async_resource_pool, call_used_should_call_impl_used) {
 }
 
 TEST_F(async_resource_pool, call_stats_should_call_impl_stats) {
-    const resource_pool pool(ios, 0, 0);
+    const resource_pool pool(0, 0);
 
     InSequence s;
 
@@ -103,7 +103,7 @@ TEST_F(async_resource_pool, call_stats_should_call_impl_stats) {
 }
 
 TEST_F(async_resource_pool, move_than_dtor_should_call_disable_only_for_destination) {
-    resource_pool src(ios, 0, 0);
+    resource_pool src(0, 0);
 
     EXPECT_CALL(src.impl(), disable()).Times(0);
 
@@ -131,24 +131,24 @@ struct check_no_error : check_error {
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_should_call_recycle) {
-    resource_pool pool(ios, 0, 0);
+    resource_pool pool(0, 0);
 
-    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_recycle(check_no_error());
+    pool.get_auto_recycle(ios, check_no_error());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_should_call_waste) {
-    resource_pool pool(ios, 0, 0);
+    resource_pool pool(0, 0);
 
-    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(check_no_error());
+    pool.get_auto_waste(ios, check_no_error());
     on_get(error_code(), resource_iterator);
 }
 
@@ -161,24 +161,24 @@ struct recycle_resource {
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recycle_once) {
-    resource_pool pool(ios, 0, 0);
+    resource_pool pool(0, 0);
 
-    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_recycle(recycle_resource());
+    pool.get_auto_recycle(ios, recycle_resource());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycle_once) {
-    resource_pool pool(ios, 0, 0);
+    resource_pool pool(0, 0);
 
-    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(recycle_resource());
+    pool.get_auto_waste(ios, recycle_resource());
     on_get(error_code(), resource_iterator);
 }
 
@@ -191,36 +191,36 @@ struct waste_resource {
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_once) {
-    resource_pool pool(ios, 0, 0);
+    resource_pool pool(0, 0);
 
-    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_recycle(waste_resource());
+    pool.get_auto_recycle(ios, waste_resource());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_once) {
-    resource_pool pool(ios, 0, 0);
+    resource_pool pool(0, 0);
 
-    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(waste_resource());
+    pool.get_auto_waste(ios, waste_resource());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_from_pool_returns_error_should_not_call_waste_or_recycle) {
-    resource_pool pool(ios, 0, 0);
+    resource_pool pool(0, 0);
 
-    EXPECT_CALL(pool.impl(), get(_, _)).WillOnce(SaveArg<0>(&on_get));
+    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
     EXPECT_CALL(pool.impl(), waste(_)).Times(0);
     EXPECT_CALL(pool.impl(), recycle(_)).Times(0);
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(check_error(error::get_resource_timeout));
+    pool.get_auto_waste(ios, check_error(error::get_resource_timeout));
     on_get(make_error_code(error::get_resource_timeout), mocked_pool_impl::list_iterator());
 }
 

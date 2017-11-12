@@ -54,7 +54,7 @@ struct callback {
     void operator ()(const boost::system::error_code& ec, async::pool<resource>::handle handle) {
         impl(ec, std::move(handle));
         if (!ctx.stop) {
-            pool.get_auto_waste(*this, ctx.timeout);
+            pool.get_auto_waste(ctx.io_service, *this, ctx.timeout);
         }
         ctx.allow_next();
     }
@@ -112,10 +112,10 @@ void get_auto_waste(benchmark::State& state) {
     for (std::size_t i = 0; i < args.threads; ++i) {
         workers.emplace_back(std::thread([&] { return ctx.io_service.run(); }));
     }
-    async::pool<resource> pool(ctx.io_service, args.resources, args.queue_size);
+    async::pool<resource> pool(args.resources, args.queue_size);
     callback cb {ctx, pool};
     for (std::size_t i = 0; i < args.sequences; ++i) {
-        pool.get_auto_waste(cb, ctx.timeout);
+        pool.get_auto_waste(ctx.io_service, cb, ctx.timeout);
     }
     while (state.KeepRunning()) {
         ctx.wait_next();
