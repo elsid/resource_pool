@@ -28,7 +28,7 @@ struct mocked_pool_impl {
     mocked_pool_impl(std::size_t, std::size_t, time_traits::duration) {}
 };
 
-typedef pool<resource, mocked_io_service, mocked_pool_impl> resource_pool;
+typedef pool<resource, std::mutex, mocked_io_service, mocked_pool_impl> resource_pool;
 
 using boost::system::error_code;
 

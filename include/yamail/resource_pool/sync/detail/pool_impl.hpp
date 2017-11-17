@@ -21,7 +21,7 @@ struct stats {
 
 namespace detail {
 
-template <class Value, class ConditionVariable>
+template <class Value, class Mutex, class ConditionVariable>
 class pool_impl {
 public:
     typedef Value value_type;
@@ -58,10 +58,11 @@ public:
     static std::size_t assert_capacity(std::size_t value);
 
 private:
-    typedef std::lock_guard<std::mutex> lock_guard;
-    typedef std::unique_lock<std::mutex> unique_lock;
+    typedef Mutex mutex_t;
+    typedef std::lock_guard<mutex_t> lock_guard;
+    typedef std::unique_lock<mutex_t> unique_lock;
 
-    mutable std::mutex _mutex;
+    mutable mutex_t _mutex;
     list _available;
     list _used;
     list _wasted;
@@ -79,32 +80,32 @@ private:
     bool wait_for(unique_lock& lock, time_traits::duration wait_duration);
 };
 
-template <class T, class C>
-std::size_t pool_impl<T, C>::size() const {
+template <class T, class M, class C>
+std::size_t pool_impl<T, M, C>::size() const {
     const lock_guard lock(_mutex);
     return size_unsafe();
 }
 
-template <class T, class C>
-std::size_t pool_impl<T, C>::available() const {
+template <class T, class M, class C>
+std::size_t pool_impl<T, M, C>::available() const {
     const lock_guard lock(_mutex);
     return _available_size;
 }
 
-template <class T, class C>
-std::size_t pool_impl<T, C>::used() const {
+template <class T, class M, class C>
+std::size_t pool_impl<T, M, C>::used() const {
     const lock_guard lock(_mutex);
     return _used_size;
 }
 
-template <class T, class C>
-sync::stats pool_impl<T, C>::stats() const {
+template <class T, class M, class C>
+sync::stats pool_impl<T, M, C>::stats() const {
     const lock_guard lock(_mutex);
     return sync::stats {size_unsafe(), _available_size, _used_size};
 }
 
-template <class T, class C>
-void pool_impl<T, C>::recycle(list_iterator res_it) {
+template <class T, class M, class C>
+void pool_impl<T, M, C>::recycle(list_iterator res_it) {
     res_it->drop_time = time_traits::add(time_traits::now(), _idle_timeout);
     const lock_guard lock(_mutex);
     _used.splice(_available.end(), _available, res_it);
@@ -113,8 +114,8 @@ void pool_impl<T, C>::recycle(list_iterator res_it) {
     _has_capacity.notify_one();
 }
 
-template <class T, class C>
-void pool_impl<T, C>::waste(list_iterator res_it) {
+template <class T, class M, class C>
+void pool_impl<T, M, C>::waste(list_iterator res_it) {
     res_it->value.reset();
     const lock_guard lock(_mutex);
     _used.splice(_wasted.end(), _wasted, res_it);
@@ -122,15 +123,15 @@ void pool_impl<T, C>::waste(list_iterator res_it) {
     _has_capacity.notify_one();
 }
 
-template <class T, class C>
-void pool_impl<T, C>::disable() {
+template <class T, class M, class C>
+void pool_impl<T, M, C>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     _has_capacity.notify_all();
 }
 
-template <class T, class C>
-typename pool_impl<T, C>::get_result pool_impl<T, C>::get(time_traits::duration wait_duration) {
+template <class T, class M, class C>
+typename pool_impl<T, M, C>::get_result pool_impl<T, M, C>::get(time_traits::duration wait_duration) {
     unique_lock lock(_mutex);
     while (true) {
         if (_disabled) {
@@ -153,8 +154,8 @@ typename pool_impl<T, C>::get_result pool_impl<T, C>::get(time_traits::duration 
     }
 }
 
-template <class T, class C>
-typename pool_impl<T, C>::list_iterator pool_impl<T, C>::alloc_resource(unique_lock& lock) {
+template <class T, class M, class C>
+typename pool_impl<T, M, C>::list_iterator pool_impl<T, M, C>::alloc_resource(unique_lock& lock) {
     while (!_available.empty()) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
@@ -172,8 +173,8 @@ typename pool_impl<T, C>::list_iterator pool_impl<T, C>::alloc_resource(unique_l
     return list_iterator();
 }
 
-template <class T, class C>
-typename pool_impl<T, C>::list_iterator pool_impl<T, C>::reserve_resource(unique_lock& lock) {
+template <class T, class M, class C>
+typename pool_impl<T, M, C>::list_iterator pool_impl<T, M, C>::reserve_resource(unique_lock& lock) {
     const list_iterator res_it = _wasted.begin();
     _wasted.splice(_used.end(), _used, res_it);
     ++_used_size;
@@ -181,13 +182,13 @@ typename pool_impl<T, C>::list_iterator pool_impl<T, C>::reserve_resource(unique
     return res_it;
 }
 
-template <class T, class C>
-bool pool_impl<T, C>::wait_for(unique_lock& lock, time_traits::duration wait_duration) {
+template <class T, class M, class C>
+bool pool_impl<T, M, C>::wait_for(unique_lock& lock, time_traits::duration wait_duration) {
     return _has_capacity.wait_for(lock, wait_duration) == std::cv_status::no_timeout;
 }
 
-template <class T, class C>
-std::size_t pool_impl<T, C>::assert_capacity(std::size_t value) {
+template <class T, class M, class C>
+std::size_t pool_impl<T, M, C>::assert_capacity(std::size_t value) {
     if (value == 0) {
         throw error::zero_pool_capacity();
     }

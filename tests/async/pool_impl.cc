@@ -20,7 +20,7 @@ struct mocked_queue {
     mocked_queue(std::size_t) {}
 };
 
-typedef pool_impl<resource, mocked_io_service, mocked_queue> resource_pool_impl;
+typedef pool_impl<resource, std::mutex, mocked_io_service, mocked_queue> resource_pool_impl;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
 
 }

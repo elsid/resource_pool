@@ -17,7 +17,7 @@ struct mocked_timer {
     MOCK_CONST_METHOD1(async_wait, void (std::function<void (boost::system::error_code)>));
 };
 
-typedef queue<request, mocked_io_service, mocked_timer> request_queue;
+typedef queue<request, std::mutex, mocked_io_service, mocked_timer> request_queue;
 typedef std::shared_ptr<request_queue> request_queue_ptr;
 
 using boost::system::error_code;

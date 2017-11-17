@@ -37,7 +37,7 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD0(disable, void ());
 };
 
-typedef pool<resource, mocked_pool_impl> resource_pool;
+typedef pool<resource, std::mutex, mocked_pool_impl> resource_pool;
 
 struct sync_resource_pool : Test {
     mocked_pool_impl::list resources;

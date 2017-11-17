@@ -9,29 +9,32 @@ namespace yamail {
 namespace resource_pool {
 namespace async {
 
-template <class Value, class IoService>
+template <class Value, class Mutex, class IoService>
 struct default_pool_queue {
     typedef Value value_type;
     typedef IoService io_service_t;
+    typedef Mutex mutex_t;
     typedef resource_pool::detail::idle<value_type> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
     typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
-    typedef detail::queue<callback, io_service_t, time_traits::timer> type;
+    typedef detail::queue<callback, mutex_t, io_service_t, time_traits::timer> type;
 };
 
-template <class Value, class IoService>
+template <class Value, class Mutex, class IoService>
 struct default_pool_impl {
     typedef typename detail::pool_impl<
         Value,
+        Mutex,
         IoService,
-        typename default_pool_queue<Value, IoService>::type
+        typename default_pool_queue<Value, Mutex, IoService>::type
     > type;
 };
 
 template <class Value,
+          class Mutex = std::mutex,
           class IoService = boost::asio::io_service,
-          class Impl = typename default_pool_impl<Value, IoService>::type >
+          class Impl = typename default_pool_impl<Value, Mutex, IoService>::type >
 class pool {
 public:
     typedef Value value_type;

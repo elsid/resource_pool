@@ -12,7 +12,8 @@ namespace resource_pool {
 namespace sync {
 
 template <class Value,
-          class Impl = detail::pool_impl<Value, std::condition_variable> >
+          class Mutex = std::mutex,
+          class Impl = detail::pool_impl<Value, Mutex, std::condition_variable>>
 class pool {
 public:
     typedef Value value_type;

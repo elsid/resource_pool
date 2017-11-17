@@ -19,7 +19,7 @@ struct mocked_condition_variable {
     MOCK_CONST_METHOD2(wait_for, std::cv_status (std::unique_lock<std::mutex>&, time_traits::duration));
 };
 
-typedef pool_impl<resource, mocked_condition_variable> resource_pool_impl;
+typedef pool_impl<resource, std::mutex, mocked_condition_variable> resource_pool_impl;
 typedef resource_pool_impl::get_result get_result;
 typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
 

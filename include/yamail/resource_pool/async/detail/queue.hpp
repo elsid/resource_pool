@@ -17,10 +17,8 @@ namespace detail {
 
 typedef std::chrono::steady_clock clock;
 
-template <class Value,
-          class IoService = boost::asio::io_service,
-          class Timer = time_traits::timer >
-class queue : public std::enable_shared_from_this<queue<Value, IoService, Timer> >,
+template <class Value, class Mutex, class IoService, class Timer>
+class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoService, Timer>>,
     boost::noncopyable {
 public:
     typedef Value value_type;
@@ -40,7 +38,8 @@ public:
     bool pop(io_service_t*& io_service, value_type& req);
 
 private:
-    typedef std::lock_guard<std::mutex> lock_guard;
+    typedef Mutex mutex_t;
+    typedef std::lock_guard<mutex_t> lock_guard;
 
     struct expiring_request {
         typedef std::list<expiring_request> list;
@@ -63,7 +62,7 @@ private:
     typedef typename expiring_request::multimap::value_type request_multimap_value;
     typedef typename std::unordered_map<const io_service_t*, std::unique_ptr<timer_t>> timers_map;
 
-    mutable std::mutex _mutex;
+    mutable mutex_t _mutex;
     typename expiring_request::list _ordered_requests;
     typename expiring_request::multimap _expires_at_requests;
     const std::size_t _capacity;
@@ -77,27 +76,27 @@ private:
     timer_t& get_timer(io_service_t& io_service);
 };
 
-template <class V, class I, class T>
-std::size_t queue<V, I, T>::size() const {
+template <class V, class M, class I, class T>
+std::size_t queue<V, M, I, T>::size() const {
     const lock_guard lock(_mutex);
     return _expires_at_requests.size();
 }
 
-template <class V, class I, class T>
-bool queue<V, I, T>::empty() const {
+template <class V, class M, class I, class T>
+bool queue<V, M, I, T>::empty() const {
     const lock_guard lock(_mutex);
     return _ordered_requests.empty();
 }
 
-template <class V, class I, class T>
-const typename queue<V, I, T>::timer_t& queue<V, I, T>::timer(io_service_t& io_service) {
+template <class V, class M, class I, class T>
+const typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::timer(io_service_t& io_service) {
     const lock_guard lock(_mutex);
     return get_timer(io_service);
 }
 
-template <class V, class I, class T>
+template <class V, class M, class I, class T>
 template <class Callback>
-bool queue<V, I, T>::push(io_service_t& io_service, const value_type& req_data, const Callback& req_expired,
+bool queue<V, M, I, T>::push(io_service_t& io_service, const value_type& req_data, const Callback& req_expired,
         time_traits::duration wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
@@ -112,8 +111,8 @@ bool queue<V, I, T>::push(io_service_t& io_service, const value_type& req_data, 
     return true;
 }
 
-template <class V, class I, class T>
-bool queue<V, I, T>::pop(io_service_t*& io_service, value_type& value) {
+template <class V, class M, class I, class T>
+bool queue<V, M, I, T>::pop(io_service_t*& io_service, value_type& value) {
     const lock_guard lock(_mutex);
     if (_ordered_requests.empty()) {
         return false;
@@ -127,8 +126,8 @@ bool queue<V, I, T>::pop(io_service_t*& io_service, value_type& value) {
     return true;
 }
 
-template <class V, class I, class T>
-void queue<V, I, T>::cancel(const boost::system::error_code& ec, time_traits::time_point expires_at) {
+template <class V, class M, class I, class T>
+void queue<V, M, I, T>::cancel(const boost::system::error_code& ec, time_traits::time_point expires_at) {
     if (ec) {
         return;
     }
@@ -140,15 +139,15 @@ void queue<V, I, T>::cancel(const boost::system::error_code& ec, time_traits::ti
     update_timer();
 }
 
-template <class V, class I, class T>
-void queue<V, I, T>::cancel_one(const request_multimap_value &pair) {
+template <class V, class M, class I, class T>
+void queue<V, M, I, T>::cancel_one(const request_multimap_value &pair) {
     const expiring_request* req = pair.second;
     req->io_service->post(req->expired);
     _ordered_requests.erase(req->order_it);
 }
 
-template <class V, class I, class T>
-void queue<V, I, T>::update_timer() {
+template <class V, class M, class I, class T>
+void queue<V, M, I, T>::update_timer() {
     using timers_map_value = typename timers_map::value_type;
     if (_expires_at_requests.empty()) {
         std::for_each(_timers.begin(), _timers.end(), [] (timers_map_value& v) { v.second->cancel(); });
@@ -167,8 +166,8 @@ void queue<V, I, T>::update_timer() {
     });
 }
 
-template <class V, class I, class T>
-typename queue<V, I, T>::timer_t& queue<V, I, T>::get_timer(io_service_t& io_service) {
+template <class V, class M, class I, class T>
+typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::get_timer(io_service_t& io_service) {
     auto it = _timers.find(&io_service);
     if (it != _timers.end()) {
         return *it->second;
