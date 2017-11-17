@@ -9,10 +9,10 @@ namespace yamail {
 namespace resource_pool {
 namespace async {
 
-template <class Value>
+template <class Value, class IoService>
 struct default_pool_queue {
     typedef Value value_type;
-    typedef boost::asio::io_service io_service_t;
+    typedef IoService io_service_t;
     typedef resource_pool::detail::idle<value_type> idle;
     typedef std::list<idle> list;
     typedef typename list::iterator list_iterator;
@@ -25,7 +25,7 @@ struct default_pool_impl {
     typedef typename detail::pool_impl<
         Value,
         IoService,
-        typename default_pool_queue<Value>::type
+        typename default_pool_queue<Value, IoService>::type
     > type;
 };
 
