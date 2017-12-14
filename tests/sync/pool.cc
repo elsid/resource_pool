@@ -18,11 +18,11 @@ struct resource {
 };
 
 struct mocked_pool_impl {
-    typedef resource value_type;
-    typedef yamail::resource_pool::detail::idle<value_type> idle;
-    typedef std::list<idle> list;
-    typedef list::iterator list_iterator;
-    typedef std::pair<boost::system::error_code, list_iterator> get_result;
+    using value_type = resource;
+    using idle = yamail::resource_pool::detail::idle<value_type>;
+    using list = std::list<idle>;
+    using list_iterator = list::iterator;
+    using get_result = std::pair<boost::system::error_code, list_iterator>;
 
     mocked_pool_impl(std::size_t, time_traits::duration) {}
 
@@ -37,7 +37,7 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD0(disable, void ());
 };
 
-typedef pool<resource, std::mutex, mocked_pool_impl> resource_pool;
+using resource_pool = pool<resource, std::mutex, mocked_pool_impl>;
 
 struct sync_resource_pool : Test {
     mocked_pool_impl::list resources;

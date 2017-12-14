@@ -11,7 +11,7 @@ namespace detail {
 
 template <class Value>
 struct idle {
-    typedef Value value_type;
+    using value_type = Value;
 
     boost::optional<value_type> value;
     time_traits::time_point drop_time;

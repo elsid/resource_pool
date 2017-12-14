@@ -16,10 +16,10 @@ template <class Value,
           class Impl = detail::pool_impl<Value, Mutex, std::condition_variable>>
 class pool {
 public:
-    typedef Value value_type;
-    typedef Impl pool_impl;
-    typedef resource_pool::handle<pool> handle;
-    typedef std::pair<boost::system::error_code, handle> get_result;
+    using value_type = Value;
+    using pool_impl = Impl;
+    using handle = resource_pool::handle<pool>;
+    using get_result = std::pair<boost::system::error_code, handle>;
 
     pool(std::size_t capacity, time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(capacity, idle_timeout))
@@ -54,8 +54,8 @@ public:
     }
 
 private:
-    typedef typename handle::strategy strategy;
-    typedef std::shared_ptr<pool_impl> pool_impl_ptr;
+    using strategy = typename handle::strategy;
+    using pool_impl_ptr = std::shared_ptr<pool_impl>;
 
     pool_impl_ptr _impl;
 

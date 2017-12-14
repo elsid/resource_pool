@@ -15,15 +15,15 @@ namespace resource_pool {
 namespace async {
 namespace detail {
 
-typedef std::chrono::steady_clock clock;
+using clock = std::chrono::steady_clock;
 
 template <class Value, class Mutex, class IoService, class Timer>
 class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoService, Timer>>,
     boost::noncopyable {
 public:
-    typedef Value value_type;
-    typedef IoService io_service_t;
-    typedef Timer timer_t;
+    using value_type = Value;
+    using io_service_t = IoService;
+    using timer_t = Timer;
 
     queue(std::size_t capacity) : _capacity(capacity) {}
 
@@ -38,15 +38,15 @@ public:
     bool pop(io_service_t*& io_service, value_type& req);
 
 private:
-    typedef Mutex mutex_t;
-    typedef std::lock_guard<mutex_t> lock_guard;
+    using mutex_t = Mutex;
+    using lock_guard = std::lock_guard<mutex_t>;
 
     struct expiring_request {
-        typedef std::list<expiring_request> list;
-        typedef typename list::iterator list_it;
-        typedef std::multimap<time_traits::time_point, const expiring_request*> multimap;
-        typedef typename multimap::iterator multimap_it;
-        typedef std::function<void ()> callback;
+        using list = std::list<expiring_request>;
+        using list_it = typename list::iterator;
+        using multimap = std::multimap<time_traits::time_point, const expiring_request*>;
+        using multimap_it = typename multimap::iterator;
+        using callback = std::function<void ()>;
 
         io_service_t* io_service;
         queue::value_type request;
@@ -59,8 +59,8 @@ private:
         }
     };
 
-    typedef typename expiring_request::multimap::value_type request_multimap_value;
-    typedef typename std::unordered_map<const io_service_t*, std::unique_ptr<timer_t>> timers_map;
+    using request_multimap_value = typename expiring_request::multimap::value_type;
+    using timers_map = typename std::unordered_map<const io_service_t*, std::unique_ptr<timer_t>>;
 
     mutable mutex_t _mutex;
     typename expiring_request::list _ordered_requests;

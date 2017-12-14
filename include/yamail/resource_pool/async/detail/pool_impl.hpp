@@ -23,13 +23,13 @@ namespace detail {
 template <class Value, class Mutex, class IoService, class Queue>
 class pool_impl : boost::noncopyable {
 public:
-    typedef Value value_type;
-    typedef IoService io_service_t;
-    typedef resource_pool::detail::idle<value_type> idle;
-    typedef std::list<idle> list;
-    typedef typename list::iterator list_iterator;
-    typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
-    typedef Queue queue_type;
+    using value_type = Value;
+    using io_service_t = IoService;
+    using idle = resource_pool::detail::idle<value_type>;
+    using list = std::list<idle>;
+    using list_iterator = typename list::iterator;
+    using callback = std::function<void (const boost::system::error_code&, list_iterator)>;
+    using queue_type = Queue;
 
     pool_impl(std::size_t capacity,
               std::size_t queue_capacity,
@@ -85,9 +85,9 @@ public:
     static std::size_t assert_capacity(std::size_t value);
 
 private:
-    typedef Mutex mutex_t;
-    typedef std::unique_lock<mutex_t> unique_lock;
-    typedef std::lock_guard<mutex_t> lock_guard;
+    using mutex_t = Mutex;
+    using unique_lock = std::unique_lock<mutex_t>;
+    using lock_guard = std::lock_guard<mutex_t>;
 
     mutable mutex_t _mutex;
     list _available;

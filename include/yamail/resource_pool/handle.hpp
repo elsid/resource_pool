@@ -11,12 +11,12 @@ namespace resource_pool {
 template <class Pool>
 class handle {
 public:
-    typedef Pool pool;
-    typedef typename pool::pool_impl pool_impl;
-    typedef typename pool_impl::value_type value_type;
-    typedef void (handle::*strategy)();
-    typedef std::shared_ptr<pool_impl> pool_impl_ptr;
-    typedef typename pool_impl::list_iterator list_iterator;
+    using pool = Pool;
+    using pool_impl = typename pool::pool_impl;
+    using value_type = typename pool_impl::value_type;
+    using strategy = void (handle::*)();
+    using pool_impl_ptr = std::shared_ptr<pool_impl>;
+    using list_iterator = typename pool_impl::list_iterator;
 
     handle() = default;
     handle(const handle& other) = delete;

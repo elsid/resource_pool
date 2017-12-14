@@ -9,9 +9,9 @@ using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::async::detail;
 
 struct mocked_queue {
-    typedef std::list<detail::idle<resource>>::iterator list_iterator;
-    typedef std::function<void (const boost::system::error_code&, list_iterator)> value_type;
-    typedef std::function<void ()> callback;
+    using list_iterator = std::list<detail::idle<resource>>::iterator;
+    using value_type = std::function<void (const boost::system::error_code&, list_iterator)>;
+    using callback = std::function<void ()>;
 
     MOCK_CONST_METHOD4(push, bool (mocked_io_service&, const value_type&, const callback&, time_traits::duration));
     MOCK_CONST_METHOD2(pop, bool (mocked_io_service*&, value_type&));
@@ -20,8 +20,8 @@ struct mocked_queue {
     mocked_queue(std::size_t) {}
 };
 
-typedef pool_impl<resource, std::mutex, mocked_io_service, mocked_queue> resource_pool_impl;
-typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
+using resource_pool_impl = pool_impl<resource, std::mutex, mocked_io_service, mocked_queue>;
+using resource_ptr_list_iterator = resource_pool_impl::list_iterator;
 
 }
 
@@ -41,7 +41,7 @@ struct mocked_callback {
     MOCK_CONST_METHOD2(call, void (const error_code&, resource_ptr_list_iterator));
 };
 
-typedef std::shared_ptr<mocked_callback> mocked_callback_ptr;
+using mocked_callback_ptr = std::shared_ptr<mocked_callback>;
 
 struct async_resource_pool_impl : Test {
     mocked_io_service ios;
@@ -153,7 +153,7 @@ TEST_F(async_resource_pool_impl, create_const_then_call_queue_should_succeed) {
 
 class callback {
 public:
-    typedef void result_type;
+    using result_type = void;
 
     callback(const mocked_callback_ptr& impl) : impl(impl) {}
 

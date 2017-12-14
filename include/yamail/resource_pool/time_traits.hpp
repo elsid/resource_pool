@@ -9,9 +9,9 @@ namespace yamail {
 namespace resource_pool {
 
 struct time_traits {
-    typedef std::chrono::steady_clock::duration duration;
-    typedef std::chrono::steady_clock::time_point time_point;
-    typedef boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer;
+    using duration = std::chrono::steady_clock::duration;
+    using time_point = std::chrono::steady_clock::time_point;
+    using timer = boost::asio::basic_waitable_timer<std::chrono::steady_clock>;
 
     static time_point now() {
         return std::chrono::steady_clock::now();

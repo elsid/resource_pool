@@ -9,11 +9,11 @@ using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::async;
 
 struct mocked_pool_impl {
-    typedef resource value_type;
-    typedef yamail::resource_pool::detail::idle<value_type> idle;
-    typedef std::list<idle> list;
-    typedef list::iterator list_iterator;
-    typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
+    using value_type = resource;
+    using idle = yamail::resource_pool::detail::idle<value_type>;
+    using list = std::list<idle>;
+    using list_iterator = list::iterator;
+    using callback = std::function<void (const boost::system::error_code&, list_iterator)>;
 
     MOCK_CONST_METHOD0(capacity, std::size_t ());
     MOCK_CONST_METHOD0(size, std::size_t ());
@@ -28,7 +28,7 @@ struct mocked_pool_impl {
     mocked_pool_impl(std::size_t, std::size_t, time_traits::duration) {}
 };
 
-typedef pool<resource, std::mutex, mocked_io_service, mocked_pool_impl> resource_pool;
+using resource_pool = pool<resource, std::mutex, mocked_io_service, mocked_pool_impl>;
 
 using boost::system::error_code;
 

@@ -90,7 +90,7 @@ Pool holds ```boost::optional``` of resource type.
 
 Example:
 ```c++
-typedef pool<std::fstream> fstream_pool;
+using fstream_pool = pool<std::fstream>;
 ```
 
 Object constructing requires capacity of pool:
@@ -158,7 +158,7 @@ Pool holds ```boost::optional``` of resource type.
 
 Example:
 ```c++
-typedef pool<std::fstream> fstream_pool;
+using fstream_pool = pool<std::fstream>;
 ```
 
 Object constructing requires reference to io service, capacity of pool, queue capacity:

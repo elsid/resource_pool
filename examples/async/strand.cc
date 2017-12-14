@@ -5,8 +5,8 @@
 #include <thread>
 #include <memory>
 
-typedef yamail::resource_pool::async::pool<std::unique_ptr<std::ofstream>> ofstream_pool;
-typedef yamail::resource_pool::time_traits time_traits;
+using ofstream_pool = yamail::resource_pool::async::pool<std::unique_ptr<std::ofstream>>;
+using time_traits = yamail::resource_pool::time_traits;
 
 struct on_get {
     boost::asio::strand& strand;

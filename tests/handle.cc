@@ -29,16 +29,16 @@ struct idle {
 
 struct pool {
     struct pool_impl {
-        typedef resource value_type;
-        typedef std::list<idle>::iterator list_iterator;
+        using value_type = resource;
+        using list_iterator = std::list<idle>::iterator;
 
         MOCK_METHOD1(waste, void (list_iterator));
     };
 
-    typedef pool_impl::list_iterator list_iterator;
+    using list_iterator = pool_impl::list_iterator;
 };
 
-typedef yamail::resource_pool::handle<pool> resource_handle;
+using resource_handle = yamail::resource_pool::handle<pool>;
 
 TEST(handle_test, construct_usable_should_be_not_unusable) {
     std::list<idle> resources;

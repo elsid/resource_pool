@@ -17,8 +17,8 @@ struct mocked_timer {
     MOCK_CONST_METHOD1(async_wait, void (std::function<void (boost::system::error_code)>));
 };
 
-typedef queue<request, std::mutex, mocked_io_service, mocked_timer> request_queue;
-typedef std::shared_ptr<request_queue> request_queue_ptr;
+using request_queue = queue<request, std::mutex, mocked_io_service, mocked_timer>;
+using request_queue_ptr = std::shared_ptr<request_queue>;
 
 using boost::system::error_code;
 
@@ -26,7 +26,7 @@ struct mocked_callback {
     MOCK_CONST_METHOD0(call, void ());
 };
 
-typedef std::shared_ptr<mocked_callback> mocked_callback_ptr;
+using mocked_callback_ptr = std::shared_ptr<mocked_callback>;
 
 struct async_request_queue : Test {
     mocked_io_service ios;
@@ -67,7 +67,7 @@ TEST_F(async_request_queue, create_ptr_then_call_shared_from_this_should_return_
 
 class callback {
 public:
-    typedef void result_type;
+    using result_type = void;
 
     callback(const mocked_callback_ptr& impl) : impl(impl) {}
 

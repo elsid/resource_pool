@@ -19,9 +19,9 @@ struct mocked_condition_variable {
     MOCK_CONST_METHOD2(wait_for, std::cv_status (std::unique_lock<std::mutex>&, time_traits::duration));
 };
 
-typedef pool_impl<resource, std::mutex, mocked_condition_variable> resource_pool_impl;
-typedef resource_pool_impl::get_result get_result;
-typedef resource_pool_impl::list_iterator resource_ptr_list_iterator;
+using resource_pool_impl = pool_impl<resource, std::mutex, mocked_condition_variable>;
+using get_result = resource_pool_impl::get_result;
+using resource_ptr_list_iterator = resource_pool_impl::list_iterator;
 
 struct sync_resource_pool_impl : Test {};
 
@@ -99,7 +99,7 @@ TEST(sync_resource_pool_impl, get_after_disable_capacity_returns_error) {
 }
 
 struct handle_resource {
-    typedef void (resource_pool_impl::*strategy_type)(resource_ptr_list_iterator);
+    using strategy_type = void (resource_pool_impl::*)(resource_ptr_list_iterator);
 
     resource_pool_impl& pool;
     resource_ptr_list_iterator res_it;

@@ -24,12 +24,12 @@ namespace detail {
 template <class Value, class Mutex, class ConditionVariable>
 class pool_impl {
 public:
-    typedef Value value_type;
-    typedef ConditionVariable condition_variable;
-    typedef resource_pool::detail::idle<value_type> idle;
-    typedef std::list<idle> list;
-    typedef typename list::iterator list_iterator;
-    typedef std::pair<boost::system::error_code, list_iterator> get_result;
+    using value_type = Value;
+    using condition_variable = ConditionVariable;
+    using idle = resource_pool::detail::idle<value_type>;
+    using list = std::list<idle>;
+    using list_iterator = typename list::iterator;
+    using get_result = std::pair<boost::system::error_code, list_iterator>;
 
     pool_impl(std::size_t capacity, time_traits::duration idle_timeout)
             : _capacity(assert_capacity(capacity)),
@@ -58,9 +58,9 @@ public:
     static std::size_t assert_capacity(std::size_t value);
 
 private:
-    typedef Mutex mutex_t;
-    typedef std::lock_guard<mutex_t> lock_guard;
-    typedef std::unique_lock<mutex_t> unique_lock;
+    using mutex_t = Mutex;
+    using lock_guard = std::lock_guard<mutex_t>;
+    using unique_lock = std::unique_lock<mutex_t>;
 
     mutable mutex_t _mutex;
     list _available;

@@ -4,8 +4,8 @@
 #include <iostream>
 #include <memory>
 
-typedef yamail::resource_pool::sync::pool<std::unique_ptr<std::ofstream>> ofstream_pool;
-typedef yamail::resource_pool::time_traits time_traits;
+using ofstream_pool = yamail::resource_pool::sync::pool<std::unique_ptr<std::ofstream>>;
+using time_traits = yamail::resource_pool::time_traits;
 
 int main() {
     ofstream_pool pool(1);

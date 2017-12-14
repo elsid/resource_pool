@@ -11,24 +11,24 @@ namespace async {
 
 template <class Value, class Mutex, class IoService>
 struct default_pool_queue {
-    typedef Value value_type;
-    typedef IoService io_service_t;
-    typedef Mutex mutex_t;
-    typedef resource_pool::detail::idle<value_type> idle;
-    typedef std::list<idle> list;
-    typedef typename list::iterator list_iterator;
-    typedef std::function<void (const boost::system::error_code&, list_iterator)> callback;
-    typedef detail::queue<callback, mutex_t, io_service_t, time_traits::timer> type;
+    using value_type = Value;
+    using io_service_t = IoService;
+    using mutex_t = Mutex;
+    using idle = resource_pool::detail::idle<value_type>;
+    using list = std::list<idle>;
+    using list_iterator = typename list::iterator ;
+    using callback = std::function<void (const boost::system::error_code&, list_iterator)>;
+    using type = detail::queue<callback, mutex_t, io_service_t, time_traits::timer>;
 };
 
 template <class Value, class Mutex, class IoService>
 struct default_pool_impl {
-    typedef typename detail::pool_impl<
+    using type = typename detail::pool_impl<
         Value,
         Mutex,
         IoService,
         typename default_pool_queue<Value, Mutex, IoService>::type
-    > type;
+    >;
 };
 
 template <class Value,
@@ -37,10 +37,10 @@ template <class Value,
           class Impl = typename default_pool_impl<Value, Mutex, IoService>::type >
 class pool {
 public:
-    typedef Value value_type;
-    typedef IoService io_service_t;
-    typedef Impl pool_impl;
-    typedef resource_pool::handle<pool> handle;
+    using value_type = Value;
+    using io_service_t = IoService;
+    using pool_impl = Impl;
+    using handle = resource_pool::handle<pool>;
 
     pool(std::size_t capacity,
          std::size_t queue_capacity,
@@ -111,9 +111,9 @@ public:
     }
 
 private:
-    typedef typename pool_impl::list_iterator list_iterator;
-    typedef typename handle::strategy strategy;
-    typedef typename std::shared_ptr<pool_impl> pool_impl_ptr;
+    using list_iterator = typename pool_impl::list_iterator;
+    using strategy = typename handle::strategy;
+    using pool_impl_ptr = typename std::shared_ptr<pool_impl>;
 
     template <typename Callback>
     using async_result_init = detail::async_result_init<Callback, cb_signature>;
