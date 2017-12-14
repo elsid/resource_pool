@@ -151,11 +151,12 @@ void pool_impl<V, M, I, Q>::waste(list_iterator res_it) {
 template <class V, class M, class I, class Q>
 template <class Callback>
 void pool_impl<V, M, I, Q>::get(io_service_t& io_service, Callback call, time_traits::duration wait_duration) {
+    using boost::asio::asio_handler_invoke;
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
         io_service.post([call] () mutable {
-            call(make_error_code(error::disabled), list_iterator());
+            asio_handler_invoke([=] () mutable { call(make_error_code(error::disabled), list_iterator()); }, &call);
         });
     } else if (alloc_resource(io_service, lock, call)) {
         return;
@@ -165,16 +166,16 @@ void pool_impl<V, M, I, Q>::get(io_service_t& io_service, Callback call, time_tr
         lock.unlock();
         if (wait_duration.count() == 0) {
             io_service.post([call] () mutable {
-                call(make_error_code(error::get_resource_timeout), list_iterator());
+                asio_handler_invoke([=] () mutable { call(make_error_code(error::get_resource_timeout), list_iterator()); }, &call);
             });
         } else {
             const auto expired = [call] () mutable {
-                call(make_error_code(error::get_resource_timeout), list_iterator());
+                asio_handler_invoke([=] () mutable { call(make_error_code(error::get_resource_timeout), list_iterator()); }, &call);
             };
             const bool pushed = _callbacks->push(io_service, call, expired, wait_duration);
             if (!pushed) {
                 io_service.post([call] () mutable {
-                    call(make_error_code(error::request_queue_overflow), list_iterator());
+                    asio_handler_invoke([=] () mutable { call(make_error_code(error::request_queue_overflow), list_iterator()); }, &call);
                 });
             }
         }
@@ -183,6 +184,7 @@ void pool_impl<V, M, I, Q>::get(io_service_t& io_service, Callback call, time_tr
 
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::disable() {
+    using boost::asio::asio_handler_invoke;
     const lock_guard lock(_mutex);
     _disabled = true;
     while (true) {
@@ -192,7 +194,7 @@ void pool_impl<V, M, I, Q>::disable() {
             break;
         }
         io_service->post([call] {
-            call(make_error_code(error::disabled), list_iterator());
+            asio_handler_invoke([=] () mutable { call(make_error_code(error::disabled), list_iterator()); }, &call);
         });
     }
 }
@@ -208,6 +210,7 @@ std::size_t pool_impl<V, M, I, Q>::assert_capacity(std::size_t value) {
 template <class V, class M, class I, class Q>
 template <class Callback>
 bool pool_impl<V, M, I, Q>::alloc_resource(io_service_t& io_service, unique_lock& lock, Callback call) {
+    using boost::asio::asio_handler_invoke;
     while (!_available.empty()) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
@@ -218,7 +221,7 @@ bool pool_impl<V, M, I, Q>::alloc_resource(io_service_t& io_service, unique_lock
         _used.splice(_used.end(), _available, res_it);
         lock.unlock();
         io_service.post([call, res_it] () mutable {
-            call(boost::system::error_code(), res_it);
+            asio_handler_invoke([=] () mutable { call(boost::system::error_code(), res_it); }, &call);
         });
         return true;
     }
@@ -228,11 +231,12 @@ bool pool_impl<V, M, I, Q>::alloc_resource(io_service_t& io_service, unique_lock
 template <class V, class M, class I, class Q>
 template <class Callback>
 bool pool_impl<V, M, I, Q>::reserve_resource(io_service_t& io_service, unique_lock& lock, Callback call) {
+    using boost::asio::asio_handler_invoke;
     const list_iterator res_it = _wasted.begin();
     _used.splice(_used.end(), _wasted, res_it);
     lock.unlock();
     io_service.post([call, res_it] () mutable {
-        call(boost::system::error_code(), res_it);
+        asio_handler_invoke([=] () mutable { call(boost::system::error_code(), res_it); }, &call);
     });
     return true;
 }

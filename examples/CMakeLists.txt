@@ -20,5 +20,8 @@ target_link_libraries(async_pool ${LIBRARIES})
 add_executable(coro_pool async/coro.cc)
 target_link_libraries(coro_pool ${LIBRARIES})
 
+add_executable(async_strand async/strand.cc)
+target_link_libraries(async_strand ${LIBRARIES})
+
 add_executable(sync_pool sync/pool.cc)
 target_link_libraries(sync_pool ${LIBRARIES})

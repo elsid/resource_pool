@@ -14,20 +14,23 @@ int main() {
     boost::asio::spawn(service, [&](boost::asio::yield_context yield){
         boost::system::error_code ec;
         auto handle = pool.get_auto_waste(service, yield[ec], time_traits::duration::max());
-        std::cerr << ec.message() << std::endl;
-        return;
+        if (ec) {
+            std::cout << "handle error: " << ec.message() << std::endl;
+            return;
+        }
+        std::cout << "got resource handle" << std::endl;
         if (handle.empty()) {
-            std::unique_ptr<std::ofstream> file;
-            try {
-                file.reset(new std::ofstream("pool.log", std::ios::app));
-            } catch (const std::exception& exception) {
-                std::cerr << "Open file pool.log error: " << exception.what() << std::endl;
+            std::unique_ptr<std::ofstream> file(new std::ofstream("pool.log", std::ios::app));
+            if (!file->good()) {
+                std::cout << "open file pool.log error: " << file->rdstate() << std::endl;
                 return;
             }
             handle.reset(std::move(file));
         }
         *(handle.get()) << (time_traits::time_point::min() - time_traits::now()).count() << std::endl;
-        handle.recycle();
+        if (handle.get()->good()) {
+            handle.recycle();
+        }
     });
     service.run();
     return 0;

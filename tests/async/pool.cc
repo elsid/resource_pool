@@ -224,4 +224,38 @@ TEST_F(async_resource_pool, get_from_pool_returns_error_should_not_call_waste_or
     on_get(make_error_code(error::get_resource_timeout), mocked_pool_impl::list_iterator());
 }
 
+struct mocked_callback {
+    MOCK_METHOD0(call, void ());
+    MOCK_METHOD0(asio_handler_invoke, void ());
+};
+
+struct on_get_callback {
+    std::shared_ptr<mocked_callback> call;
+
+    void operator ()(const boost::system::error_code&, async::pool<resource>::handle) {
+        call->call();
+    }
+
+    template <class Function>
+    friend void asio_handler_invoke(Function function, on_get_callback* handler) {
+        using boost::asio::asio_handler_invoke;
+        handler->call->asio_handler_invoke();
+        function();
+    }
+};
+
+TEST_F(async_resource_pool, asio_handler_invoke) {
+    boost::asio::io_service service;
+    async::pool<resource> pool(1, 0);
+    const auto call = std::make_shared<mocked_callback>();
+
+    const InSequence s;
+
+    EXPECT_CALL(*call, asio_handler_invoke()).WillOnce(Return());
+    EXPECT_CALL(*call, call()).WillOnce(Return());
+
+    pool.get_auto_waste(service, on_get_callback {call});
+    service.run();
+}
+
 }

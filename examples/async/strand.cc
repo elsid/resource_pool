@@ -9,6 +9,8 @@ typedef yamail::resource_pool::async::pool<std::unique_ptr<std::ofstream>> ofstr
 typedef yamail::resource_pool::time_traits time_traits;
 
 struct on_get {
+    boost::asio::strand& strand;
+
     void operator ()(const boost::system::error_code& ec, ofstream_pool::handle handle) {
         try {
             if (ec) {
@@ -33,13 +35,25 @@ struct on_get {
             return;
         }
     }
+
+    template <typename Func>
+    friend void asio_handler_invoke(Func f, on_get* handler) {
+        using boost::asio::asio_handler_invoke;
+        boost::asio::detail::wrapped_handler<boost::asio::strand, Func, boost::asio::detail::is_continuation_if_running> w(handler->strand, f);
+        asio_handler_invoke(f, &w);
+    }
 };
 
 int main() {
     boost::asio::io_service service;
-    ofstream_pool pool(1, 10);
-    pool.get_auto_waste(service, on_get(), time_traits::duration::max());
-    std::thread worker([&] { return service.run(); });
-    worker.join();
+    boost::asio::strand strand(service);
+    ofstream_pool pool(2, 10);
+    pool.get_auto_waste(service, on_get {strand}, time_traits::duration::max());
+    pool.get_auto_waste(service, on_get {strand}, time_traits::duration::max());
+    pool.get_auto_waste(service, on_get {strand}, time_traits::duration::max());
+    std::thread worker1([&] { return service.run(); });
+    std::thread worker2([&] { return service.run(); });
+    worker1.join();
+    worker2.join();
     return 0;
 }

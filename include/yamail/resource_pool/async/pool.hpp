@@ -122,12 +122,13 @@ private:
 
     template <class Callback>
     void get(io_service_t &io_service, Callback call, strategy use_strategy, time_traits::duration wait_duration) {
+        using boost::asio::asio_handler_invoke;
         const auto impl = _impl;
         const auto on_get = [impl, use_strategy, call] (const boost::system::error_code& ec, list_iterator res) mutable {
             if (ec) {
-                call(ec, handle());
+                asio_handler_invoke([=] () mutable { call(ec, handle()); }, &call);
             } else {
-                call(ec, handle(impl, use_strategy, res));
+                asio_handler_invoke([=] () mutable { call(ec, handle(impl, use_strategy, res)); }, &call);
             }
         };
         _impl->get(io_service, on_get, wait_duration);
