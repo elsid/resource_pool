@@ -113,12 +113,11 @@ public:
 private:
     using list_iterator = typename pool_impl::list_iterator;
     using strategy = typename handle::strategy;
-    using pool_impl_ptr = typename std::shared_ptr<pool_impl>;
 
     template <typename Callback>
     using async_result_init = detail::async_result_init<Callback, cb_signature>;
 
-    pool_impl_ptr _impl;
+    std::shared_ptr<pool_impl> _impl;
 
     template <class Callback>
     void get(io_service_t &io_service, Callback call, strategy use_strategy, time_traits::duration wait_duration) {
