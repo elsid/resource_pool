@@ -27,14 +27,14 @@ if(NOT TARGET googletest)
         LOG_CONFIGURE ON
         LOG_BUILD ON
     )
+
+    ExternalProject_Get_Property(googletest source_dir)
+    include_directories(SYSTEM ${source_dir}/googletest/include)
+    include_directories(SYSTEM ${source_dir}/googlemock/include)
+
+    ExternalProject_Get_Property(googletest binary_dir)
+    link_directories(${binary_dir}/googlemock)
 endif()
-
-ExternalProject_Get_Property(googletest source_dir)
-include_directories(SYSTEM ${source_dir}/googletest/include)
-include_directories(SYSTEM ${source_dir}/googlemock/include)
-
-ExternalProject_Get_Property(googletest binary_dir)
-link_directories(${binary_dir}/googlemock)
 
 add_executable(resource_pool_test
     main.cc
