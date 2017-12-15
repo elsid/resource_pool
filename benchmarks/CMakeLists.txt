@@ -20,7 +20,7 @@ if(NOT TARGET google_benchmark)
         google_benchmark
         GIT_REPOSITORY ${GOOGLE_BENCHMARK_REPOSITORY}
         TIMEOUT 1
-        CONFIGURE_COMMAND cmake -DCMAKE_BUILD_TYPE=Release ../google_benchmark
+        CONFIGURE_COMMAND cmake -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_GTEST_TESTS=OFF ../google_benchmark
         INSTALL_COMMAND ""
         UPDATE_COMMAND ""
         LOG_DOWNLOAD ON

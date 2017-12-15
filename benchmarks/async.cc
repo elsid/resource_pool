@@ -134,4 +134,4 @@ void all_benchmarks(benchmark::internal::Benchmark* b) {
 
 BENCHMARK(get_auto_waste)->Apply(all_benchmarks);
 
-BENCHMARK_MAIN()
+BENCHMARK_MAIN();
