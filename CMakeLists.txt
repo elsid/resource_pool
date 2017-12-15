@@ -7,10 +7,22 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_COROUTINES_NO_DEPRECATION_WARNIN
 include(./share/find_resource_pool_dependencies.cmake)
 find_resource_pool_dependencies()
 
-enable_testing()
+option(RESOURCE_POOL_BUILD_EXAMPLES OFF)
+option(RESOURCE_POOL_BUILD_TESTS OFF)
+option(RESOURCE_POOL_BUILD_BENCHMARKS OFF)
 
 add_subdirectory(share)
 add_subdirectory(include)
-add_subdirectory(tests)
-add_subdirectory(examples)
-add_subdirectory(benchmarks)
+
+if(RESOURCE_POOL_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+if(RESOURCE_POOL_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+if(RESOURCE_POOL_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
