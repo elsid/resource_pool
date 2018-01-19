@@ -112,15 +112,14 @@ public:
 
 private:
     using list_iterator = typename pool_impl::list_iterator;
-    using strategy = typename handle::strategy;
 
     template <typename Callback>
     using async_result_init = detail::async_result_init<Callback, cb_signature>;
 
     std::shared_ptr<pool_impl> _impl;
 
-    template <class Callback>
-    void get(io_service_t &io_service, Callback call, strategy use_strategy, time_traits::duration wait_duration) {
+    template <class Callback, class Strategy>
+    void get(io_service_t &io_service, Callback call, Strategy use_strategy, time_traits::duration wait_duration) {
         using boost::asio::asio_handler_invoke;
         const auto impl = _impl;
         const auto on_get = [impl, use_strategy, call] (const boost::system::error_code& ec, list_iterator res) mutable {
