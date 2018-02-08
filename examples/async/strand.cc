@@ -9,7 +9,7 @@ using ofstream_pool = yamail::resource_pool::async::pool<std::unique_ptr<std::of
 using time_traits = yamail::resource_pool::time_traits;
 
 struct on_get {
-    boost::asio::strand& strand;
+    boost::asio::io_service::strand& strand;
 
     void operator ()(const boost::system::error_code& ec, ofstream_pool::handle handle) {
         try {
@@ -39,14 +39,14 @@ struct on_get {
     template <typename Func>
     friend void asio_handler_invoke(Func f, on_get* handler) {
         using boost::asio::asio_handler_invoke;
-        boost::asio::detail::wrapped_handler<boost::asio::strand, Func, boost::asio::detail::is_continuation_if_running> w(handler->strand, f);
+        boost::asio::detail::wrapped_handler<boost::asio::io_service::strand, Func, boost::asio::detail::is_continuation_if_running> w(handler->strand, f);
         asio_handler_invoke(f, &w);
     }
 };
 
 int main() {
     boost::asio::io_service service;
-    boost::asio::strand strand(service);
+    boost::asio::io_service::strand strand(service);
     ofstream_pool pool(2, 10);
     pool.get_auto_waste(service, on_get {strand}, time_traits::duration::max());
     pool.get_auto_waste(service, on_get {strand}, time_traits::duration::max());
