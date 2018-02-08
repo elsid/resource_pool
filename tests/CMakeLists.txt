@@ -1,6 +1,9 @@
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Werror -std=c++11")
 
+find_package(Boost COMPONENTS coroutine context REQUIRED)
+
 include_directories(SYSTEM ${RESOURCE_POOL_DEPENDENCY_INCLUDE_DIRS})
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 if(NOT TARGET googletest)
@@ -20,8 +23,7 @@ if(NOT TARGET googletest)
         googletest
         GIT_REPOSITORY ${GOOGLETEST_REPOSITORY}
         TIMEOUT 1
-        CONFIGURE_COMMAND cmake -DCMAKE_BUILD_TYPE=Release ../googletest
-        INSTALL_COMMAND ""
+        CONFIGURE_COMMAND cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR} ../googletest
         UPDATE_COMMAND ""
         LOG_DOWNLOAD ON
         LOG_CONFIGURE ON
@@ -33,7 +35,8 @@ if(NOT TARGET googletest)
     include_directories(SYSTEM ${source_dir}/googlemock/include)
 
     ExternalProject_Get_Property(googletest binary_dir)
-    link_directories(${binary_dir}/googlemock)
+    link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib)
+    link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib64)
 endif()
 
 add_executable(resource_pool_test
@@ -53,8 +56,10 @@ add_dependencies(resource_pool_test googletest)
 set(LIBRARIES
     -lrt
     -pthread
+    gtest
     gmock
     ${RESOURCE_POOL_DEPENDENCY_LIBRARIES}
+    ${Boost_LIBRARIES}
 )
 
 target_link_libraries(resource_pool_test ${LIBRARIES})
