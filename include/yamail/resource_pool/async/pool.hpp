@@ -42,7 +42,7 @@ public:
     using value_type = Value;
     using io_service_t = IoService;
     using pool_impl = Impl;
-    using handle = resource_pool::handle<pool>;
+    using handle = resource_pool::handle<pool_impl>;
 
     pool(std::size_t capacity,
          std::size_t queue_capacity,

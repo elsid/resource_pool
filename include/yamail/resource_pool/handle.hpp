@@ -8,11 +8,10 @@
 namespace yamail {
 namespace resource_pool {
 
-template <class Pool>
+template <class PoolImpl>
 class handle {
 public:
-    using pool = Pool;
-    using pool_impl = typename pool::pool_impl;
+    using pool_impl = PoolImpl;
     using value_type = typename pool_impl::value_type;
     using strategy = void (handle::*)();
     using pool_impl_ptr = std::shared_ptr<pool_impl>;

@@ -38,7 +38,7 @@ struct pool {
     using list_iterator = pool_impl::list_iterator;
 };
 
-using resource_handle = yamail::resource_pool::handle<pool>;
+using resource_handle = yamail::resource_pool::handle<pool::pool_impl>;
 
 TEST(handle_test, construct_usable_should_be_not_unusable) {
     std::list<idle> resources;

@@ -18,7 +18,7 @@ class pool {
 public:
     using value_type = Value;
     using pool_impl = Impl;
-    using handle = resource_pool::handle<pool>;
+    using handle = resource_pool::handle<pool_impl>;
     using get_result = std::pair<boost::system::error_code, handle>;
 
     pool(std::size_t capacity, time_traits::duration idle_timeout = time_traits::duration::max())
