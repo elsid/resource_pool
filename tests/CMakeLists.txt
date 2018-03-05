@@ -6,7 +6,10 @@ include_directories(SYSTEM ${RESOURCE_POOL_DEPENDENCY_INCLUDE_DIRS})
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-if(NOT TARGET googletest)
+find_package(GTest)
+find_package(GMock)
+
+if(NOT TARGET googletest AND (NOT GTEST_FOUND OR NOT GMOCK_FOUND))
     include(ExternalProject)
 
     set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/external)
@@ -23,21 +26,37 @@ if(NOT TARGET googletest)
         googletest
         GIT_REPOSITORY ${GOOGLETEST_REPOSITORY}
         TIMEOUT 1
-        CONFIGURE_COMMAND cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR} ../googletest
+        CONFIGURE_COMMAND cmake
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+            -DCMAKE_INSTALL_LIBDIR=${CMAKE_CURRENT_BINARY_DIR}/lib
+            ../googletest
         UPDATE_COMMAND ""
         LOG_DOWNLOAD ON
         LOG_CONFIGURE ON
         LOG_BUILD ON
     )
-
-    ExternalProject_Get_Property(googletest source_dir)
-    include_directories(SYSTEM ${source_dir}/googletest/include)
-    include_directories(SYSTEM ${source_dir}/googlemock/include)
-
-    ExternalProject_Get_Property(googletest binary_dir)
-    link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib)
-    link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib64)
 endif()
+
+if (GTEST_FOUND AND GMOCK_FOUND)
+    include_directories(SYSTEM ${GTEST_INCLUDE_DIRS})
+    include_directories(SYSTEM ${GMOCK_INCLUDE_DIRS})
+    get_filename_component(_GOOGLETEST_LIB_DIR ${GMOCK_MAIN_LIBRARY} PATH)
+else()
+    include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/include)
+
+    set(_GOOGLETEST_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/lib)
+
+    set(GTEST_LIBRARIES ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gtest.a)
+    set(GTEST_MAIN_LIBRARY ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gtest_main.a)
+    set(GTEST_BOTH_LIBRARIES "${GTEST_LIBRARIES};${GTEST_MAIN_LIBRARY}")
+
+    set(GMOCK_LIBRARIES ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gmock.a)
+    set(GMOCK_MAIN_LIBRARY ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gmock_main.a)
+    set(GMOCK_BOTH_LIBRARIES "${GMOCK_LIBRARIES};${GMOCK_MAIN_LIBRARY}")
+endif()
+
+link_directories(${_GOOGLETEST_LIB_DIR})
 
 add_executable(resource_pool_test
     main.cc
@@ -54,8 +73,8 @@ add_executable(resource_pool_test
 add_dependencies(resource_pool_test googletest)
 
 set(LIBRARIES
-    -lrt
-    -pthread
+    rt
+    pthread
     gtest
     gmock
     ${RESOURCE_POOL_DEPENDENCY_LIBRARIES}
@@ -65,7 +84,7 @@ set(LIBRARIES
 target_link_libraries(resource_pool_test ${LIBRARIES})
 
 if(NOT TARGET check)
-    add_custom_target(check)
+    add_custom_target(check ctest -V)
 endif()
 
 add_test(resource_pool_test resource_pool_test)

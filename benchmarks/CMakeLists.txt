@@ -39,8 +39,8 @@ add_executable(resource_pool_benchmark_async async.cc)
 add_dependencies(resource_pool_benchmark_async google_benchmark)
 
 set(LIBRARIES
-    -lrt
-    -pthread
+    rt
+    pthread
     benchmark
     ${RESOURCE_POOL_DEPENDENCY_LIBRARIES}
 )
