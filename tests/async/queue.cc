@@ -42,12 +42,12 @@ struct async_request_queue : Test {
 
 TEST_F(async_request_queue, create_const_with_capacity_1_then_check_capacity_should_be_1) {
     const request_queue queue(1);
-    EXPECT_EQ(queue.capacity(), 1);
+    EXPECT_EQ(queue.capacity(), 1u);
 }
 
 TEST_F(async_request_queue, create_const_then_check_size_should_be_0) {
     const request_queue queue(1);
-    EXPECT_EQ(queue.size(), 0);
+    EXPECT_EQ(queue.size(), 0u);
 }
 
 TEST_F(async_request_queue, create_const_then_check_empty_should_be_true) {

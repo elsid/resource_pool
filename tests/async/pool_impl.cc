@@ -28,7 +28,7 @@ using resource_ptr_list_iterator = resource_pool_impl::list_iterator;
 namespace boost {
 
 inline std::ostream& operator <<(std::ostream& stream, resource_ptr_list_iterator res) {
-    return stream << res._M_node;
+    return stream << &*res;
 }
 
 }
@@ -62,22 +62,22 @@ TEST_F(async_resource_pool_impl, create_with_zero_capacity_should_throw_exceptio
 
 TEST_F(async_resource_pool_impl, create_const_with_non_zero_capacity_then_check) {
     const resource_pool_impl pool(1, 0, time_traits::duration::max());
-    EXPECT_EQ(pool.capacity(), 1);
+    EXPECT_EQ(pool.capacity(), 1u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_check_size_should_be_0) {
     const resource_pool_impl pool(1, 0, time_traits::duration::max());
-    EXPECT_EQ(pool.size(), 0);
+    EXPECT_EQ(pool.size(), 0u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_check_available_should_be_0) {
     const resource_pool_impl pool(1, 0, time_traits::duration::max());
-    EXPECT_EQ(pool.available(), 0);
+    EXPECT_EQ(pool.available(), 0u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_then_check_used_should_be_0) {
     const resource_pool_impl pool(1, 0, time_traits::duration::max());
-    EXPECT_EQ(pool.used(), 0);
+    EXPECT_EQ(pool.used(), 0u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_capacity_should_be_2) {
@@ -88,7 +88,7 @@ TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_capacit
         std::make_move_iterator(std::begin(res)), std::make_move_iterator(std::end(res)),
         0, time_traits::duration::max());
 
-    EXPECT_EQ(pool.capacity(), 2);
+    EXPECT_EQ(pool.capacity(), 2u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_size_should_be_2) {
@@ -99,7 +99,7 @@ TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_size_sh
         std::make_move_iterator(std::begin(res)), std::make_move_iterator(std::end(res)),
         0, time_traits::duration::max());
 
-    EXPECT_EQ(pool.size(), 2);
+    EXPECT_EQ(pool.size(), 2u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_available_should_be_2) {
@@ -110,25 +110,25 @@ TEST_F(async_resource_pool_impl, create_const_with_range_len2_then_check_availab
         std::make_move_iterator(std::begin(res)), std::make_move_iterator(std::end(res)),
         0, time_traits::duration::max());
 
-    EXPECT_EQ(pool.available(), 2);
+    EXPECT_EQ(pool.available(), 2u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_with_generator_and_capacity_2_then_check_capacity_should_be_2) {
     const resource_pool_impl pool([]{ return resource{}; }, 2, 0, time_traits::duration::max());
 
-    EXPECT_EQ(pool.capacity(), 2);
+    EXPECT_EQ(pool.capacity(), 2u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_with_generator_and_capacity_2_then_check_size_should_be_2) {
     const resource_pool_impl pool([]{ return resource{}; }, 2, 0, time_traits::duration::max());
 
-    EXPECT_EQ(pool.size(), 2);
+    EXPECT_EQ(pool.size(), 2u);
 }
 
 TEST_F(async_resource_pool_impl, create_const_with_generator_and_capacity_2_then_check_available_should_be_2) {
     const resource_pool_impl pool([]{ return resource{}; }, 2, 0, time_traits::duration::max());
 
-    EXPECT_EQ(pool.available(), 2);
+    EXPECT_EQ(pool.available(), 2u);
 }
 
 
@@ -217,7 +217,7 @@ TEST_F(async_resource_pool_impl, get_one_and_recycle_should_make_one_available_r
     pool.get(ios, recycle_resource(pool));
     on_get();
 
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.available(), 1u);
 }
 
 TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_resources) {
@@ -229,7 +229,7 @@ TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_reso
     pool.get(ios, waste_resource(pool));
     on_get();
 
-    EXPECT_EQ(pool.available(), 0);
+    EXPECT_EQ(pool.available(), 0u);
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_make_one_available_resource) {
@@ -247,7 +247,7 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_make_one_available
     pool.get(ios, recycle_resource(pool), time_traits::duration(1));
     on_second_get();
 
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.available(), 1u);
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make_one_available_resource) {
@@ -266,7 +266,7 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.available(), 1u);
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_recycle_with_zero_idle_timeout_should_use_queue_and_make_one_available_resource) {
@@ -285,7 +285,7 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_with_zero_idle_timeout_sh
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.available(), 1u);
 }
 
 TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) {
@@ -304,7 +304,7 @@ TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) 
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool.available(), 0);
+    EXPECT_EQ(pool.available(), 0u);
 }
 
 class check_error {
@@ -340,7 +340,7 @@ TEST_F(async_resource_pool_impl, get_with_queue_zero_capacity_use_should_return_
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.available(), 1u);
 }
 
 TEST_F(async_resource_pool_impl, get_with_queue_use_and_timer_timeout_should_return_error) {
@@ -371,7 +371,7 @@ TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_shou
     on_first_get();
     on_second_get();
 
-    EXPECT_EQ(pool.available(), 1);
+    EXPECT_EQ(pool.available(), 1u);
 }
 
 TEST_F(async_resource_pool_impl, get_after_disable_returns_error) {

@@ -31,22 +31,22 @@ TEST(sync_resource_pool_impl, create_with_zero_capacity_should_throw_exception) 
 
 TEST(sync_resource_pool_impl, create_with_non_zero_capacity_then_check) {
     const resource_pool_impl pool(1, time_traits::duration::max());
-    EXPECT_EQ(pool.capacity(), 1);
+    EXPECT_EQ(pool.capacity(), 1u);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_size_should_be_0) {
     const resource_pool_impl pool(1, time_traits::duration::max());
-    EXPECT_EQ(pool.size(), 0);
+    EXPECT_EQ(pool.size(), 0u);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_available_should_be_0) {
     const resource_pool_impl pool(1, time_traits::duration::max());
-    EXPECT_EQ(pool.available(), 0);
+    EXPECT_EQ(pool.available(), 0u);
 }
 
 TEST(sync_resource_pool_impl, create_then_check_used_should_be_0) {
     const resource_pool_impl pool(1, time_traits::duration::max());
-    EXPECT_EQ(pool.used(), 0);
+    EXPECT_EQ(pool.used(), 0u);
 }
 
 TEST(sync_resource_pool_impl, create_const_then_check_stats_should_be_0_0_0) {
@@ -203,7 +203,7 @@ TEST(sync_resource_pool_impl, get_one_set_and_recycle_with_zero_idle_timeout_the
     EXPECT_TRUE(first_res.second->value);
     pool_impl.recycle(first_res.second);
 
-    EXPECT_EQ(pool_impl.available(), 1);
+    EXPECT_EQ(pool_impl.available(), 1u);
 
     const get_result second_res = pool_impl.get();
     EXPECT_EQ(second_res.first, boost::system::error_code());
