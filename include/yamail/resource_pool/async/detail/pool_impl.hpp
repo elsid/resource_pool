@@ -63,7 +63,7 @@ public:
               std::size_t queue_capacity,
               time_traits::duration idle_timeout)
             : pool_impl([&]{ return std::move(*first++); },
-                    std::distance(first, last),
+                    static_cast<std::size_t>(std::distance(first, last)),
                     queue_capacity,
                     idle_timeout) {
     }
