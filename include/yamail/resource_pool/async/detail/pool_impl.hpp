@@ -253,25 +253,29 @@ void pool_impl<V, M, I, Q>::perform_one_request(unique_lock& lock, Serve&& serve
     }
 }
 
-// Helper template to deduce the true type of a handler, capture a local copy
-// of the handler, and then create an async_result for the handler.
-template <typename Handler, typename Signature>
-struct async_result_init
-{
-    explicit async_result_init(Handler orig_handler)
-    : handler(std::move(orig_handler)),
-      result(handler)
-    {
+using boost::asio::async_result;
+using boost::asio::handler_type;
+
+#if BOOST_VERSION < 106600
+template <typename CompletionToken, typename Signature>
+struct async_completion {
+    explicit async_completion(CompletionToken& token)
+    : completion_handler(std::move(token)),
+      result(completion_handler) {
     }
 
-    using handler_type = typename ::boost::asio::handler_type<Handler, Signature>::type;
-    handler_type handler;
-    ::boost::asio::async_result<handler_type> result;
+    using completion_handler_type = typename handler_type<CompletionToken, Signature>::type;
+
+    completion_handler_type completion_handler;
+    async_result<completion_handler_type> result;
 };
+#else
+using boost::asio::async_completion;
+#endif
 
 template <typename Handler, typename Signature>
 using async_return_type = typename ::boost::asio::async_result<
-        typename ::boost::asio::handler_type<Handler, Signature>::type
+        typename handler_type<Handler, Signature>::type
     >::type;
 
 } // namespace detail

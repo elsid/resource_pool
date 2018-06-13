@@ -97,18 +97,18 @@ public:
     using return_type = detail::async_return_type<Callback, cb_signature>;
 
     template <class Callback>
-    return_type<Callback> get_auto_waste(io_service_t& io_service, Callback call,
+    return_type<Callback> get_auto_waste(io_service_t& io_service, Callback&& call,
                         time_traits::duration wait_duration = time_traits::duration(0)) {
-        async_result_init<Callback> init(std::move(call));
-        get(io_service, init.handler, &handle::waste, wait_duration);
+        async_completion<Callback> init(call);
+        get(io_service, init.completion_handler, &handle::waste, wait_duration);
         return init.result.get();
     }
 
     template <class Callback>
-    return_type<Callback> get_auto_recycle(io_service_t& io_service, Callback call,
+    return_type<Callback> get_auto_recycle(io_service_t& io_service, Callback&& call,
                           time_traits::duration wait_duration = time_traits::duration(0)) {
-        async_result_init<Callback> init(std::move(call));
-        get(io_service, init.handler, &handle::recycle, wait_duration);
+        async_completion<Callback> init(call);
+        get(io_service, init.completion_handler, &handle::recycle, wait_duration);
         return init.result.get();
     }
 
@@ -116,7 +116,7 @@ private:
     using list_iterator = typename pool_impl::list_iterator;
 
     template <typename Callback>
-    using async_result_init = detail::async_result_init<Callback, cb_signature>;
+    using async_completion = detail::async_completion<Callback, cb_signature>;
 
     std::shared_ptr<pool_impl> _impl;
 
