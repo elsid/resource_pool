@@ -41,7 +41,7 @@ TEST(error_test, make_out_of_range_error_and_check_message) {
 
 TEST(error_test, make_no_error_and_category_name) {
     const error_code error = make_error_code(code(ok));
-    EXPECT_EQ(error.category().name(), "yamail::resource_pool::error::detail::category");
+    EXPECT_STREQ(error.category().name(), "yamail::resource_pool::error::detail::category");
 }
 
 }
