@@ -4,6 +4,9 @@
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/time_traits.hpp>
 
+#include <boost/asio/executor.hpp>
+#include <boost/asio/post.hpp>
+
 #include <algorithm>
 #include <list>
 #include <map>
@@ -13,9 +16,36 @@
 namespace yamail {
 namespace resource_pool {
 namespace async {
+
+namespace asio = boost::asio;
+
 namespace detail {
 
 using clock = std::chrono::steady_clock;
+
+class expired_handler {
+public:
+    using executor_type = asio::executor;
+
+    expired_handler() = default;
+
+    template <class Handler>
+    explicit expired_handler(Handler&& handler)
+        : executor(asio::get_associated_executor(handler)),
+          handler(std::forward<Handler>(handler)) {}
+
+    void operator ()() {
+        handler();
+    }
+
+    auto get_executor() const noexcept {
+        return executor;
+    }
+
+private:
+    asio::executor executor;
+    std::function<void ()> handler;
+};
 
 template <class Value, class Mutex, class IoContext, class Timer>
 class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoContext, Timer>>,
@@ -32,8 +62,8 @@ public:
     bool empty() const;
     const timer_t& timer(io_context_t& io_context);
 
-    template <class Callback>
-    bool push(io_context_t& io_context, const value_type& req, const Callback& req_expired,
+    template <class Handler>
+    bool push(io_context_t& io_context, const value_type& req, Handler&& req_expired,
               time_traits::duration wait_duration);
     bool pop(io_context_t*& io_context, value_type& req);
 
@@ -46,17 +76,15 @@ private:
         using list_it = typename list::iterator;
         using multimap = std::multimap<time_traits::time_point, const expiring_request*>;
         using multimap_it = typename multimap::iterator;
-        using callback = std::function<void ()>;
 
         io_context_t* io_context;
         queue::value_type request;
-        callback expired;
+        expired_handler expired;
         list_it order_it;
         multimap_it expires_at_it;
 
-        expiring_request(io_context_t& io_context, const queue::value_type& request, const callback& expired)
-                : io_context(&io_context), request(request), expired(expired) {
-        }
+        expiring_request(io_context_t& io_context, const queue::value_type& request, expired_handler expired)
+                : io_context(&io_context), request(request), expired(std::move(expired)) {}
     };
 
     using request_multimap_value = typename expiring_request::multimap::value_type;
@@ -95,14 +123,17 @@ const typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::timer(io_context_t
 }
 
 template <class V, class M, class I, class T>
-template <class Callback>
-bool queue<V, M, I, T>::push(io_context_t& io_context, const value_type& req_data, const Callback& req_expired,
+template <class Handler>
+bool queue<V, M, I, T>::push(io_context_t& io_context, const value_type& req_data, Handler&& req_expired,
         time_traits::duration wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
         return false;
     }
-    auto order_it = _ordered_requests.insert(_ordered_requests.end(), expiring_request(io_context, req_data, req_expired));
+    auto order_it = _ordered_requests.insert(
+        _ordered_requests.end(),
+        expiring_request(io_context, req_data, expired_handler(std::forward<Handler>(req_expired)))
+    );
     expiring_request& req = *order_it;
     req.order_it = order_it;
     const auto expires_at = time_traits::add(time_traits::now(), wait_duration);
@@ -142,7 +173,7 @@ void queue<V, M, I, T>::cancel(const boost::system::error_code& ec, time_traits:
 template <class V, class M, class I, class T>
 void queue<V, M, I, T>::cancel_one(const request_multimap_value &pair) {
     const expiring_request* req = pair.second;
-    req->io_context->post(req->expired);
+    asio::post(*req->io_context, std::move(req->expired));
     _ordered_requests.erase(req->order_it);
 }
 

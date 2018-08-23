@@ -33,7 +33,9 @@ using resource_pool = pool<resource, std::mutex, mocked_io_context, mocked_pool_
 using boost::system::error_code;
 
 struct async_resource_pool : Test {
-    mocked_io_context io;
+    StrictMock<executor_gmock> executor;
+    mocked_executor executor_wrapper {&executor};
+    mocked_io_context io {&executor_wrapper};
     mocked_pool_impl::callback on_get;
     mocked_pool_impl::list resources;
     mocked_pool_impl::list_iterator resource_iterator;
@@ -226,35 +228,36 @@ TEST_F(async_resource_pool, get_from_pool_returns_error_should_not_call_waste_or
 
 struct mocked_callback {
     MOCK_METHOD0(call, void ());
-    MOCK_METHOD0(asio_handler_invoke, void ());
 };
 
 struct on_get_callback {
+    using executor_type = mocked_executor;
+
     std::shared_ptr<mocked_callback> call;
+    mocked_executor executor;
 
     void operator ()(const boost::system::error_code&, async::pool<resource>::handle) {
         call->call();
     }
 
-    template <class Function>
-    friend void asio_handler_invoke(Function function, on_get_callback* handler) {
-        using boost::asio::asio_handler_invoke;
-        handler->call->asio_handler_invoke();
-        function();
+    const executor_type& get_executor() const {
+        return executor;
     }
 };
 
-TEST_F(async_resource_pool, asio_handler_invoke) {
+TEST_F(async_resource_pool, asio_use_executor) {
     boost::asio::io_context service;
     async::pool<resource> pool(1, 0);
     const auto call = std::make_shared<mocked_callback>();
 
     const InSequence s;
 
-    EXPECT_CALL(*call, asio_handler_invoke()).WillOnce(Return());
+    EXPECT_CALL(executor, on_work_started()).WillOnce(Return());
+    EXPECT_CALL(executor, dispatch(_)).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(*call, call()).WillOnce(Return());
+    EXPECT_CALL(executor, on_work_finished()).WillOnce(Return());
 
-    pool.get_auto_waste(service, on_get_callback {call});
+    pool.get_auto_waste(service, on_get_callback {call, executor_wrapper});
     service.run();
 }
 

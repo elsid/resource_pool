@@ -18,9 +18,8 @@ struct default_pool_queue {
     using mutex_t = Mutex;
     using idle = resource_pool::detail::idle<value_type>;
     using list = std::list<idle>;
-    using list_iterator = typename list::iterator ;
-    using callback = std::function<void (const boost::system::error_code&, list_iterator)>;
-    using type = detail::queue<callback, mutex_t, io_context_t, time_traits::timer>;
+    using list_iterator = typename list::iterator;
+    using type = detail::queue<detail::queued_handler<list_iterator>, mutex_t, io_context_t, time_traits::timer>;
 };
 
 template <class Value, class Mutex, class IoContext>
@@ -114,20 +113,48 @@ private:
     template <typename CompletionToken>
     using async_completion = detail::async_completion<CompletionToken, void (boost::system::error_code, handle)>;
 
+    template <class UseStrategy, class Handler>
+    class on_get_handler {
+        std::shared_ptr<pool_impl> impl;
+        UseStrategy use_strategy;
+        Handler handler;
+
+    public:
+        using executor_type = std::decay_t<decltype(asio::get_associated_executor(handler))>;
+
+        on_get_handler(std::shared_ptr<pool_impl> impl, UseStrategy use_strategy, Handler handler)
+            : impl(std::move(impl)),
+              use_strategy(std::move(use_strategy)),
+              handler(std::move(handler)) {}
+
+        void operator ()(const boost::system::error_code& ec, list_iterator res) {
+            if (ec) {
+                handler(ec, handle());
+            } else {
+                handler(ec, handle(impl, use_strategy, std::move(res)));
+            }
+        }
+
+        auto get_executor() const noexcept {
+            return asio::get_associated_executor(handler);
+        }
+    };
+
+    template <class UseStrategy, class Handler>
+    auto make_on_get_handler(UseStrategy&& use_strategy, Handler&& handler) {
+        using result_type = on_get_handler<std::decay_t<UseStrategy>, std::decay_t<Handler>>;
+        return result_type(_impl, std::forward<UseStrategy>(use_strategy), std::forward<Handler>(handler));
+    }
+
     std::shared_ptr<pool_impl> _impl;
 
-    template <class Callback, class Strategy>
-    void get(io_context_t &io_context, Callback call, Strategy use_strategy, time_traits::duration wait_duration) {
-        using boost::asio::asio_handler_invoke;
-        const auto impl = _impl;
-        const auto on_get = [impl, use_strategy, call] (const boost::system::error_code& ec, list_iterator res) mutable {
-            if (ec) {
-                asio_handler_invoke([=] () mutable { call(ec, handle()); }, &call);
-            } else {
-                asio_handler_invoke([=] () mutable { call(ec, handle(impl, use_strategy, res)); }, &call);
-            }
-        };
-        _impl->get(io_context, on_get, wait_duration);
+    template <class UseStrategy, class Handler>
+    void get(io_context_t &io_context, Handler&& handler, UseStrategy&& use_strategy, time_traits::duration wait_duration) {
+        _impl->get(
+            io_context,
+            make_on_get_handler(std::forward<UseStrategy>(use_strategy), std::forward<Handler>(handler)),
+            wait_duration
+        );
     }
 };
 

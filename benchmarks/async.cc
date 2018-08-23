@@ -2,6 +2,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include <boost/asio/post.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 
 #include <atomic>
@@ -84,7 +85,7 @@ struct io_context_post_callback {
 
     void operator ()() {
         if (!ctx.stop) {
-            ctx.io_context.post(*this);
+            boost::asio::post(ctx.io_context, *this);
         }
         ctx.allow_next();
     }
