@@ -17,7 +17,7 @@ struct on_get {
             }
             std::cout << "got resource handle" << std::endl;
             if (handle.empty()) {
-                std::unique_ptr<std::ofstream> file(new std::ofstream("pool.log", std::ios::app));
+                auto file = std::make_unique<std::ofstream>("pool.log", std::ios::app);
                 if (!file->good()) {
                     std::cout << "open file pool.log error: " << file->rdstate() << std::endl;
                     return;

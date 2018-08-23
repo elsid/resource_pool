@@ -172,7 +172,7 @@ typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::get_timer(io_service_t& 
     if (it != _timers.end()) {
         return *it->second;
     }
-    return *_timers.insert(std::make_pair(&io_service, std::unique_ptr<timer_t>(new timer_t(io_service)))).first->second;
+    return *_timers.insert(std::make_pair(&io_service, std::make_unique<timer_t>(io_service))).first->second;
 }
 
 } // namespace detail

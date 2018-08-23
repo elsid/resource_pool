@@ -92,12 +92,8 @@ public:
 
     const pool_impl& impl() const { return *_impl; }
 
-    using cb_signature = void(boost::system::error_code, handle);
-    template <typename Callback>
-    using return_type = detail::async_return_type<Callback, cb_signature>;
-
     template <class Callback>
-    return_type<Callback> get_auto_waste(io_service_t& io_service, Callback&& call,
+    auto get_auto_waste(io_service_t& io_service, Callback&& call,
                         time_traits::duration wait_duration = time_traits::duration(0)) {
         async_completion<Callback> init(call);
         get(io_service, init.completion_handler, &handle::waste, wait_duration);
@@ -105,7 +101,7 @@ public:
     }
 
     template <class Callback>
-    return_type<Callback> get_auto_recycle(io_service_t& io_service, Callback&& call,
+    auto get_auto_recycle(io_service_t& io_service, Callback&& call,
                           time_traits::duration wait_duration = time_traits::duration(0)) {
         async_completion<Callback> init(call);
         get(io_service, init.completion_handler, &handle::recycle, wait_duration);
@@ -116,7 +112,7 @@ private:
     using list_iterator = typename pool_impl::list_iterator;
 
     template <typename Callback>
-    using async_completion = detail::async_completion<Callback, cb_signature>;
+    using async_completion = detail::async_completion<Callback, void (boost::system::error_code, handle)>;
 
     std::shared_ptr<pool_impl> _impl;
 
