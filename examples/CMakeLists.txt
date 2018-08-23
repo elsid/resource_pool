@@ -3,8 +3,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Werror -std=c++
 include_directories(SYSTEM ${RESOURCE_POOL_DEPENDENCY_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-find_package(Boost REQUIRED coroutine)
-find_package(Boost REQUIRED context)
+find_package(Boost COMPONENTS coroutine context REQUIRED)
 
 set(LIBRARIES
     -lrt
