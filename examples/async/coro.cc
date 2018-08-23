@@ -9,7 +9,7 @@ using ofstream_pool = yamail::resource_pool::async::pool<std::unique_ptr<std::of
 using time_traits = yamail::resource_pool::time_traits;
 
 int main() {
-    boost::asio::io_service service;
+    boost::asio::io_context service;
     ofstream_pool pool(1, 10);
     boost::asio::spawn(service, [&](boost::asio::yield_context yield){
         boost::system::error_code ec;

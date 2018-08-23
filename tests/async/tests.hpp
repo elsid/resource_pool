@@ -26,7 +26,7 @@ struct request {
     int value;
 };
 
-struct mocked_io_service {
+struct mocked_io_context {
     MOCK_METHOD1(post, void (std::function<void ()>));
 };
 

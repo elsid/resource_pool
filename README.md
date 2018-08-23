@@ -142,15 +142,15 @@ use_resource(h.get());
 
 ### Asynchronous pool
 
-Based on ```boost::asio::io_service```. Uses async queue with deadline timer to store waiting resources requests.
+Based on ```boost::asio::io_context```. Uses async queue with deadline timer to store waiting resources requests.
 
 #### Create pool
 
 Use type [async::pool](include/yamail/resource_pool/async/pool.hpp#L34-L105). Parametrize resource type:
 ```c++
 template <class Value,
-          class IoService = boost::asio::io_service,
-          class Impl = default_pool_impl<Value, IoService>::type>
+          class IoContext = boost::asio::io_context,
+          class Impl = default_pool_impl<Value, IoContext>::type>
 class pool;
 ```
 
@@ -164,7 +164,7 @@ using fstream_pool = pool<std::fstream>;
 Object constructing requires reference to io service, capacity of pool, queue capacity:
 ```c++
 pool(
-    io_service_t& io_service,
+    io_context_t& io_context,
     std::size_t capacity,
     std::size_t queue_capacity,
     time_traits::duration idle_timeout = time_traits::duration::max()
@@ -173,8 +173,8 @@ pool(
 
 Example:
 ```c++
-boost::asio::io_service ios;
-fstream_pool pool(ios, 13, 42);
+boost::asio::io_context io;
+fstream_pool pool(io, 13, 42);
 ```
 
 #### Get handle

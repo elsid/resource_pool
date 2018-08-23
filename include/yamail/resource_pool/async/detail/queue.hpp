@@ -17,12 +17,12 @@ namespace detail {
 
 using clock = std::chrono::steady_clock;
 
-template <class Value, class Mutex, class IoService, class Timer>
-class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoService, Timer>>,
+template <class Value, class Mutex, class IoContext, class Timer>
+class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoContext, Timer>>,
     boost::noncopyable {
 public:
     using value_type = Value;
-    using io_service_t = IoService;
+    using io_context_t = IoContext;
     using timer_t = Timer;
 
     queue(std::size_t capacity) : _capacity(capacity) {}
@@ -30,12 +30,12 @@ public:
     std::size_t capacity() const { return _capacity; }
     std::size_t size() const;
     bool empty() const;
-    const timer_t& timer(io_service_t& io_service);
+    const timer_t& timer(io_context_t& io_context);
 
     template <class Callback>
-    bool push(io_service_t& io_service, const value_type& req, const Callback& req_expired,
+    bool push(io_context_t& io_context, const value_type& req, const Callback& req_expired,
               time_traits::duration wait_duration);
-    bool pop(io_service_t*& io_service, value_type& req);
+    bool pop(io_context_t*& io_context, value_type& req);
 
 private:
     using mutex_t = Mutex;
@@ -48,19 +48,19 @@ private:
         using multimap_it = typename multimap::iterator;
         using callback = std::function<void ()>;
 
-        io_service_t* io_service;
+        io_context_t* io_context;
         queue::value_type request;
         callback expired;
         list_it order_it;
         multimap_it expires_at_it;
 
-        expiring_request(io_service_t& io_service, const queue::value_type& request, const callback& expired)
-                : io_service(&io_service), request(request), expired(expired) {
+        expiring_request(io_context_t& io_context, const queue::value_type& request, const callback& expired)
+                : io_context(&io_context), request(request), expired(expired) {
         }
     };
 
     using request_multimap_value = typename expiring_request::multimap::value_type;
-    using timers_map = typename std::unordered_map<const io_service_t*, std::unique_ptr<timer_t>>;
+    using timers_map = typename std::unordered_map<const io_context_t*, std::unique_ptr<timer_t>>;
 
     mutable mutex_t _mutex;
     typename expiring_request::list _ordered_requests;
@@ -73,7 +73,7 @@ private:
     void cancel(const boost::system::error_code& ec, time_traits::time_point expires_at);
     void cancel_one(const request_multimap_value& pair);
     void update_timer();
-    timer_t& get_timer(io_service_t& io_service);
+    timer_t& get_timer(io_context_t& io_context);
 };
 
 template <class V, class M, class I, class T>
@@ -89,20 +89,20 @@ bool queue<V, M, I, T>::empty() const {
 }
 
 template <class V, class M, class I, class T>
-const typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::timer(io_service_t& io_service) {
+const typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::timer(io_context_t& io_context) {
     const lock_guard lock(_mutex);
-    return get_timer(io_service);
+    return get_timer(io_context);
 }
 
 template <class V, class M, class I, class T>
 template <class Callback>
-bool queue<V, M, I, T>::push(io_service_t& io_service, const value_type& req_data, const Callback& req_expired,
+bool queue<V, M, I, T>::push(io_context_t& io_context, const value_type& req_data, const Callback& req_expired,
         time_traits::duration wait_duration) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
         return false;
     }
-    auto order_it = _ordered_requests.insert(_ordered_requests.end(), expiring_request(io_service, req_data, req_expired));
+    auto order_it = _ordered_requests.insert(_ordered_requests.end(), expiring_request(io_context, req_data, req_expired));
     expiring_request& req = *order_it;
     req.order_it = order_it;
     const auto expires_at = time_traits::add(time_traits::now(), wait_duration);
@@ -112,13 +112,13 @@ bool queue<V, M, I, T>::push(io_service_t& io_service, const value_type& req_dat
 }
 
 template <class V, class M, class I, class T>
-bool queue<V, M, I, T>::pop(io_service_t*& io_service, value_type& value) {
+bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& value) {
     const lock_guard lock(_mutex);
     if (_ordered_requests.empty()) {
         return false;
     }
     const expiring_request& req = _ordered_requests.front();
-    io_service = req.io_service;
+    io_context = req.io_context;
     value = req.request;
     _expires_at_requests.erase(req.expires_at_it);
     _ordered_requests.pop_front();
@@ -142,7 +142,7 @@ void queue<V, M, I, T>::cancel(const boost::system::error_code& ec, time_traits:
 template <class V, class M, class I, class T>
 void queue<V, M, I, T>::cancel_one(const request_multimap_value &pair) {
     const expiring_request* req = pair.second;
-    req->io_service->post(req->expired);
+    req->io_context->post(req->expired);
     _ordered_requests.erase(req->order_it);
 }
 
@@ -156,7 +156,7 @@ void queue<V, M, I, T>::update_timer() {
     }
     const auto earliest_expire = _expires_at_requests.begin();
     const auto expires_at = earliest_expire->first;
-    auto& timer = get_timer(*earliest_expire->second->io_service);
+    auto& timer = get_timer(*earliest_expire->second->io_context);
     timer.expires_at(expires_at);
     std::weak_ptr<queue> weak(this->shared_from_this());
     timer.async_wait([weak, expires_at] (const boost::system::error_code& ec) {
@@ -167,12 +167,12 @@ void queue<V, M, I, T>::update_timer() {
 }
 
 template <class V, class M, class I, class T>
-typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::get_timer(io_service_t& io_service) {
-    auto it = _timers.find(&io_service);
+typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::get_timer(io_context_t& io_context) {
+    auto it = _timers.find(&io_context);
     if (it != _timers.end()) {
         return *it->second;
     }
-    return *_timers.insert(std::make_pair(&io_service, std::make_unique<timer_t>(io_service))).first->second;
+    return *_timers.insert(std::make_pair(&io_context, std::make_unique<timer_t>(io_context))).first->second;
 }
 
 } // namespace detail

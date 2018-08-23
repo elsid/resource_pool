@@ -36,7 +36,7 @@ struct on_get {
 };
 
 int main() {
-    boost::asio::io_service service;
+    boost::asio::io_context service;
     ofstream_pool pool(1, 10);
     pool.get_auto_waste(service, on_get(), time_traits::duration::max());
     std::thread worker([&] { return service.run(); });

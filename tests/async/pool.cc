@@ -20,7 +20,7 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD0(available, std::size_t ());
     MOCK_CONST_METHOD0(used, std::size_t ());
     MOCK_CONST_METHOD0(stats, async::stats ());
-    MOCK_CONST_METHOD3(get, void (mocked_io_service&, const callback&, time_traits::duration));
+    MOCK_CONST_METHOD3(get, void (mocked_io_context&, const callback&, time_traits::duration));
     MOCK_CONST_METHOD1(recycle, void (list_iterator));
     MOCK_CONST_METHOD1(waste, void (list_iterator));
     MOCK_CONST_METHOD0(disable, void ());
@@ -28,12 +28,12 @@ struct mocked_pool_impl {
     mocked_pool_impl(std::size_t, std::size_t, time_traits::duration) {}
 };
 
-using resource_pool = pool<resource, std::mutex, mocked_io_service, mocked_pool_impl>;
+using resource_pool = pool<resource, std::mutex, mocked_io_context, mocked_pool_impl>;
 
 using boost::system::error_code;
 
 struct async_resource_pool : Test {
-    mocked_io_service ios;
+    mocked_io_context io;
     mocked_pool_impl::callback on_get;
     mocked_pool_impl::list resources;
     mocked_pool_impl::list_iterator resource_iterator;
@@ -43,7 +43,7 @@ struct async_resource_pool : Test {
 };
 
 TEST_F(async_resource_pool, create_without_mocks_should_succeed) {
-    boost::asio::io_service ios;
+    boost::asio::io_context io;
     pool<resource>(1, 1);
 }
 
@@ -137,7 +137,7 @@ TEST_F(async_resource_pool, get_auto_recylce_handle_should_call_recycle) {
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_recycle(ios, check_no_error());
+    pool.get_auto_recycle(io, check_no_error());
     on_get(error_code(), resource_iterator);
 }
 
@@ -148,7 +148,7 @@ TEST_F(async_resource_pool, get_auto_waste_handle_should_call_waste) {
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(ios, check_no_error());
+    pool.get_auto_waste(io, check_no_error());
     on_get(error_code(), resource_iterator);
 }
 
@@ -167,7 +167,7 @@ TEST_F(async_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recy
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_recycle(ios, recycle_resource());
+    pool.get_auto_recycle(io, recycle_resource());
     on_get(error_code(), resource_iterator);
 }
 
@@ -178,7 +178,7 @@ TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycl
     EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(ios, recycle_resource());
+    pool.get_auto_waste(io, recycle_resource());
     on_get(error_code(), resource_iterator);
 }
 
@@ -197,7 +197,7 @@ TEST_F(async_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_recycle(ios, waste_resource());
+    pool.get_auto_recycle(io, waste_resource());
     on_get(error_code(), resource_iterator);
 }
 
@@ -208,7 +208,7 @@ TEST_F(async_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_on
     EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(ios, waste_resource());
+    pool.get_auto_waste(io, waste_resource());
     on_get(error_code(), resource_iterator);
 }
 
@@ -220,7 +220,7 @@ TEST_F(async_resource_pool, get_from_pool_returns_error_should_not_call_waste_or
     EXPECT_CALL(pool.impl(), recycle(_)).Times(0);
     EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
 
-    pool.get_auto_waste(ios, check_error(error::get_resource_timeout));
+    pool.get_auto_waste(io, check_error(error::get_resource_timeout));
     on_get(make_error_code(error::get_resource_timeout), mocked_pool_impl::list_iterator());
 }
 
@@ -245,7 +245,7 @@ struct on_get_callback {
 };
 
 TEST_F(async_resource_pool, asio_handler_invoke) {
-    boost::asio::io_service service;
+    boost::asio::io_context service;
     async::pool<resource> pool(1, 0);
     const auto call = std::make_shared<mocked_callback>();
 
