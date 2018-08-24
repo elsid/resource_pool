@@ -2,6 +2,7 @@ language: cpp
 os: linux
 sudo: true
 dist: xenial
+language: c++
 cache:
   ccache: true
   directories:
@@ -19,10 +20,6 @@ addons:
 
 env:
   global:
-  - USE_C_COMPILERACHE=1
-  - C_COMPILERACHE_COMPRESS=1
-  - C_COMPILERACHE_MAXSIZE=200M
-  - C_COMPILERACHE_CPP2=1
   - LOCAL=${HOME}/.local
   - PATH=${LOCAL}/bin:${PATH}
   - BUILD_TYPE='Debug'
