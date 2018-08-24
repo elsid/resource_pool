@@ -33,9 +33,9 @@ before_script:
 - export CXX="${CXX_COMPILER}"
 - cmake --version
 - ${CXX} --version
-- wget -O boost_1_64_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.gz/download
-- tar xzf boost_1_64_0.tar.gz
-- cd boost_1_64_0
+- wget -O boost_1_66_0.tar.gz https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz
+- tar xzf boost_1_66_0.tar.gz
+- cd boost_1_66_0
 - ./bootstrap.sh --with-libraries=system,thread,context,coroutine
 - mkdir build
 - ./b2 --build-dir=build
