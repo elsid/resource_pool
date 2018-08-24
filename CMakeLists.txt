@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
-project(resource_pool)
+project(resource_pool CXX)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_COROUTINES_NO_DEPRECATION_WARNING")
 
