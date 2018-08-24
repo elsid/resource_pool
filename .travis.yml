@@ -2,7 +2,7 @@ language: cpp
 os: linux
 compiler: gcc
 sudo: true
-dist: trusty
+dist: xenial
 cache:
   ccache: true
   directories:
