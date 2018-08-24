@@ -1,6 +1,5 @@
 language: cpp
 os: linux
-compiler: gcc
 sudo: true
 dist: xenial
 cache:
@@ -13,7 +12,7 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - g++-7
+    - clang++-5.0
     - libcurl4-openssl-dev
     - libelf-dev
     - libdw-dev
@@ -27,12 +26,9 @@ env:
   - LOCAL=${HOME}/.local
   - PATH=${LOCAL}/bin:${PATH}
   - BUILD_TYPE='Debug'
-  - CXX_COMPILER='ccache g++-7'
 
 before_script:
-- export CXX="${CXX_COMPILER}"
 - cmake --version
-- ${CXX} --version
 - wget -O boost_1_66_0.tar.gz https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz
 - tar xzf boost_1_66_0.tar.gz
 - cd boost_1_66_0
@@ -43,7 +39,18 @@ before_script:
 - cd ${TRAVIS_BUILD_DIR}
 - mkdir -p ${TRAVIS_BUILD_DIR}/build
 - cd ${TRAVIS_BUILD_DIR}/build
-- cmake -DCMAKE_VERBOSE_MAKEFILE=1 -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DRESOURCE_POOL_BUILD_TESTS=ON -DRESOURCE_POOL_BUILD_EXAMPLES=ON -DRESOURCE_POOL_BUILD_BENCHMARKS=ON ${TRAVIS_BUILD_DIR}
+- |
+    cmake \
+        -D CMAKE_VERBOSE_MAKEFILE=1 \
+        -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
+        -D CMAKE_C_COMPILER=clang-5 \
+        -D CMAKE_CXX_COMPILER=clang++ \
+        -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+        -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+        -D RESOURCE_POOL_BUILD_TESTS=ON \
+        -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
+        -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
+        ${TRAVIS_BUILD_DIR}
 
 script:
 - make -j $(nproc)
@@ -58,4 +65,9 @@ after_success:
 - make -j $(nproc)
 - make install
 - cd ../..
-- kcov --coveralls-id=${TRAVIS_JOB_ID} --include-path ${TRAVIS_BUILD_DIR}/include ${TRAVIS_BUILD_DIR}/build/kcov ${TRAVIS_BUILD_DIR}/build/tests/resource_pool_test
+- |
+    kcov \
+        --coveralls-id=${TRAVIS_JOB_ID} \
+        --include-path ${TRAVIS_BUILD_DIR}/include \
+        ${TRAVIS_BUILD_DIR}/build/kcov \
+        ${TRAVIS_BUILD_DIR}/build/tests/resource_pool_test \
