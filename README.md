@@ -181,24 +181,24 @@ fstream_pool pool(io, 13, 42);
 
 Use one of these methods:
 ```c++
-template <class Callback>
+template <class CompletionToken>
 void get_auto_waste(
-    Callback call,
+    CompletionToken&& token,
     const time_traits::duration& wait_duration = time_traits::duration(0)
 );
 ```
 returns resource handle when it will be available with auto waste strategy.
 
 ```c++
-template <class Callback>
+template <class CompletionToken>
 void get_auto_recycle(
-    Callback call,
+    CompletionToken&& token,
     const time_traits::duration& wait_duration = time_traits::duration(0)
 );
 ```
 returns resource handle when it will be available with auto recycle strategy.
 
-Type ```Callback``` must provide interface:
+Type ```CompetionToken``` must provide interface:
 ```c++
 void operator ()(
     const boost::system::error_code&,

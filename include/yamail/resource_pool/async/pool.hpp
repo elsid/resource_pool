@@ -92,18 +92,18 @@ public:
 
     const pool_impl& impl() const { return *_impl; }
 
-    template <class Callback>
-    auto get_auto_waste(io_context_t& io_context, Callback&& call,
+    template <class CompletionToken>
+    auto get_auto_waste(io_context_t& io_context, CompletionToken&& token,
                         time_traits::duration wait_duration = time_traits::duration(0)) {
-        async_completion<Callback> init(call);
+        async_completion<CompletionToken> init(token);
         get(io_context, init.completion_handler, &handle::waste, wait_duration);
         return init.result.get();
     }
 
-    template <class Callback>
-    auto get_auto_recycle(io_context_t& io_context, Callback&& call,
+    template <class CompletionToken>
+    auto get_auto_recycle(io_context_t& io_context, CompletionToken&& token,
                           time_traits::duration wait_duration = time_traits::duration(0)) {
-        async_completion<Callback> init(call);
+        async_completion<CompletionToken> init(token);
         get(io_context, init.completion_handler, &handle::recycle, wait_duration);
         return init.result.get();
     }
@@ -111,8 +111,8 @@ public:
 private:
     using list_iterator = typename pool_impl::list_iterator;
 
-    template <typename Callback>
-    using async_completion = detail::async_completion<Callback, void (boost::system::error_code, handle)>;
+    template <typename CompletionToken>
+    using async_completion = detail::async_completion<CompletionToken, void (boost::system::error_code, handle)>;
 
     std::shared_ptr<pool_impl> _impl;
 
