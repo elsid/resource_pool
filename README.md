@@ -183,6 +183,7 @@ Use one of these methods:
 ```c++
 template <class CompletionToken>
 void get_auto_waste(
+    boost::asio::io_context& io,
     CompletionToken&& token,
     const time_traits::duration& wait_duration = time_traits::duration(0)
 );
@@ -192,6 +193,7 @@ returns resource handle when it will be available with auto waste strategy.
 ```c++
 template <class CompletionToken>
 void get_auto_recycle(
+    boost::asio::io_context& io,
     CompletionToken&& token,
     const time_traits::duration& wait_duration = time_traits::duration(0)
 );
