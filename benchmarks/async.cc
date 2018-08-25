@@ -4,6 +4,7 @@
 
 #include <boost/numeric/conversion/cast.hpp>
 
+#include <atomic>
 #include <condition_variable>
 #include <iomanip>
 #include <random>
@@ -32,12 +33,16 @@ struct context {
     std::condition_variable get_next;
     std::mutex get_next_mutex;
     std::unique_lock<std::mutex> get_next_lock {get_next_mutex};
+    std::atomic<std::int64_t> ready_count {0};
 
     void wait_next() {
-        get_next.wait(get_next_lock);
+        if (--ready_count < 0) {
+            get_next.wait(get_next_lock);
+        }
     }
 
     void allow_next() {
+        ++ready_count;
         get_next.notify_one();
     }
 
