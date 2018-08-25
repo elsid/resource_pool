@@ -83,17 +83,17 @@ private:
         list_it order_it;
         multimap_it expires_at_it;
 
-        expiring_request(io_context_t& io_context, const queue::value_type& request, expired_handler expired)
-                : io_context(&io_context), request(request), expired(std::move(expired)) {}
+        expiring_request() = default;
     };
 
     using request_multimap_value = typename expiring_request::multimap::value_type;
     using timers_map = typename std::unordered_map<const io_context_t*, std::unique_ptr<timer_t>>;
 
+    const std::size_t _capacity;
     mutable mutex_t _mutex;
+    typename expiring_request::list _ordered_requests_pool;
     typename expiring_request::list _ordered_requests;
     typename expiring_request::multimap _expires_at_requests;
-    const std::size_t _capacity;
     timers_map _timers;
     time_traits::time_point _min_expires_at = time_traits::time_point::max();
 
@@ -130,11 +130,15 @@ bool queue<V, M, I, T>::push(io_context_t& io_context, const value_type& req_dat
     if (!fit_capacity()) {
         return false;
     }
-    auto order_it = _ordered_requests.insert(
-        _ordered_requests.end(),
-        expiring_request(io_context, req_data, expired_handler(std::forward<Handler>(req_expired)))
-    );
+    if (_ordered_requests_pool.empty()) {
+        _ordered_requests_pool.emplace_back();
+    }
+    const auto order_it = _ordered_requests_pool.begin();
+    _ordered_requests.splice(_ordered_requests.end(), _ordered_requests_pool, order_it);
     expiring_request& req = *order_it;
+    req.io_context = std::addressof(io_context);
+    req.request = req_data;
+    req.expired = expired_handler(std::forward<Handler>(req_expired));
     req.order_it = order_it;
     const auto expires_at = time_traits::add(time_traits::now(), wait_duration);
     req.expires_at_it = _expires_at_requests.insert(std::make_pair(expires_at, &req));
@@ -148,11 +152,12 @@ bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& value) {
     if (_ordered_requests.empty()) {
         return false;
     }
-    const expiring_request& req = _ordered_requests.front();
+    const auto ordered_it = _ordered_requests.begin();
+    const expiring_request& req = *ordered_it;
     io_context = req.io_context;
     value = req.request;
     _expires_at_requests.erase(req.expires_at_it);
-    _ordered_requests.pop_front();
+    _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, ordered_it);
     update_timer();
     return true;
 }
@@ -174,7 +179,7 @@ template <class V, class M, class I, class T>
 void queue<V, M, I, T>::cancel_one(const request_multimap_value &pair) {
     const expiring_request* req = pair.second;
     asio::post(*req->io_context, std::move(req->expired));
-    _ordered_requests.erase(req->order_it);
+    _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, req->order_it);
 }
 
 template <class V, class M, class I, class T>
