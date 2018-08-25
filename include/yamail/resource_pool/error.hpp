@@ -75,11 +75,13 @@ struct is_error_code_enum<yamail::resource_pool::error::code> {
 
 namespace yamail {
 namespace resource_pool {
+namespace error {
 
-inline boost::system::error_code make_error_code(const error::code e) {
+inline boost::system::error_code make_error_code(const code e) {
     return boost::system::error_code(static_cast<int>(e), error::get_category());
 }
 
+}
 }
 }
 
