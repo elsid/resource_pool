@@ -68,7 +68,7 @@ struct callback {
     void impl(const boost::system::error_code& ec, async::pool<resource>::handle handle) {
         static thread_local std::minstd_rand generator(std::hash<std::thread::id>()(std::this_thread::get_id()));
         static std::uniform_real_distribution<> distrubution(0, 1);
-        static constexpr const double recycle_probability = 0.5;
+        constexpr const double recycle_probability = 0.5;
         if (!ec) {
             if (handle.empty()) {
                 handle.reset(resource {});
