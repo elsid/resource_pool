@@ -80,17 +80,6 @@ struct callback {
     }
 };
 
-struct io_context_post_callback {
-    context& ctx;
-
-    void operator ()() {
-        if (!ctx.stop) {
-            boost::asio::post(ctx.io_context, *this);
-        }
-        ctx.allow_next();
-    }
-};
-
 static const std::vector<benchmark_args> benchmarks({
     {1, 1, 1, 0}, // 0
     {2, 1, 1, 1}, // 1
