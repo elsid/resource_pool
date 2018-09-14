@@ -26,13 +26,13 @@ struct resource {};
 
 struct context {
     boost::asio::io_context io_context;
-    boost::asio::io_context::work work {io_context};
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard = boost::asio::make_work_guard(io_context);
     std::atomic_bool stop {false};
     time_traits::duration timeout {std::chrono::milliseconds(100)};
     double recycle_probability {0};
     std::vector<std::chrono::steady_clock::duration> durations;
-    std::condition_variable get_next;
     std::mutex get_next_mutex;
+    std::condition_variable get_next;
     std::unique_lock<std::mutex> get_next_lock {get_next_mutex};
     std::atomic<std::int64_t> ready_count {0};
 
@@ -49,7 +49,7 @@ struct context {
 
     void finish() {
         stop = true;
-        io_context.stop();
+        guard.reset();
     }
 };
 
