@@ -38,8 +38,17 @@ public:
         handler();
     }
 
+    void operator ()() const {
+        handler();
+    }
+
     auto get_executor() const noexcept {
         return executor;
+    }
+
+    void reset() {
+        executor = asio::executor();
+        handler = std::function<void ()>();
     }
 
 private:
@@ -74,7 +83,7 @@ private:
     struct expiring_request {
         using list = std::list<expiring_request>;
         using list_it = typename list::iterator;
-        using multimap = std::multimap<time_traits::time_point, const expiring_request*>;
+        using multimap = std::multimap<time_traits::time_point, expiring_request*>;
         using multimap_it = typename multimap::iterator;
 
         io_context_t* io_context;
@@ -152,9 +161,10 @@ bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& value) {
         return false;
     }
     const auto ordered_it = _ordered_requests.begin();
-    const expiring_request& req = *ordered_it;
+    expiring_request& req = *ordered_it;
     io_context = req.io_context;
-    value = req.request;
+    value = std::move(req.request);
+    req.expired.reset();
     _expires_at_requests.erase(req.expires_at_it);
     _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, ordered_it);
     update_timer();
