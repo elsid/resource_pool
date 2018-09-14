@@ -99,7 +99,6 @@ private:
 
     bool fit_capacity() const { return _expires_at_requests.size() < _capacity; }
     void cancel(const boost::system::error_code& ec, time_traits::time_point expires_at);
-    void cancel_one(const request_multimap_value& pair);
     void update_timer();
     timer_t& get_timer(io_context_t& io_context);
 };
@@ -170,16 +169,13 @@ void queue<V, M, I, T>::cancel(const boost::system::error_code& ec, time_traits:
     const lock_guard lock(_mutex);
     const auto begin = _expires_at_requests.begin();
     const auto end = _expires_at_requests.upper_bound(expires_at);
-    std::for_each(begin, end, [&] (const request_multimap_value& v) { this->cancel_one(v); });
+    std::for_each(begin, end, [&] (request_multimap_value& v) {
+        const auto req = v.second;
+        asio::post(*req->io_context, std::move(req->expired));
+        _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, req->order_it);
+    });
     _expires_at_requests.erase(_expires_at_requests.begin(), end);
     update_timer();
-}
-
-template <class V, class M, class I, class T>
-void queue<V, M, I, T>::cancel_one(const request_multimap_value &pair) {
-    const expiring_request* req = pair.second;
-    asio::post(*req->io_context, std::move(req->expired));
-    _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, req->order_it);
 }
 
 template <class V, class M, class I, class T>
