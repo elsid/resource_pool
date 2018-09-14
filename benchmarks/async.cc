@@ -116,7 +116,7 @@ void get_auto_waste(benchmark::State& state) {
         ctx.wait_next();
     }
     ctx.finish();
-    std::for_each(workers.begin(), workers.end(), std::mem_fn(&std::thread::join));
+    std::for_each(workers.begin(), workers.end(), [] (auto& v) { v.join(); });
 }
 
 void all_benchmarks(benchmark::internal::Benchmark* b) {
