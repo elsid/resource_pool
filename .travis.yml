@@ -54,6 +54,11 @@ matrix:
             ${TRAVIS_BUILD_DIR}
     - make -j $(nproc)
     - ctest -V -j $(nproc)
+    - benchmarks/resource_pool_benchmark_async
+    - examples/async_pool
+    - examples/async_strand
+    - examples/coro_pool
+    - examples/sync_pool
   - name: gcc 7 debug+coverage
     script:
     - sudo pip install gcovr
