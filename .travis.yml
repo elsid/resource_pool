@@ -2,7 +2,6 @@ language: cpp
 os: linux
 sudo: true
 dist: xenial
-language: c++
 cache:
   ccache: true
   directories:
@@ -14,6 +13,8 @@ addons:
     - ubuntu-toolchain-r-test
     packages:
     - clang++-5.0
+    - g++-7
+    - python-pip
     - libcurl4-openssl-dev
     - libelf-dev
     - libdw-dev
@@ -22,7 +23,6 @@ env:
   global:
   - LOCAL=${HOME}/.local
   - PATH=${LOCAL}/bin:${PATH}
-  - BUILD_TYPE='Debug'
 
 before_script:
 - cmake --version
@@ -36,35 +36,40 @@ before_script:
 - cd ${TRAVIS_BUILD_DIR}
 - mkdir -p ${TRAVIS_BUILD_DIR}/build
 - cd ${TRAVIS_BUILD_DIR}/build
-- |
-    cmake \
-        -D CMAKE_VERBOSE_MAKEFILE=1 \
-        -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
-        -D CMAKE_C_COMPILER=clang-5.0 \
-        -D CMAKE_CXX_COMPILER=clang++-5.0 \
-        -D CMAKE_C_COMPILER_LAUNCHER=ccache \
-        -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
-        -D RESOURCE_POOL_BUILD_TESTS=ON \
-        -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
-        -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
-        ${TRAVIS_BUILD_DIR}
 
-script:
-- make -j $(nproc)
-- ctest -V -j $(nproc)
-- cat ${TRAVIS_BUILD_DIR}/build/external/src/google_benchmark-stamp/google_benchmark-configure-*.log
-
-after_success:
-- git clone https://github.com/SimonKagstrom/kcov.git
-- mkdir kcov/build
-- cd kcov/build
-- cmake -DCMAKE_INSTALL_PREFIX:PATH=${LOCAL} ..
-- make -j $(nproc)
-- make install
-- cd ../..
-- |
-    kcov \
-        --coveralls-id=${TRAVIS_JOB_ID} \
-        --include-path ${TRAVIS_BUILD_DIR}/include \
-        ${TRAVIS_BUILD_DIR}/build/kcov \
-        ${TRAVIS_BUILD_DIR}/build/tests/resource_pool_test \
+matrix:
+  include:
+  - name: clang 5 release
+    script:
+    - |
+        cmake \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_C_COMPILER=clang-5.0 \
+            -D CMAKE_CXX_COMPILER=clang++-5.0 \
+            -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+            -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -D RESOURCE_POOL_BUILD_TESTS=ON \
+            -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
+            -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
+            ${TRAVIS_BUILD_DIR}
+    - make -j $(nproc)
+    - ctest -V -j $(nproc)
+  - name: gcc 7 debug+coverage
+    script:
+    - sudo pip install gcovr
+    - |
+        cmake \
+            -D CMAKE_BUILD_TYPE=Debug \
+            -D CMAKE_C_COMPILER=gcc-7 \
+            -D CMAKE_CXX_COMPILER=g++-7 \
+            -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+            -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -D RESOURCE_POOL_BUILD_TESTS=ON \
+            -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
+            -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
+            -D RESOURCE_POOL_COVERAGE=ON \
+            ${TRAVIS_BUILD_DIR}
+    - make -j $(nproc)
+    - ctest -V -j $(nproc)
+    after_success:
+    - bash <(curl -s https://codecov.io/bash)

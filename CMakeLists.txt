@@ -4,6 +4,8 @@ project(resource_pool CXX)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_COROUTINES_NO_DEPRECATION_WARNING")
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 include(./share/find_resource_pool_dependencies.cmake)
 find_resource_pool_dependencies()
 

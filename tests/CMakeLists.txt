@@ -95,3 +95,16 @@ endif()
 
 add_test(resource_pool_test resource_pool_test)
 add_dependencies(check resource_pool_test)
+
+option(RESOURCE_POOL_COVERAGE "Check coverage" OFF)
+
+if(RESOURCE_POOL_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
+    include(CodeCoverage)
+    APPEND_COVERAGE_COMPILER_FLAGS()
+    set(COVERAGE_EXCLUDES "'.*/(tests|contrib|examples|gmock|gtest)/.*'")
+    SETUP_TARGET_FOR_COVERAGE_GCOVR(
+        NAME resource_pool_coverage
+        EXECUTABLE ctest
+        DEPENDENCIES resource_pool_test
+    )
+endif()
