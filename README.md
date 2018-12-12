@@ -1,7 +1,7 @@
 # Resource pool
 
 [![Build Status](https://travis-ci.org/elsid/resource_pool.svg?branch=master)](https://travis-ci.org/elsid/resource_pool)
-[![Coverage Status](https://coveralls.io/repos/github/elsid/resource_pool/badge.svg?branch=master)](https://coveralls.io/github/elsid/resource_pool?branch=master)
+[![codecov](https://codecov.io/gh/elsid/resource_pool/branch/master/graph/badge.svg)](https://codecov.io/gh/elsid/resource_pool)
 
 Header only library purposed to create pool of some resources like keep-alive connections.
 Supports sync and async interfaces. Based on boost.
