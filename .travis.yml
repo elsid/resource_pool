@@ -40,8 +40,8 @@ before_script:
     cmake \
         -D CMAKE_VERBOSE_MAKEFILE=1 \
         -D CMAKE_BUILD_TYPE=${BUILD_TYPE} \
-        -D CMAKE_C_COMPILER=clang-5 \
-        -D CMAKE_CXX_COMPILER=clang++ \
+        -D CMAKE_C_COMPILER=clang-5.0 \
+        -D CMAKE_CXX_COMPILER=clang++-5.0 \
         -D CMAKE_C_COMPILER_LAUNCHER=ccache \
         -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -D RESOURCE_POOL_BUILD_TESTS=ON \
