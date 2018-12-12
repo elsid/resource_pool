@@ -71,7 +71,7 @@ private:
 
     std::size_t size_unsafe() const { return _available.size() + _used.size(); }
     bool fit_capacity() const { return size_unsafe() < _capacity; }
-    list_iterator alloc_resource(unique_lock& lock);
+    list_iterator alloc_resource();
     list_iterator reserve_resource(unique_lock& lock);
     bool wait_for(unique_lock& lock, time_traits::duration wait_duration);
 };
@@ -131,8 +131,9 @@ typename pool_impl<T, M, C>::get_result pool_impl<T, M, C>::get(time_traits::dur
             lock.unlock();
             return std::make_pair(make_error_code(error::disabled), list_iterator());
         } else if (!_available.empty()) {
-            const list_iterator res_it = alloc_resource(lock);
-            if (res_it != list_iterator()) {
+            const list_iterator res_it = alloc_resource();
+            if (res_it != _used.end()) {
+                lock.unlock();
                 return std::make_pair(boost::system::error_code(), res_it);
             }
         }
@@ -148,7 +149,7 @@ typename pool_impl<T, M, C>::get_result pool_impl<T, M, C>::get(time_traits::dur
 }
 
 template <class T, class M, class C>
-typename pool_impl<T, M, C>::list_iterator pool_impl<T, M, C>::alloc_resource(unique_lock& lock) {
+typename pool_impl<T, M, C>::list_iterator pool_impl<T, M, C>::alloc_resource() {
     while (!_available.empty()) {
         const list_iterator res_it = _available.begin();
         if (res_it->drop_time <= time_traits::now()) {
@@ -157,10 +158,9 @@ typename pool_impl<T, M, C>::list_iterator pool_impl<T, M, C>::alloc_resource(un
             continue;
         }
         _used.splice(_used.end(), _available, res_it);
-        lock.unlock();
         return res_it;
     }
-    return list_iterator();
+    return _used.end();
 }
 
 template <class T, class M, class C>

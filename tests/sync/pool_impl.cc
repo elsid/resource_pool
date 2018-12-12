@@ -63,14 +63,12 @@ TEST(sync_resource_pool_impl, get_one_should_succeed) {
     resource_pool_impl pool_impl(1, time_traits::duration::max());
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
-    EXPECT_NE(res.second, resource_ptr_list_iterator());
 }
 
 TEST(sync_resource_pool_impl, get_one_and_recycle_should_succeed) {
     resource_pool_impl pool_impl(1, time_traits::duration::max());
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
-    EXPECT_NE(res.second, resource_ptr_list_iterator());
     EXPECT_CALL(pool_impl.has_capacity(), notify_one()).WillOnce(Return());
     pool_impl.recycle(res.second);
 }
@@ -79,7 +77,6 @@ TEST(sync_resource_pool_impl, get_one_and_waste_should_succeed) {
     resource_pool_impl pool_impl(1, time_traits::duration::max());
     const get_result res = pool_impl.get();
     EXPECT_EQ(res.first, boost::system::error_code());
-    EXPECT_NE(res.second, resource_ptr_list_iterator());
     EXPECT_CALL(pool_impl.has_capacity(), notify_one()).WillOnce(Return());
     pool_impl.waste(res.second);
 }
@@ -126,7 +123,6 @@ TEST(sync_resource_pool_impl, get_from_pool_and_wait_then_after_recycle_should_a
     const get_result& first_res = pool.get();
 
     EXPECT_EQ(first_res.first, boost::system::error_code());
-    EXPECT_NE(first_res.second, resource_ptr_list_iterator());
 
     InSequence s;
 
@@ -149,7 +145,6 @@ TEST(sync_resource_pool_impl, get_from_pool_and_wait_then_after_waste_should_res
     const get_result& first_res = pool.get();
 
     EXPECT_EQ(first_res.first, boost::system::error_code());
-    EXPECT_NE(first_res.second, resource_ptr_list_iterator());
 
     InSequence s;
 
@@ -159,7 +154,6 @@ TEST(sync_resource_pool_impl, get_from_pool_and_wait_then_after_waste_should_res
     const get_result& second_res = pool.get();
 
     EXPECT_FALSE(second_res.first);
-    EXPECT_NE(second_res.second, resource_ptr_list_iterator());
 }
 
 struct disable_pool {
@@ -198,7 +192,6 @@ TEST(sync_resource_pool_impl, get_one_set_and_recycle_with_zero_idle_timeout_the
 
     const get_result first_res = pool_impl.get();
     EXPECT_EQ(first_res.first, boost::system::error_code());
-    ASSERT_NE(first_res.second, resource_ptr_list_iterator());
     first_res.second->value = resource {};
     EXPECT_TRUE(first_res.second->value);
     pool_impl.recycle(first_res.second);
@@ -207,7 +200,6 @@ TEST(sync_resource_pool_impl, get_one_set_and_recycle_with_zero_idle_timeout_the
 
     const get_result second_res = pool_impl.get();
     EXPECT_EQ(second_res.first, boost::system::error_code());
-    ASSERT_NE(second_res.second, resource_ptr_list_iterator());
     EXPECT_FALSE(second_res.second->value);
 }
 

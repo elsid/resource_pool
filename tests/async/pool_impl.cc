@@ -174,7 +174,6 @@ public:
 
     void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
-        ASSERT_NE(res, resource_ptr_list_iterator());
         pool.recycle(res);
     }
 
@@ -188,7 +187,6 @@ public:
 
     void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
-        ASSERT_NE(res, resource_ptr_list_iterator());
         pool.waste(res);
     }
 
@@ -314,9 +312,8 @@ public:
     check_error(const error_code& error) : error(error) {}
     check_error(const error::code& error) : error(make_error_code(error)) {}
 
-    void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
+    void operator ()(const error_code& err, resource_ptr_list_iterator) const {
         EXPECT_EQ(err, error);
-        EXPECT_EQ(res != resource_ptr_list_iterator(), error == error_code());
     }
 
 private:
@@ -434,7 +431,6 @@ public:
 
     void operator ()(const error_code& err, resource_ptr_list_iterator res) const {
         EXPECT_EQ(err, error_code());
-        ASSERT_NE(res, resource_ptr_list_iterator());
         res->value = resource {};
         pool.recycle(res);
     }
