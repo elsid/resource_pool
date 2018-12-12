@@ -8,7 +8,7 @@ Supports sync and async interfaces. Based on boost.
 
 ## Build
 
-Project uses CMake. Build need only to run tests or examples:
+Project uses CMake. Build need only to run tests, examples and benchmarks:
 ```bash
 mkdir build
 cd build
@@ -17,6 +17,7 @@ make -j $(nproc)
 ctest -V
 examples/sync_pool
 examples/async_pool
+benchmarks/resource_pool_benchmark_async
 ```
 
 ## Install
