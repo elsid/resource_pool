@@ -347,7 +347,10 @@ void pool_impl<V, M, I, Q>::perform_one_request(unique_lock& lock, Serve&& serve
 }
 
 using boost::asio::async_result;
-using boost::asio::handler_type;
+template<typename CompletionToken, typename Signature>
+struct handler_type {
+    using type = typename boost::asio::async_result<CompletionToken, Signature>::completion_handler_type;
+};
 
 #if BOOST_VERSION < 106600
 template <typename CompletionToken, typename Signature>
@@ -367,9 +370,7 @@ using boost::asio::async_completion;
 #endif
 
 template <typename Handler, typename Signature>
-using async_return_type = typename ::boost::asio::async_result<
-        typename handler_type<Handler, Signature>::type
-    >::type;
+using async_return_type = typename ::boost::asio::async_result<Handler, Signature>::return_type;
 
 } // namespace detail
 } // namespace async

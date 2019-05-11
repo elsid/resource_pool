@@ -6,6 +6,7 @@
 
 #include <boost/asio/executor.hpp>
 #include <boost/asio/post.hpp>
+#include <boost/noncopyable.hpp>
 
 #include <algorithm>
 #include <list>
