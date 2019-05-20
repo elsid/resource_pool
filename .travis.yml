@@ -26,9 +26,9 @@ env:
 
 before_script:
 - cmake --version
-- wget -O boost_1_66_0.tar.gz https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz
-- tar xzf boost_1_66_0.tar.gz
-- cd boost_1_66_0
+- wget -O "boost_1_${BOOST_MINOR}_0.tar.gz" "https://dl.bintray.com/boostorg/release/1.${BOOST_MINOR}.0/source/boost_1_${BOOST_MINOR}_0.tar.gz"
+- tar xzf "boost_1_${BOOST_MINOR}_0.tar.gz"
+- cd "boost_1_${BOOST_MINOR}_0"
 - ./bootstrap.sh --with-libraries=system,thread,context,coroutine
 - mkdir build
 - ./b2 --build-dir=build
@@ -40,6 +40,8 @@ before_script:
 matrix:
   include:
   - name: clang 5 release
+    env:
+      - BOOST_MINOR=66
     script:
     - |
         cmake \
@@ -60,6 +62,8 @@ matrix:
     - examples/coro_pool
     - examples/sync_pool
   - name: gcc 7 debug+coverage
+    env:
+      - BOOST_MINOR=66
     script:
     - sudo pip install gcovr
     - |
@@ -78,3 +82,83 @@ matrix:
     - ctest -V -j $(nproc)
     after_success:
     - bash <(curl -s https://codecov.io/bash)
+  - name: clang 5 release1.67
+    env:
+      - BOOST_MINOR=67
+    script:
+      - |
+        cmake \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_C_COMPILER=clang-5.0 \
+            -D CMAKE_CXX_COMPILER=clang++-5.0 \
+            -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+            -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -D RESOURCE_POOL_BUILD_TESTS=ON \
+            -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
+            -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
+            ${TRAVIS_BUILD_DIR}
+      - make -j $(nproc)
+      - ctest -V -j $(nproc)
+      - benchmarks/resource_pool_benchmark_async
+      - examples/async_pool
+      - examples/async_strand
+      - examples/coro_pool
+      - examples/sync_pool
+  - name: gcc 7 debug 1.67
+    env:
+      - BOOST_MINOR=67
+    script:
+      - sudo pip install gcovr
+      - |
+        cmake \
+            -D CMAKE_BUILD_TYPE=Debug \
+            -D CMAKE_C_COMPILER=gcc-7 \
+            -D CMAKE_CXX_COMPILER=g++-7 \
+            -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+            -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -D RESOURCE_POOL_BUILD_TESTS=ON \
+            -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
+            -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
+            ${TRAVIS_BUILD_DIR}
+      - make -j $(nproc)
+      - ctest -V -j $(nproc)
+  - name: clang 5 release 1.70
+    env:
+      - BOOST_MINOR=70
+    script:
+      - |
+        cmake \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_C_COMPILER=clang-5.0 \
+            -D CMAKE_CXX_COMPILER=clang++-5.0 \
+            -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+            -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -D RESOURCE_POOL_BUILD_TESTS=ON \
+            -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
+            -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
+            ${TRAVIS_BUILD_DIR}
+      - make -j $(nproc)
+      - ctest -V -j $(nproc)
+      - benchmarks/resource_pool_benchmark_async
+      - examples/async_pool
+      - examples/async_strand
+      - examples/coro_pool
+      - examples/sync_pool
+  - name: gcc 7 debug+coverage 1.70
+    env:
+      - BOOST_MINOR=70
+    script:
+      - sudo pip install gcovr
+      - |
+        cmake \
+            -D CMAKE_BUILD_TYPE=Debug \
+            -D CMAKE_C_COMPILER=gcc-7 \
+            -D CMAKE_CXX_COMPILER=g++-7 \
+            -D CMAKE_C_COMPILER_LAUNCHER=ccache \
+            -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -D RESOURCE_POOL_BUILD_TESTS=ON \
+            -D RESOURCE_POOL_BUILD_EXAMPLES=ON \
+            -D RESOURCE_POOL_BUILD_BENCHMARKS=ON \
+            ${TRAVIS_BUILD_DIR}
+      - make -j $(nproc)
+      - ctest -V -j $(nproc)
