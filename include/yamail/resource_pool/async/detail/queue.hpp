@@ -57,14 +57,17 @@ private:
 };
 
 template <class Value, class Mutex, class IoContext, class Timer>
-class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoContext, Timer>>,
-    boost::noncopyable {
+class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoContext, Timer>> {
 public:
     using value_type = Value;
     using io_context_t = IoContext;
     using timer_t = Timer;
 
     queue(std::size_t capacity) : _capacity(capacity) {}
+
+    queue(const queue&) = delete;
+
+    queue(queue&&) = delete;
 
     std::size_t capacity() const { return _capacity; }
     std::size_t size() const;

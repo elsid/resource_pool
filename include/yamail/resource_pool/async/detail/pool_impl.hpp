@@ -90,7 +90,7 @@ auto make_queued_handler(Handler&& handler) {
 }
 
 template <class Value, class Mutex, class IoContext, class Queue>
-class pool_impl : boost::noncopyable {
+class pool_impl {
 public:
     using value_type = Value;
     using io_context_t = IoContext;
@@ -136,6 +136,10 @@ public:
                     queue_capacity,
                     idle_timeout) {
     }
+
+    pool_impl(const pool_impl&) = delete;
+
+    pool_impl(pool_impl&&) = delete;
 
     std::size_t capacity() const { return _capacity; }
     std::size_t size() const;
