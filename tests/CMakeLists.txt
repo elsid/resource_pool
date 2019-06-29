@@ -83,8 +83,9 @@ set(LIBRARIES
     pthread
     gtest
     gmock
-    ${RESOURCE_POOL_DEPENDENCY_LIBRARIES}
-    ${Boost_LIBRARIES}
+    Boost::coroutine
+    Boost::context
+    yandex::resource_pool
 )
 
 target_link_libraries(resource_pool_test ${LIBRARIES})

@@ -1,23 +1,15 @@
-cmake_minimum_required(VERSION 2.6)
-
-project(resource_pool CXX)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_COROUTINES_NO_DEPRECATION_WARNING")
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-include(./share/find_resource_pool_dependencies.cmake)
-find_resource_pool_dependencies()
+cmake_minimum_required(VERSION 3.12)
+project(resource_pool VERSION 0.1.0 LANGUAGES CXX)
 
 option(RESOURCE_POOL_BUILD_EXAMPLES OFF)
 option(RESOURCE_POOL_BUILD_TESTS OFF)
 option(RESOURCE_POOL_BUILD_BENCHMARKS OFF)
 
-add_subdirectory(share)
 add_subdirectory(include)
 
 if(RESOURCE_POOL_BUILD_TESTS)
     enable_testing()
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
     add_subdirectory(tests)
 endif()
 

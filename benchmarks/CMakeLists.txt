@@ -44,8 +44,9 @@ set(LIBRARIES
     rt
     pthread
     benchmark
-    ${RESOURCE_POOL_DEPENDENCY_LIBRARIES}
-    ${Boost_LIBRARIES}
+    Boost::coroutine
+    Boost::context
+    yandex::resource_pool
 )
 
 target_link_libraries(resource_pool_benchmark_async ${LIBRARIES})
