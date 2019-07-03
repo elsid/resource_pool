@@ -8,7 +8,7 @@ conan profile new --detect default
 
 cd "${TRAVIS_BUILD_DIR}"
 
-PKG_REPO="yandex/testing"
+PKG_REPO="elsid/testing"
 
 
 conan export . "${PKG_REPO}"
