@@ -1,6 +1,4 @@
-#!/bin/sh
-
-set -e
+#!/bin/bash -e
 
 pip install --user virtualenv
 virtualenv conan-temp

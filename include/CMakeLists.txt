@@ -11,7 +11,7 @@ target_compile_definitions(resource_pool
         INTERFACE
         -DBOOST_COROUTINES_NO_DEPRECATION_WARNING
         )
-add_library(yandex::resource_pool ALIAS resource_pool)
+add_library(elsid::resource_pool ALIAS resource_pool)
 
 install(TARGETS resource_pool EXPORT resource_poolTargets
         LIBRARY DESTINATION lib COMPONENT Runtime
@@ -27,7 +27,7 @@ write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/resource_pool/reso
 
 export(EXPORT resource_poolTargets
         FILE "${CMAKE_CURRENT_BINARY_DIR}/resource_pool/resource_poolTargets.cmake"
-        NAMESPACE yandex::)
+        NAMESPACE elsid::)
 configure_file(../resource_poolConfig.cmake
         "${CMAKE_CURRENT_BINARY_DIR}/resource_pool/resource_poolConfig.cmake"
         COPYONLY)
@@ -35,7 +35,7 @@ configure_file(../resource_poolConfig.cmake
 set(ConfigPackageLocation lib/cmake/resource_pool)
 install(EXPORT resource_poolTargets
         FILE resource_poolTargets.cmake
-        NAMESPACE yandex::
+        NAMESPACE elsid::
         DESTINATION ${ConfigPackageLocation})
 install(FILES ../resource_poolConfig.cmake
         "${CMAKE_CURRENT_BINARY_DIR}/resource_pool/resource_poolConfigVersion.cmake"

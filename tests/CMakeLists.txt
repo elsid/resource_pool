@@ -85,7 +85,7 @@ set(LIBRARIES
     gmock
     Boost::coroutine
     Boost::context
-    yandex::resource_pool
+    elsid::resource_pool
 )
 
 target_link_libraries(resource_pool_test ${LIBRARIES})

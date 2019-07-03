@@ -24,10 +24,6 @@ class ResourcePool(ConanFile):
     generators = 'cmake_paths'
     requires = 'boost/1.70.0@conan/stable'
 
-    # Internal option for ozo devs to use cmake for easier setup
-    options = {'ozo_require_gtest': [True, False]}
-    default_options = {'ozo_require_gtest': False}
-
     def _configure_cmake(self):
         cmake = CMake(self)
         cmake.configure()

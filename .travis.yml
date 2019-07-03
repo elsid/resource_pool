@@ -26,13 +26,7 @@ env:
 
 before_script:
 - cmake --version
-- '[ -z "$BOOST_MINOR" ] || wget -O "boost_1_${BOOST_MINOR}_0.tar.gz" "https://dl.bintray.com/boostorg/release/1.${BOOST_MINOR}.0/source/boost_1_${BOOST_MINOR}_0.tar.gz"'
-- '[ -z "$BOOST_MINOR" ] || tar xzf "boost_1_${BOOST_MINOR}_0.tar.gz"'
-- '[ -z "$BOOST_MINOR" ] || cd "boost_1_${BOOST_MINOR}_0"'
-- '[ -z "$BOOST_MINOR" ] || ./bootstrap.sh --with-libraries=system,thread,context,coroutine,atomic,date_time'
-- '[ -z "$BOOST_MINOR" ] || mkdir build'
-- '[ -z "$BOOST_MINOR" ] || ./b2 --build-dir=build'
-- '[ -z "$BOOST_MINOR" ] || sudo ./b2 --build-dir=build install'
+- ${TRAVIS_BUILD_DIR}/scripts/travis/install_boost.sh
 - cd ${TRAVIS_BUILD_DIR}
 - mkdir -p ${TRAVIS_BUILD_DIR}/build
 - cd ${TRAVIS_BUILD_DIR}/build
