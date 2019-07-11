@@ -12,7 +12,7 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - clang++-5.0
+    - clang-6.0
     - g++-7
     - python-pip
     - libcurl4-openssl-dev
@@ -26,28 +26,33 @@ env:
 
 before_script:
 - cmake --version
-- wget -O boost_1_66_0.tar.gz https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz
-- tar xzf boost_1_66_0.tar.gz
-- cd boost_1_66_0
-- ./bootstrap.sh --with-libraries=system,thread,context,coroutine
-- mkdir build
-- ./b2 --build-dir=build
-- sudo ./b2 --build-dir=build install
+- ${TRAVIS_BUILD_DIR}/scripts/travis/install_boost.sh
 - cd ${TRAVIS_BUILD_DIR}
 - mkdir -p ${TRAVIS_BUILD_DIR}/build
 - cd ${TRAVIS_BUILD_DIR}/build
 
 matrix:
   include:
-  - name: clang 5 release
+  - name: clang 6 release
     env:
-    - CXX_COMPILER: clang++-5.0
+    - CXX_COMPILER: clang++-6.0
+    - BOOST_MINOR: 66
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
   - name: gcc 7 debug+coverage
     env:
     - CXX_COMPILER: g++-7
+    - BOOST_MINOR: 66
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/coverage.sh
     after_success:
     - bash <(curl -s https://codecov.io/bash)
+  - name: clang 6 boost 1.70
+    env:
+    - CXX_COMPILER: clang++-6.0
+    - BOOST_MINOR: 70
+    script:
+    - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
+  - name: conan auto detect
+    script:
+    - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
