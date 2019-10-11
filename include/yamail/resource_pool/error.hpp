@@ -9,15 +9,15 @@ namespace yamail {
 namespace resource_pool {
 namespace error {
 
-struct empty_handle : std::logic_error {
+struct empty_handle final : std::logic_error {
     empty_handle() : std::logic_error("handle is empty") {}
 };
 
-struct unusable_handle : std::logic_error {
+struct unusable_handle final : std::logic_error {
     unusable_handle() : std::logic_error("handle is unusable") {}
 };
 
-struct zero_pool_capacity : std::logic_error {
+struct zero_pool_capacity final : std::logic_error {
     zero_pool_capacity() : std::logic_error("pool capacity is 0") {}
 };
 
@@ -30,11 +30,13 @@ enum code {
 
 namespace detail {
 
-class category : public boost::system::error_category {
+class category final : public boost::system::error_category {
 public:
-    const char* name() const noexcept { return "yamail::resource_pool::error::detail::category"; }
+    const char* name() const noexcept final {
+        return "yamail::resource_pool::error::detail::category";
+    }
 
-    std::string message(int value) const {
+    std::string message(int value) const final {
         switch (code(value)) {
             case ok:
                 return "no error";
