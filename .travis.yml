@@ -11,8 +11,10 @@ addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
+    - llvm-toolchain-xenial-8
     packages:
     - clang-6.0
+    - clang-8
     - g++-7
     - python-pip
     - libcurl4-openssl-dev
@@ -56,3 +58,9 @@ matrix:
   - name: conan auto detect
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
+  - name: clang 8 release
+    env:
+    - CXX_COMPILER: clang++-8
+    - BOOST_MINOR: 70
+    script:
+    - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
