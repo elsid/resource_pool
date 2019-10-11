@@ -29,7 +29,7 @@ public:
             : _pool_impl(pool_impl), _use_strategy(use_strategy),
               _resource_it(resource_it) {}
 
-    virtual ~handle();
+    ~handle();
 
     handle& operator =(const handle& other) = delete;
     handle& operator =(handle&& other);
