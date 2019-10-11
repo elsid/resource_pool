@@ -34,8 +34,8 @@ public:
     handle& operator =(const handle& other) = delete;
     handle& operator =(handle&& other);
 
-    bool unusable() const { return !static_cast<bool>(_resource_it); }
-    bool empty() const { return unusable() || !_resource_it.get()->value; }
+    bool unusable() const noexcept { return !static_cast<bool>(_resource_it); }
+    bool empty() const noexcept { return unusable() || !_resource_it.get()->value; }
     value_type& get();
     const value_type& get() const;
     value_type *operator ->() { return &get(); }

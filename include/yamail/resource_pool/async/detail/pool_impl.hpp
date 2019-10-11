@@ -141,13 +141,13 @@ public:
 
     pool_impl(pool_impl&&) = delete;
 
-    std::size_t capacity() const { return _capacity; }
-    std::size_t size() const;
-    std::size_t available() const;
-    std::size_t used() const;
-    async::stats stats() const;
+    std::size_t capacity() const noexcept { return _capacity; }
+    std::size_t size() const noexcept;
+    std::size_t available() const noexcept;
+    std::size_t used() const noexcept;
+    async::stats stats() const noexcept;
 
-    const queue_type& queue() const { return *_callbacks; }
+    const queue_type& queue() const noexcept { return *_callbacks; }
 
     template <class Handler>
     void get(io_context_t& io_context, Handler&& handler, time_traits::duration wait_duration = time_traits::duration(0));
@@ -171,8 +171,8 @@ private:
     std::shared_ptr<queue_type> _callbacks;
     bool _disabled = false;
 
-    std::size_t size_unsafe() const { return _available.size() + _used.size(); }
-    bool fit_capacity() const { return size_unsafe() < _capacity; }
+    std::size_t size_unsafe() const noexcept { return _available.size() + _used.size(); }
+    bool fit_capacity() const noexcept { return size_unsafe() < _capacity; }
     template <class Handler>
     bool reserve_resource(io_context_t& io_context, unique_lock& lock, Handler&& handler);
     template <class Handler>
@@ -182,25 +182,25 @@ private:
 };
 
 template <class V, class M, class I, class Q>
-std::size_t pool_impl<V, M, I, Q>::size() const {
+std::size_t pool_impl<V, M, I, Q>::size() const noexcept {
     const lock_guard lock(_mutex);
     return size_unsafe();
 }
 
 template <class V, class M, class I, class Q>
-std::size_t pool_impl<V, M, I, Q>::available() const {
+std::size_t pool_impl<V, M, I, Q>::available() const noexcept {
     const lock_guard lock(_mutex);
     return _available.size();
 }
 
 template <class V, class M, class I, class Q>
-std::size_t pool_impl<V, M, I, Q>::used() const {
+std::size_t pool_impl<V, M, I, Q>::used() const noexcept {
     const lock_guard lock(_mutex);
     return _used.size();
 }
 
 template <class V, class M, class I, class Q>
-async::stats pool_impl<V, M, I, Q>::stats() const {
+async::stats pool_impl<V, M, I, Q>::stats() const noexcept {
     const lock_guard lock(_mutex);
     return async::stats {size_unsafe(), _available.size(), _used.size(), _callbacks->size()};
 }
