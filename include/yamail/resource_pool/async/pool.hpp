@@ -83,13 +83,13 @@ public:
     pool& operator =(const pool&) = delete;
     pool& operator =(pool&&) = default;
 
-    std::size_t capacity() const { return _impl->capacity(); }
-    std::size_t size() const { return _impl->size(); }
-    std::size_t available() const { return _impl->available(); }
-    std::size_t used() const { return _impl->used(); }
-    async::stats stats() const { return _impl->stats(); }
+    std::size_t capacity() const noexcept { return _impl->capacity(); }
+    std::size_t size() const noexcept { return _impl->size(); }
+    std::size_t available() const noexcept { return _impl->available(); }
+    std::size_t used() const noexcept { return _impl->used(); }
+    async::stats stats() const noexcept { return _impl->stats(); }
 
-    const pool_impl& impl() const { return *_impl; }
+    const pool_impl& impl() const noexcept { return *_impl; }
 
     template <class CompletionToken>
     auto get_auto_waste(io_context_t& io_context, CompletionToken&& token,

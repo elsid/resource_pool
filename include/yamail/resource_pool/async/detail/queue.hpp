@@ -69,9 +69,9 @@ public:
 
     queue(queue&&) = delete;
 
-    std::size_t capacity() const { return _capacity; }
-    std::size_t size() const;
-    bool empty() const;
+    std::size_t capacity() const noexcept { return _capacity; }
+    std::size_t size() const noexcept;
+    bool empty() const noexcept;
     const timer_t& timer(io_context_t& io_context);
 
     template <class Handler>
@@ -115,13 +115,13 @@ private:
 };
 
 template <class V, class M, class I, class T>
-std::size_t queue<V, M, I, T>::size() const {
+std::size_t queue<V, M, I, T>::size() const noexcept {
     const lock_guard lock(_mutex);
     return _expires_at_requests.size();
 }
 
 template <class V, class M, class I, class T>
-bool queue<V, M, I, T>::empty() const {
+bool queue<V, M, I, T>::empty() const noexcept {
     const lock_guard lock(_mutex);
     return _ordered_requests.empty();
 }
