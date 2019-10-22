@@ -169,7 +169,7 @@ struct thread_context {
         : thread([this] { this->impl.io_context.run(); }) {}
 };
 
-void get_auto_waste_io_contex_per_thread(benchmark::State& state) {
+void get_auto_waste_io_context_per_thread(benchmark::State& state) {
     const auto& args = benchmarks[boost::numeric_cast<std::size_t>(state.range(0))];
     std::vector<std::unique_ptr<thread_context>> threads;
     for (std::size_t i = 0; i < args.threads(); ++i) {
@@ -189,7 +189,7 @@ void get_auto_waste_io_contex_per_thread(benchmark::State& state) {
     std::for_each(threads.begin(), threads.end(), [] (const auto& ctx) { ctx->thread.join(); });
 }
 
-void get_auto_waste_io_contex_per_thread_on_coroutines(benchmark::State& state) {
+void get_auto_waste_io_context_per_thread_on_coroutines(benchmark::State& state) {
     const auto& args = benchmarks[boost::numeric_cast<std::size_t>(state.range(0))];
     std::vector<std::unique_ptr<thread_context>> threads;
     for (std::size_t i = 0; i < args.threads(); ++i) {
@@ -234,7 +234,7 @@ void all_benchmarks(benchmark::internal::Benchmark* b) {
 }
 
 BENCHMARK(get_auto_waste)->Apply(all_benchmarks);
-BENCHMARK(get_auto_waste_io_contex_per_thread)->Apply(all_benchmarks);
-BENCHMARK(get_auto_waste_io_contex_per_thread_on_coroutines)->Apply(all_benchmarks);
+BENCHMARK(get_auto_waste_io_context_per_thread)->Apply(all_benchmarks);
+BENCHMARK(get_auto_waste_io_context_per_thread_on_coroutines)->Apply(all_benchmarks);
 
 BENCHMARK_MAIN();
