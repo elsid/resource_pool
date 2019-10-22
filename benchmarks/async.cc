@@ -227,7 +227,7 @@ void get_auto_waste_io_context_per_thread_on_coroutines(benchmark::State& state)
 
 void all_benchmarks(benchmark::internal::Benchmark* b) {
     for (std::size_t n = 0; n < benchmarks.size(); ++n) {
-        b->Arg(int(n));
+        b->Arg(static_cast<int>(n));
     }
 }
 
