@@ -107,7 +107,6 @@ private:
     typename expiring_request::list _ordered_requests;
     typename expiring_request::multimap _expires_at_requests;
     timers_map _timers;
-    time_traits::time_point _min_expires_at = time_traits::time_point::max();
 
     bool fit_capacity() const { return _expires_at_requests.size() < _capacity; }
     void cancel(const boost::system::error_code& ec, time_traits::time_point expires_at);
