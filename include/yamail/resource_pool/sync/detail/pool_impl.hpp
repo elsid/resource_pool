@@ -4,6 +4,7 @@
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/time_traits.hpp>
 #include <yamail/resource_pool/detail/idle.hpp>
+#include <yamail/resource_pool/detail/storage.hpp>
 
 #include <condition_variable>
 #include <list>
@@ -27,17 +28,14 @@ public:
     using value_type = Value;
     using condition_variable = ConditionVariable;
     using idle = resource_pool::detail::idle<value_type>;
-    using list = std::list<idle>;
-    using list_iterator = typename list::iterator;
+    using storage_type = resource_pool::detail::storage<value_type>;
+    using list_iterator = typename storage_type::cell_iterator;
     using get_result = std::pair<boost::system::error_code, list_iterator>;
 
     pool_impl(std::size_t capacity, time_traits::duration idle_timeout)
-            : _capacity(assert_capacity(capacity)),
-              _idle_timeout(idle_timeout),
+            : storage_(assert_capacity(capacity), idle_timeout),
+              _capacity(capacity),
               _disabled(false) {
-        for (std::size_t i = 0; i < _capacity; ++i) {
-            _wasted.emplace_back(idle());
-        }
     }
 
     std::size_t capacity() const { return _capacity; }
@@ -61,58 +59,59 @@ private:
     using unique_lock = std::unique_lock<mutex_t>;
 
     mutable mutex_t _mutex;
-    list _available;
-    list _used;
-    list _wasted;
+    storage_type storage_;
     const std::size_t _capacity;
-    const time_traits::duration _idle_timeout;
     condition_variable _has_capacity;
     bool _disabled;
 
-    std::size_t size_unsafe() const { return _available.size() + _used.size(); }
-    bool fit_capacity() const { return size_unsafe() < _capacity; }
-    list_iterator alloc_resource();
-    list_iterator reserve_resource(unique_lock& lock);
     bool wait_for(unique_lock& lock, time_traits::duration wait_duration);
 };
 
 template <class T, class M, class C>
 std::size_t pool_impl<T, M, C>::size() const {
-    const lock_guard lock(_mutex);
-    return size_unsafe();
+    const auto stats = [&] {
+        const lock_guard lock(_mutex);
+        return storage_.stats();
+    } ();
+    return stats.available + stats.used;
 }
 
 template <class T, class M, class C>
 std::size_t pool_impl<T, M, C>::available() const {
     const lock_guard lock(_mutex);
-    return _available.size();
+    return storage_.stats().available;
 }
 
 template <class T, class M, class C>
 std::size_t pool_impl<T, M, C>::used() const {
     const lock_guard lock(_mutex);
-    return _used.size();
+    return storage_.stats().used;
 }
 
 template <class T, class M, class C>
 sync::stats pool_impl<T, M, C>::stats() const {
-    const lock_guard lock(_mutex);
-    return sync::stats {size_unsafe(), _available.size(), _used.size()};
+    const auto stats = [&] {
+        const lock_guard lock(_mutex);
+        return storage_.stats();
+    } ();
+    sync::stats result;
+    result.size = stats.available + stats.used;
+    result.available = stats.available;
+    result.used = stats.used;
+    return result;
 }
 
 template <class T, class M, class C>
 void pool_impl<T, M, C>::recycle(list_iterator res_it) {
-    res_it->drop_time = time_traits::add(time_traits::now(), _idle_timeout);
     const lock_guard lock(_mutex);
-    _available.splice(_available.end(), _used, res_it);
+    storage_.recycle(res_it);
     _has_capacity.notify_one();
 }
 
 template <class T, class M, class C>
 void pool_impl<T, M, C>::waste(list_iterator res_it) {
-    res_it->value.reset();
     const lock_guard lock(_mutex);
-    _wasted.splice(_wasted.end(), _used, res_it);
+    storage_.waste(res_it);
     _has_capacity.notify_one();
 }
 
@@ -130,15 +129,10 @@ typename pool_impl<T, M, C>::get_result pool_impl<T, M, C>::get(time_traits::dur
         if (_disabled) {
             lock.unlock();
             return std::make_pair(make_error_code(error::disabled), list_iterator());
-        } else if (!_available.empty()) {
-            const list_iterator res_it = alloc_resource();
-            if (res_it != _used.end()) {
-                lock.unlock();
-                return std::make_pair(boost::system::error_code(), res_it);
-            }
-        }
-        if (fit_capacity()) {
-            return std::make_pair(boost::system::error_code(), reserve_resource(lock));
+        } 
+        if (const auto cell = storage_.lease()) {
+            lock.unlock();
+            return std::make_pair(boost::system::error_code(), *cell);
         }
         if (!wait_for(lock, wait_duration)) {
             lock.unlock();
@@ -146,29 +140,6 @@ typename pool_impl<T, M, C>::get_result pool_impl<T, M, C>::get(time_traits::dur
                                   list_iterator());
         }
     }
-}
-
-template <class T, class M, class C>
-typename pool_impl<T, M, C>::list_iterator pool_impl<T, M, C>::alloc_resource() {
-    while (!_available.empty()) {
-        const list_iterator res_it = _available.begin();
-        if (res_it->drop_time <= time_traits::now()) {
-            res_it->value.reset();
-            _wasted.splice(_wasted.end(), _available, res_it);
-            continue;
-        }
-        _used.splice(_used.end(), _available, res_it);
-        return res_it;
-    }
-    return _used.end();
-}
-
-template <class T, class M, class C>
-typename pool_impl<T, M, C>::list_iterator pool_impl<T, M, C>::reserve_resource(unique_lock& lock) {
-    const list_iterator res_it = _wasted.begin();
-    _used.splice(_used.end(), _wasted, res_it);
-    lock.unlock();
-    return res_it;
 }
 
 template <class T, class M, class C>

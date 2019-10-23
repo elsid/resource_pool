@@ -3,12 +3,14 @@
 
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/detail/idle.hpp>
+#include <yamail/resource_pool/detail/storage.hpp>
 #include <yamail/resource_pool/async/detail/queue.hpp>
 
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/spawn.hpp>
 
+#include <cassert>
 #include <type_traits>
 
 namespace yamail {
@@ -95,21 +97,17 @@ public:
     using value_type = Value;
     using io_context_t = IoContext;
     using idle = resource_pool::detail::idle<value_type>;
-    using list = std::list<idle>;
-    using list_iterator = typename list::iterator;
+    using storage_type = resource_pool::detail::storage<value_type>;
+    using list_iterator = typename storage_type::cell_iterator;
     using queue_type = Queue;
     using queued_handler = typename queue_type::value_type;
 
     pool_impl(std::size_t capacity,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout)
-            : _capacity(assert_capacity(capacity)),
-              _idle_timeout(idle_timeout),
+            : storage_(assert_capacity(capacity), idle_timeout),
+              _capacity(capacity),
               _callbacks(std::make_shared<queue_type>(queue_capacity)) {
-
-        for (std::size_t i = 0; i < _capacity; ++i) {
-            _wasted.emplace_back(idle());
-        }
     }
 
     template <class Generator>
@@ -117,14 +115,9 @@ public:
               std::size_t capacity,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout)
-            : _capacity(assert_capacity(capacity)),
-              _idle_timeout(idle_timeout),
+            : storage_(std::forward<Generator>(gen_value), assert_capacity(capacity), idle_timeout),
+              _capacity(assert_capacity(capacity)),
               _callbacks(std::make_shared<queue_type>(queue_capacity)) {
-
-        const auto drop_time = time_traits::add(time_traits::now(), _idle_timeout);
-        for (std::size_t i = 0; i < _capacity; ++i) {
-            _available.emplace_back(gen_value(), drop_time);
-        }
     }
 
     template <class Iter>
@@ -163,66 +156,61 @@ private:
     using lock_guard = std::lock_guard<mutex_t>;
 
     mutable mutex_t _mutex;
-    list _available;
-    list _used;
-    list _wasted;
+    storage_type storage_;
     const std::size_t _capacity;
-    const time_traits::duration _idle_timeout;
     std::shared_ptr<queue_type> _callbacks;
     bool _disabled = false;
 
-    std::size_t size_unsafe() const noexcept { return _available.size() + _used.size(); }
-    bool fit_capacity() const noexcept { return size_unsafe() < _capacity; }
-    template <class Handler>
-    bool reserve_resource(io_context_t& io_context, unique_lock& lock, Handler&& handler);
-    template <class Handler>
-    bool alloc_resource(io_context_t& io_context, unique_lock& lock, Handler&& handler);
-    template <class Serve>
-    void perform_one_request(unique_lock& lock, Serve&& serve);
+    void perform_one_request(unique_lock& lock);
 };
 
 template <class V, class M, class I, class Q>
 std::size_t pool_impl<V, M, I, Q>::size() const noexcept {
-    const lock_guard lock(_mutex);
-    return size_unsafe();
+    const auto stats = [&] {
+        const lock_guard lock(_mutex);
+        return storage_.stats();
+    } ();
+    return stats.available + stats.used;
 }
 
 template <class V, class M, class I, class Q>
 std::size_t pool_impl<V, M, I, Q>::available() const noexcept {
     const lock_guard lock(_mutex);
-    return _available.size();
+    return storage_.stats().available;
 }
 
 template <class V, class M, class I, class Q>
 std::size_t pool_impl<V, M, I, Q>::used() const noexcept {
     const lock_guard lock(_mutex);
-    return _used.size();
+    return storage_.stats().used;
 }
 
 template <class V, class M, class I, class Q>
 async::stats pool_impl<V, M, I, Q>::stats() const noexcept {
-    const lock_guard lock(_mutex);
-    return async::stats {size_unsafe(), _available.size(), _used.size(), _callbacks->size()};
+    const auto stats = [&] {
+        const lock_guard lock(_mutex);
+        return storage_.stats();
+    } ();
+    async::stats result;
+    result.size = stats.available + stats.used;
+    result.available = stats.available;
+    result.used = stats.used;
+    result.queue_size = _callbacks->size();
+    return result;
 }
 
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::recycle(list_iterator res_it) {
-    res_it->drop_time = time_traits::add(time_traits::now(), _idle_timeout);
     unique_lock lock(_mutex);
-    _available.splice(_available.end(), _used, res_it);
-    perform_one_request(lock, [&] (io_context_t& io, const queued_handler& handler) {
-        return alloc_resource(io, lock, handler);
-    });
+    storage_.recycle(res_it);
+    perform_one_request(lock);
 }
 
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::waste(list_iterator res_it) {
-    res_it->value.reset();
     unique_lock lock(_mutex);
-    _wasted.splice(_wasted.end(), _used, res_it);
-    perform_one_request(lock, [&] (io_context_t& io, const queued_handler& handler) {
-        return reserve_resource(io, lock, handler);
-    });
+    storage_.waste(res_it);
+    perform_one_request(lock);
 }
 
 template <class V, class M, class I, class Q>
@@ -237,40 +225,46 @@ void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, tim
                 list_iterator(),
                 std::forward<Handler>(handler)
             ));
-    } else if (alloc_resource(io_context, lock, std::forward<Handler>(handler))) {
         return;
-    } else if (fit_capacity()) {
-        reserve_resource(io_context, lock,  std::forward<Handler>(handler));
-    } else {
-        lock.unlock();
-        if (wait_duration.count() == 0) {
-            asio::post(io_context,
-                make_on_list_iterator_handler(
-                    make_error_code(error::get_resource_timeout),
-                    list_iterator(),
-                    std::forward<Handler>(handler)
-                ));
-        } else {
-            const bool pushed = _callbacks->push(
-                io_context,
-                make_queued_handler<list_iterator>(handler),
-                make_on_list_iterator_handler(
-                    make_error_code(error::get_resource_timeout),
-                    list_iterator(),
-                    handler
-                ),
-                wait_duration
-            );
-            if (!pushed) {
-                asio::post(io_context,
-                    make_on_list_iterator_handler(
-                        make_error_code(error::request_queue_overflow),
-                        list_iterator(),
-                        std::forward<Handler>(handler)
-                    ));
-            }
-        }
     }
+    if (const auto cell = storage_.lease()) {
+        lock.unlock();
+        asio::post(io_context,
+            make_on_list_iterator_handler(
+                boost::system::error_code(),
+                *cell,
+                std::forward<Handler>(handler)
+            ));
+        return;
+    }
+    lock.unlock();
+    if (wait_duration.count() == 0) {
+        asio::post(io_context,
+            make_on_list_iterator_handler(
+                make_error_code(error::get_resource_timeout),
+                list_iterator(),
+                std::forward<Handler>(handler)
+            ));
+        return;
+    }
+    const bool pushed = _callbacks->push(
+        io_context,
+        make_queued_handler<list_iterator>(handler),
+        make_on_list_iterator_handler(
+            make_error_code(error::get_resource_timeout),
+            list_iterator(),
+            handler
+        ),
+        wait_duration
+    );
+    if (pushed)
+        return;
+    asio::post(io_context,
+        make_on_list_iterator_handler(
+            make_error_code(error::request_queue_overflow),
+            list_iterator(),
+            std::forward<Handler>(handler)
+        ));
 }
 
 template <class V, class M, class I, class Q>
@@ -301,53 +295,20 @@ std::size_t pool_impl<V, M, I, Q>::assert_capacity(std::size_t value) {
 }
 
 template <class V, class M, class I, class Q>
-template <class Handler>
-bool pool_impl<V, M, I, Q>::alloc_resource(io_context_t& io_context, unique_lock& lock, Handler&& handler) {
-    while (!_available.empty()) {
-        const list_iterator res_it = _available.begin();
-        if (res_it->drop_time <= time_traits::now()) {
-            res_it->value.reset();
-            _wasted.splice(_wasted.end(), _available, res_it);
-            continue;
-        }
-        _used.splice(_used.end(), _available, res_it);
-        lock.unlock();
-        asio::post(io_context,
-            make_on_list_iterator_handler(
-                boost::system::error_code(),
-                res_it,
-                std::forward<Handler>(handler)
-            ));
-        return true;
-    }
-    return false;
-}
-
-template <class V, class M, class I, class Q>
-template <class Handler>
-bool pool_impl<V, M, I, Q>::reserve_resource(io_context_t& io_context, unique_lock& lock, Handler&& handler) {
-    const list_iterator res_it = _wasted.begin();
-    _used.splice(_used.end(), _wasted, res_it);
-    lock.unlock();
-    asio::post(io_context,
-        make_on_list_iterator_handler(
-            boost::system::error_code(),
-            res_it,
-            std::forward<Handler>(handler)
-        ));
-    return true;
-}
-
-template <class V, class M, class I, class Q>
-template <class Serve>
-void pool_impl<V, M, I, Q>::perform_one_request(unique_lock& lock, Serve&& serve) {
+void pool_impl<V, M, I, Q>::perform_one_request(unique_lock& lock) {
     io_context_t* io_context;
     queued_handler handler;
-    if (_callbacks->pop(io_context, handler)) {
-        if (!serve(*io_context, std::move(handler))) {
-            reserve_resource(*io_context, lock, std::move(handler));
-        }
-    }
+    if (!_callbacks->pop(io_context, handler))
+        return;
+    const auto cell = storage_.lease();
+    assert(cell);
+    lock.unlock();
+    asio::post(*io_context,
+        make_on_list_iterator_handler(
+            boost::system::error_code(),
+            *cell,
+            std::move(handler)
+        ));
 }
 
 using boost::asio::async_result;
