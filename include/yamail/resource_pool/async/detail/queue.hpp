@@ -99,7 +99,7 @@ private:
     };
 
     using request_multimap_value = typename expiring_request::multimap::value_type;
-    using timers_map = typename std::unordered_map<const io_context_t*, std::unique_ptr<timer_t>>;
+    using timers_map = typename std::unordered_map<const io_context_t*, timer_t>;
 
     const std::size_t _capacity;
     mutable mutex_t _mutex;
@@ -194,7 +194,7 @@ template <class V, class M, class I, class T>
 void queue<V, M, I, T>::update_timer() {
     using timers_map_value = typename timers_map::value_type;
     if (_expires_at_requests.empty()) {
-        std::for_each(_timers.begin(), _timers.end(), [] (timers_map_value& v) { v.second->cancel(); });
+        std::for_each(_timers.begin(), _timers.end(), [] (timers_map_value& v) { v.second.cancel(); });
         _timers.clear();
         return;
     }
@@ -214,9 +214,9 @@ template <class V, class M, class I, class T>
 typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::get_timer(io_context_t& io_context) {
     auto it = _timers.find(&io_context);
     if (it != _timers.end()) {
-        return *it->second;
+        return it->second;
     }
-    return *_timers.insert(std::make_pair(&io_context, std::make_unique<timer_t>(io_context))).first->second;
+    return _timers.emplace(&io_context, timer_t(io_context)).first->second;
 }
 
 } // namespace detail
