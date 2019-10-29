@@ -62,6 +62,7 @@ handle<P>::handle(handle&& other)
       _use_strategy(other._use_strategy),
       _resource_it(other._resource_it) {
     other._resource_it = boost::none;
+    other._pool_impl.reset();
 }
 
 template <class P>
@@ -77,6 +78,7 @@ handle<P>& handle<P>::operator =(handle&& other) {
     _use_strategy = other._use_strategy;
     _resource_it = other._resource_it;
     other._resource_it = boost::none;
+    other._pool_impl.reset();
     return *this;
 }
 
