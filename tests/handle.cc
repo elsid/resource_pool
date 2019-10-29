@@ -41,7 +41,7 @@ TEST(handle_test, construct_usable_should_be_not_unusable) {
     resources.emplace_back();
     const auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
-    EXPECT_FALSE(handle.unusable());
+    EXPECT_TRUE(handle.usable());
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 
@@ -51,7 +51,7 @@ TEST(handle_test, construct_usable_and_move_then_destination_should_contain_valu
     const auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     const resource_handle dst = std::move(src);
-    EXPECT_FALSE(dst.unusable());
+    EXPECT_TRUE(dst.usable());
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 
@@ -62,7 +62,7 @@ TEST(handle_test, construct_usable_and_move_over_assign_then_destination_should_
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     resource_handle dst;
     dst = std::move(src);
-    EXPECT_FALSE(dst.unusable());
+    EXPECT_TRUE(dst.usable());
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 

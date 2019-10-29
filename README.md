@@ -75,7 +75,7 @@ void recycle();
 
 Both methods makes handle unusable that could be checked by method:
 ```c++
-bool unusable() const;
+bool usable() const;
 ```
 
 Calling one of these methods for unusable handle throws an exception ```error::unusable_handle```.

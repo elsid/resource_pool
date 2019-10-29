@@ -46,7 +46,7 @@ TEST_F(async_resource_pool_integration, first_get_auto_recycle_should_return_usa
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle = pool.get_auto_recycle(io, yield);
-        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.usable());
         EXPECT_TRUE(handle.empty());
 
         ASSERT_FALSE(coroutine_finished.test_and_set());
@@ -63,13 +63,13 @@ TEST_F(async_resource_pool_integration, after_get_auto_recycle_pool_should_save_
     asio::spawn(io, [&] (asio::yield_context yield) {
         {
             auto handle = pool.get_auto_recycle(io, yield);
-            ASSERT_FALSE(handle.unusable());
+            ASSERT_TRUE(handle.usable());
             EXPECT_TRUE(handle.empty());
             handle.reset(resource {42});
         }
         {
             const auto handle = pool.get_auto_recycle(io, yield);
-            EXPECT_FALSE(handle.unusable());
+            EXPECT_TRUE(handle.usable());
             ASSERT_FALSE(handle.empty());
             EXPECT_EQ(*handle, resource {42});
         }
@@ -87,7 +87,7 @@ TEST_F(async_resource_pool_integration, parallel_requests_should_get_different_h
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle = pool.get_auto_recycle(io, yield);
-        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.usable());
         EXPECT_TRUE(handle.empty());
         handle.reset(resource {42});
 
@@ -96,7 +96,7 @@ TEST_F(async_resource_pool_integration, parallel_requests_should_get_different_h
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle = pool.get_auto_recycle(io, yield);
-        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.usable());
         EXPECT_TRUE(handle.empty());
         handle.reset(resource {13});
 
@@ -114,11 +114,11 @@ TEST_F(async_resource_pool_integration, sequenced_requests_should_get_different_
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         const auto handle1 = pool.get_auto_recycle(io, yield);
-        EXPECT_FALSE(handle1.unusable());
+        EXPECT_TRUE(handle1.usable());
         EXPECT_TRUE(handle1.empty());
 
         const auto handle2 = pool.get_auto_recycle(io, yield);
-        EXPECT_FALSE(handle2.unusable());
+        EXPECT_TRUE(handle2.usable());
         EXPECT_TRUE(handle2.empty());
 
         ASSERT_FALSE(coroutine_finished.test_and_set());
@@ -134,13 +134,13 @@ TEST_F(async_resource_pool_integration, request_with_zero_wait_duration_should_n
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle1 = pool.get_auto_recycle(io, yield);
-        EXPECT_FALSE(handle1.unusable());
+        EXPECT_TRUE(handle1.usable());
         EXPECT_TRUE(handle1.empty());
 
         error_code ec;
         auto handle2 = pool.get_auto_recycle(io, yield[ec], time_traits::duration(0));
         EXPECT_EQ(ec, error_code(error::get_resource_timeout));
-        EXPECT_TRUE(handle2.unusable());
+        EXPECT_FALSE(handle2.usable());
         EXPECT_TRUE(handle2.empty());
 
         ASSERT_FALSE(coroutine_finished.test_and_set());
@@ -158,14 +158,14 @@ TEST_F(async_resource_pool_integration, queue_should_store_pending_requests) {
         ASSERT_FALSE(on_get_called.test_and_set());
 
         EXPECT_FALSE(ec);
-        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.usable());
         ASSERT_FALSE(handle.empty());
         EXPECT_EQ(*handle, resource {42});
     };
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle = pool.get_auto_recycle(io, yield);
-        ASSERT_FALSE(handle.unusable());
+        ASSERT_TRUE(handle.usable());
         EXPECT_TRUE(handle.empty());
         handle.reset(resource {42});
 
@@ -185,13 +185,13 @@ TEST_F(async_resource_pool_integration, for_zero_queue_capacity_should_not_be_pe
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle1 = pool.get_auto_recycle(io, yield);
-        EXPECT_FALSE(handle1.unusable());
+        EXPECT_TRUE(handle1.usable());
         EXPECT_TRUE(handle1.empty());
 
         error_code ec;
         auto handle2 = pool.get_auto_recycle(io, yield[ec], time_traits::duration::max());
         EXPECT_EQ(ec, error_code(error::request_queue_overflow));
-        EXPECT_TRUE(handle2.unusable());
+        EXPECT_FALSE(handle2.usable());
         EXPECT_TRUE(handle2.empty());
 
         ASSERT_FALSE(coroutine_finished.test_and_set());
@@ -246,7 +246,7 @@ TEST_F(async_resource_pool_integration, first_get_auto_waste_should_return_usabl
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle = pool.get_auto_waste(io, yield);
-        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.usable());
         EXPECT_TRUE(handle.empty());
 
         ASSERT_FALSE(coroutine_finished.test_and_set());
@@ -263,13 +263,13 @@ TEST_F(async_resource_pool_integration, after_get_auto_waste_pool_should_reset_h
     asio::spawn(io, [&] (asio::yield_context yield) {
         {
             auto handle = pool.get_auto_waste(io, yield);
-            ASSERT_FALSE(handle.unusable());
+            ASSERT_TRUE(handle.usable());
             EXPECT_TRUE(handle.empty());
             handle.reset(resource {42});
         }
         {
             const auto handle = pool.get_auto_waste(io, yield);
-            EXPECT_FALSE(handle.unusable());
+            EXPECT_TRUE(handle.usable());
             EXPECT_TRUE(handle.empty());
         }
 
@@ -292,7 +292,7 @@ TEST_F(async_resource_pool_integration, disabled_pool_should_cancel_all_pending_
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle = pool->get_auto_recycle(io, yield);
-        ASSERT_FALSE(handle.unusable());
+        ASSERT_TRUE(handle.usable());
         EXPECT_TRUE(handle.empty());
         handle.reset(resource {42});
 
@@ -396,7 +396,7 @@ TEST_F(async_resource_pool_integration, enqueue_pending_request_on_timeout_shoul
         ASSERT_FALSE(on_get2_called.test_and_set());
 
         EXPECT_FALSE(ec);
-        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.usable());
         ASSERT_FALSE(handle.empty());
         EXPECT_EQ(*handle, resource {42});
     };
@@ -414,7 +414,7 @@ TEST_F(async_resource_pool_integration, enqueue_pending_request_on_timeout_shoul
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         auto handle = pool.get_auto_recycle(io, yield);
-        ASSERT_FALSE(handle.unusable());
+        ASSERT_TRUE(handle.usable());
         EXPECT_TRUE(handle.empty());
         handle.reset(resource {42});
 

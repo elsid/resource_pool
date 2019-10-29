@@ -137,7 +137,7 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_should_call_recycle) {
     auto& handle = res.second;
 
     EXPECT_EQ(ec, boost::system::error_code());
-    EXPECT_FALSE(handle.unusable());
+    EXPECT_TRUE(handle.usable());
     EXPECT_TRUE(handle.empty());
     EXPECT_NO_THROW(handle.reset(resource {}));
     EXPECT_NO_THROW(handle.get());
@@ -156,7 +156,7 @@ TEST_F(sync_resource_pool, get_auto_waste_handle_should_call_waste) {
     const auto res = pool.get_auto_waste();
     const auto& handle = res.second;
 
-    EXPECT_FALSE(handle.unusable());
+    EXPECT_TRUE(handle.usable());
 }
 
 TEST_F(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recycle_once) {
@@ -174,7 +174,7 @@ TEST_F(sync_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recyc
 
     handle.recycle();
 
-    EXPECT_TRUE(handle.unusable());
+    EXPECT_FALSE(handle.usable());
     EXPECT_THROW(handle.recycle(), error::unusable_handle);
     EXPECT_TRUE(handle.empty());
     EXPECT_THROW(handle.get(), error::empty_handle);

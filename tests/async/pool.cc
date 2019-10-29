@@ -122,7 +122,7 @@ public:
 
     void operator ()(const error_code& err, resource_pool::handle res) const {
         EXPECT_EQ(err, error);
-        EXPECT_EQ(res.unusable(), error != error_code());
+        EXPECT_EQ(res.usable(), error == error_code());
     }
 
 private:
@@ -160,7 +160,7 @@ TEST_F(async_resource_pool, get_auto_waste_handle_should_call_waste) {
 struct recycle_resource {
     void operator ()(const error_code& err, resource_pool::handle res) const {
         EXPECT_EQ(err, error_code());
-        EXPECT_FALSE(res.unusable());
+        EXPECT_TRUE(res.usable());
         res.recycle();
     }
 };
@@ -192,7 +192,7 @@ TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycl
 struct waste_resource {
     void operator ()(const error_code& err, resource_pool::handle res) const {
         EXPECT_EQ(err, error_code());
-        EXPECT_FALSE(res.unusable());
+        EXPECT_TRUE(res.usable());
         res.waste();
     }
 };

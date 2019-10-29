@@ -35,8 +35,9 @@ public:
     handle& operator =(const handle& other) = delete;
     handle& operator =(handle&& other);
 
-    bool unusable() const noexcept { return !static_cast<bool>(_resource_it); }
-    bool empty() const noexcept { return unusable() || !_resource_it.get()->value; }
+    bool usable() const noexcept { return static_cast<bool>(_resource_it); }
+    [[deprecated]] bool unusable() const noexcept { return !usable(); }
+    bool empty() const noexcept { return !usable() || !_resource_it.get()->value; }
     value_type& get();
     const value_type& get() const;
     value_type *operator ->() { return &get(); }
@@ -54,7 +55,7 @@ private:
     boost::optional<list_iterator> _resource_it;
 
     void assert_not_empty() const;
-    void assert_not_unusable() const;
+    void assert_usable() const;
 };
 
 template <class P>
@@ -68,7 +69,7 @@ handle<P>::handle(handle&& other)
 
 template <class P>
 handle<P>::~handle() {
-    if (!unusable()) {
+    if (usable()) {
         (this->*_use_strategy)();
     }
 }
@@ -100,21 +101,21 @@ const typename handle<P>::value_type& handle<P>::get() const {
 
 template <class P>
 void handle<P>::recycle() {
-    assert_not_unusable();
+    assert_usable();
     _pool_impl->recycle(_resource_it.get());
     _resource_it = boost::none;
 }
 
 template <class P>
 void handle<P>::waste() {
-    assert_not_unusable();
+    assert_usable();
     _pool_impl->waste(_resource_it.get());
     _resource_it = boost::none;
 }
 
 template <class P>
 void handle<P>::reset(value_type &&res) {
-    assert_not_unusable();
+    assert_usable();
     _resource_it.get()->value = std::move(res);
 }
 
@@ -126,8 +127,8 @@ void handle<P>::assert_not_empty() const {
 }
 
 template <class P>
-void handle<P>::assert_not_unusable() const {
-    if (unusable()) {
+void handle<P>::assert_usable() const {
+    if (!usable()) {
         throw error::unusable_handle();
     }
 }
