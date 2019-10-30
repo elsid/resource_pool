@@ -49,7 +49,7 @@ TEST(handle_test, construct_usable_should_be_not_unusable) {
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 
-TEST(handle_test, construct_usable_and_move_than_destination_should_contain_value) {
+TEST(handle_test, construct_usable_and_move_then_destination_should_contain_value) {
     std::list<idle> resources;
     resources.emplace_back(idle());
     const auto pool_impl = std::make_shared<pool::pool_impl>();
@@ -59,7 +59,7 @@ TEST(handle_test, construct_usable_and_move_than_destination_should_contain_valu
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 
-TEST(handle_test, construct_usable_and_move_over_assign_than_destination_should_contain_value) {
+TEST(handle_test, construct_usable_and_move_over_assign_then_destination_should_contain_value) {
     std::list<idle> resources;
     resources.emplace_back(idle());
     const auto pool_impl = std::make_shared<pool::pool_impl>();
@@ -70,7 +70,7 @@ TEST(handle_test, construct_usable_and_move_over_assign_than_destination_should_
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 
-TEST(handle_test, construct_usable_than_get_should_return_value) {
+TEST(handle_test, construct_usable_then_get_should_return_value) {
     std::list<idle> resources;
     resources.emplace_back(idle {resource(42)});
     auto pool_impl = std::make_shared<pool::pool_impl>();
@@ -79,7 +79,7 @@ TEST(handle_test, construct_usable_than_get_should_return_value) {
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
 }
 
-TEST(handle_test, construct_usable_than_get_const_should_return_value) {
+TEST(handle_test, construct_usable_then_get_const_should_return_value) {
     std::list<idle> resources;
     resources.emplace_back(idle {resource(42)});
     auto pool_impl = std::make_shared<pool::pool_impl>();
