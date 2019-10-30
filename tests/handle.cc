@@ -64,7 +64,7 @@ TEST(handle_test, construct_usable_and_move_over_assign_then_destination_should_
     resources.emplace_back(idle());
     const auto pool_impl = std::make_shared<pool::pool_impl>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
-    resource_handle dst(pool_impl, &resource_handle::waste, resources.end());
+    resource_handle dst;
     dst = std::move(src);
     EXPECT_FALSE(dst.unusable());
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
@@ -86,7 +86,21 @@ TEST(handle_test, construct_usable_then_get_const_should_return_value) {
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_EQ(42, handle->value);
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
+}
 
+TEST(handle_test, move_to_usable_should_release_replaced_resource) {
+    std::list<idle> resources(2);
+    const auto pool_impl = std::make_shared<pool::pool_impl>();
+    const auto src_res = resources.begin();
+    const auto dst_res = std::next(resources.begin());
+    resource_handle src(pool_impl, &resource_handle::waste, src_res);
+    resource_handle dst(pool_impl, &resource_handle::waste, dst_res);
+
+    EXPECT_CALL(*pool_impl, waste(dst_res)).WillOnce(Return());
+    dst = std::move(src);
+
+    EXPECT_FALSE(dst.unusable());
+    EXPECT_CALL(*pool_impl, waste(src_res)).WillOnce(Return());
 }
 
 }

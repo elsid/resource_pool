@@ -74,6 +74,9 @@ handle<P>::~handle() {
 
 template <class P>
 handle<P>& handle<P>::operator =(handle&& other) {
+    if (!unusable()) {
+        (this->*_use_strategy)();
+    }
     _pool_impl = other._pool_impl;
     _use_strategy = other._use_strategy;
     _resource_it = other._resource_it;
