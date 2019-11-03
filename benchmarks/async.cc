@@ -64,7 +64,9 @@ private:
     std::size_t queue_size_ = 0;
 };
 
-struct resource {};
+struct resource {
+    std::int64_t value = 0;
+};
 
 struct context {
     boost::asio::io_context io_context;
@@ -114,6 +116,7 @@ struct callback {
             if (handle.empty()) {
                 handle.reset(resource {});
             }
+            benchmark::DoNotOptimize(++handle->value);
             if (distrubution(generator) < recycle_probability) {
                 handle.recycle();
             }
@@ -208,6 +211,7 @@ void get_auto_waste_io_context_per_thread_on_coroutines(benchmark::State& state)
                         if (handle.empty()) {
                             handle.reset(resource {});
                         }
+                        benchmark::DoNotOptimize(++handle->value);
                         if (distrubution(generator) < recycle_probability) {
                             handle.recycle();
                         }
