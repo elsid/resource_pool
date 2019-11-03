@@ -169,8 +169,6 @@ private:
     const std::size_t _capacity;
     std::shared_ptr<queue_type> _callbacks;
     bool _disabled = false;
-
-    void perform_one_request(unique_lock& lock);
 };
 
 template <class V, class M, class I, class Q>
@@ -211,15 +209,38 @@ async::stats pool_impl<V, M, I, Q>::stats() const noexcept {
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::recycle(list_iterator res_it) {
     unique_lock lock(_mutex);
-    storage_.recycle(res_it);
-    perform_one_request(lock);
+    io_context_t* io_context = nullptr;
+    queued_handler handler;
+    if (!_callbacks->pop(io_context, handler)) {
+        storage_.recycle(res_it);
+        return;
+    }
+    lock.unlock();
+    asio::post(*io_context,
+        make_on_list_iterator_handler(
+            boost::system::error_code(),
+            res_it,
+            std::move(handler)
+        ));
 }
 
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
-    storage_.waste(res_it);
-    perform_one_request(lock);
+    io_context_t* io_context = nullptr;
+    queued_handler handler;
+    if (!_callbacks->pop(io_context, handler)) {
+        storage_.waste(res_it);
+        return;
+    }
+    lock.unlock();
+    res_it->value.reset();
+    asio::post(*io_context,
+        make_on_list_iterator_handler(
+            boost::system::error_code(),
+            res_it,
+            std::move(handler)
+        ));
 }
 
 template <class V, class M, class I, class Q>
@@ -301,23 +322,6 @@ std::size_t pool_impl<V, M, I, Q>::assert_capacity(std::size_t value) {
         throw error::zero_pool_capacity();
     }
     return value;
-}
-
-template <class V, class M, class I, class Q>
-void pool_impl<V, M, I, Q>::perform_one_request(unique_lock& lock) {
-    io_context_t* io_context;
-    queued_handler handler;
-    if (!_callbacks->pop(io_context, handler))
-        return;
-    const auto cell = storage_.lease();
-    assert(cell);
-    lock.unlock();
-    asio::post(*io_context,
-        make_on_list_iterator_handler(
-            boost::system::error_code(),
-            *cell,
-            std::move(handler)
-        ));
 }
 
 using boost::asio::async_result;

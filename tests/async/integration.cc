@@ -434,4 +434,32 @@ TEST_F(async_resource_pool_integration, enqueue_pending_request_on_timeout_shoul
     EXPECT_TRUE(coroutine_finished.test_and_set());
 }
 
+TEST_F(async_resource_pool_integration, pending_request_should_get_empty_handle_after_waste) {
+    resource_pool pool(1, 1);
+
+    const auto on_get = [&] (error_code ec, auto handle) {
+        ASSERT_FALSE(on_get_called.test_and_set());
+
+        EXPECT_FALSE(ec);
+        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.empty());
+    };
+
+    asio::spawn(io, [&] (asio::yield_context yield) {
+        auto handle = pool.get_auto_waste(io, yield);
+        ASSERT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.empty());
+        handle.reset(resource {42});
+
+        pool.get_auto_recycle(io, on_get, time_traits::duration::max());
+
+        ASSERT_FALSE(coroutine_finished.test_and_set());
+    });
+
+    io.run();
+
+    EXPECT_TRUE(on_get_called.test_and_set());
+    EXPECT_TRUE(coroutine_finished.test_and_set());
+}
+
 }
