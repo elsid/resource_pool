@@ -71,7 +71,6 @@ struct context {
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard = boost::asio::make_work_guard(io_context);
     std::atomic_bool stop {false};
     time_traits::duration timeout {std::chrono::milliseconds(100)};
-    double recycle_probability {0};
     std::vector<std::chrono::steady_clock::duration> durations;
     std::mutex get_next_mutex;
     std::condition_variable get_next;
