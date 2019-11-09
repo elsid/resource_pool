@@ -95,7 +95,7 @@ public:
     auto get_auto_waste(io_context_t& io_context, CompletionToken&& token,
                         time_traits::duration wait_duration = time_traits::duration(0)) {
         async_completion<CompletionToken> init(token);
-        get(io_context, init.completion_handler, &handle::waste, wait_duration);
+        get(io_context, std::move(init.completion_handler), &handle::waste, wait_duration);
         return init.result.get();
     }
 
@@ -103,7 +103,7 @@ public:
     auto get_auto_recycle(io_context_t& io_context, CompletionToken&& token,
                           time_traits::duration wait_duration = time_traits::duration(0)) {
         async_completion<CompletionToken> init(token);
-        get(io_context, init.completion_handler, &handle::recycle, wait_duration);
+        get(io_context, std::move(init.completion_handler), &handle::recycle, wait_duration);
         return init.result.get();
     }
 
@@ -122,10 +122,13 @@ private:
     public:
         using executor_type = std::decay_t<decltype(asio::get_associated_executor(handler))>;
 
-        on_get_handler(std::shared_ptr<pool_impl> impl, UseStrategy use_strategy, Handler handler)
+        template <class HandlerT>
+        on_get_handler(std::shared_ptr<pool_impl> impl, UseStrategy use_strategy, HandlerT&& handler)
             : impl(std::move(impl)),
               use_strategy(std::move(use_strategy)),
-              handler(std::move(handler)) {}
+              handler(std::forward<HandlerT>(handler)) {
+            static_assert(std::is_same<std::decay_t<HandlerT>, Handler>::value, "HandlerT is not Handler");
+        }
 
         void operator ()(const boost::system::error_code& ec, list_iterator res) {
             if (ec) {
