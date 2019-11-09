@@ -462,4 +462,31 @@ TEST_F(async_resource_pool_integration, pending_request_should_get_empty_handle_
     EXPECT_TRUE(coroutine_finished.test_and_set());
 }
 
+struct move_only_handler {
+    std::atomic_flag* called = nullptr;
+
+    move_only_handler() = default;
+    move_only_handler(std::atomic_flag* called) : called(called) {}
+    move_only_handler(const move_only_handler&) = delete;
+    move_only_handler(move_only_handler&&) = default;
+
+    void operator ()(error_code, resource_pool::handle) {
+        ASSERT_FALSE(called->test_and_set());
+    }
+};
+
+TEST_F(async_resource_pool_integration, get_auto_recycle_should_support_move_only_handler) {
+    resource_pool pool(1, 1);
+    pool.get_auto_recycle(io, move_only_handler(std::addressof(on_get_called)));
+    io.run();
+    EXPECT_TRUE(on_get_called.test_and_set());
+}
+
+TEST_F(async_resource_pool_integration, get_auto_waste_should_support_move_only_handler) {
+    resource_pool pool(1, 1);
+    pool.get_auto_waste(io, move_only_handler(std::addressof(on_get_called)));
+    io.run();
+    EXPECT_TRUE(on_get_called.test_and_set());
+}
+
 }
