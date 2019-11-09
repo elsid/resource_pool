@@ -30,6 +30,8 @@ namespace asio = boost::asio;
 
 template <class ListIterator, class Handler>
 class on_list_iterator_handler {
+    static_assert(std::is_invocable_v<Handler, boost::system::error_code, ListIterator>);
+
     boost::system::error_code error;
     ListIterator list_iterator;
     Handler handler;
@@ -61,28 +63,57 @@ auto make_on_list_iterator_handler(const boost::system::error_code& error, ListI
 }
 
 template <class ListIterator>
-class queued_handler;
+struct base_list_iterator_handler_impl {
+    virtual void operator ()(boost::system::error_code ec, ListIterator iterator) = 0;
+    virtual ~base_list_iterator_handler_impl() = default;
+};
 
-template <class T>
-struct is_queued_handler : std::false_type {};
+template <class ListIterator, class Handler>
+class list_iterator_handler_impl final : public base_list_iterator_handler_impl<ListIterator> {
+    static_assert(std::is_invocable_v<Handler, boost::system::error_code, ListIterator>);
 
-template <class T>
-struct is_queued_handler<queued_handler<T>> : std::true_type {};
+public:
+    template <class HandlerT>
+    list_iterator_handler_impl(HandlerT&& handler,
+            std::enable_if_t<!std::is_same_v<std::decay_t<HandlerT>, list_iterator_handler_impl>, void*> = nullptr)
+            : handler(std::forward<HandlerT>(handler)) {
+        static_assert(std::is_same_v<std::decay_t<HandlerT>, Handler>, "HandlerT is not Handler");
+    }
+
+    void operator ()(boost::system::error_code ec, ListIterator iterator) final {
+        handler(ec, iterator);
+    }
+
+private:
+    Handler handler;
+};
 
 template <class ListIterator>
-class queued_handler {
+class list_iterator_handler {
+    static_assert(!std::is_same_v<ListIterator, boost::system::error_code>);
+
 public:
     using executor_type = asio::executor;
 
-    queued_handler() = default;
+    list_iterator_handler() = default;
 
     template <class Handler>
-    explicit queued_handler(Handler&& handler, std::enable_if_t<!is_queued_handler<std::decay_t<Handler>>::value, void*> = nullptr)
-        : executor(asio::get_associated_executor(handler)),
-          handler(std::forward<Handler>(handler)) {}
+    list_iterator_handler(Handler&& handler,
+            std::enable_if_t<!std::is_same_v<std::decay_t<Handler>, list_iterator_handler>, void*> = nullptr)
+            : executor(asio::get_associated_executor(handler)),
+              impl(std::make_unique<list_iterator_handler_impl<ListIterator, std::decay_t<Handler>>>(std::forward<Handler>(handler))) {
+    }
 
-    void operator ()(const boost::system::error_code& error, ListIterator list_iterator) {
-        handler(error, list_iterator);
+    void operator ()(boost::system::error_code ec, ListIterator iterator) {
+        (*impl)(ec, iterator);
+    }
+
+    void operator ()(boost::system::error_code ec) {
+        (*impl)(ec, ListIterator());
+    }
+
+    void operator ()(ListIterator iterator) {
+        (*impl)(boost::system::error_code(), iterator);
     }
 
     auto get_executor() const noexcept {
@@ -91,14 +122,66 @@ public:
 
 private:
     asio::executor executor;
-    std::function<void (const boost::system::error_code&, ListIterator)> handler;
+    std::unique_ptr<base_list_iterator_handler_impl<ListIterator>> impl;
+};
+
+template <class Handler>
+class on_error_handler {
+    static_assert(std::is_invocable_v<Handler, boost::system::error_code>);
+
+    boost::system::error_code error;
+    Handler handler;
+
+public:
+    using executor_type = std::decay_t<decltype(asio::get_associated_executor(handler))>;
+
+    template <class HandlerT>
+    on_error_handler(boost::system::error_code error, HandlerT&& handler)
+            : error(error),
+              handler(std::forward<HandlerT>(handler)) {
+        static_assert(std::is_same_v<std::decay_t<HandlerT>, Handler>, "HandlerT is not Handler");
+    }
+
+    void operator ()() {
+        return handler(error);
+    }
+
+    auto get_executor() const noexcept {
+        return asio::get_associated_executor(handler);
+    }
+};
+
+template <class Handler>
+on_error_handler(boost::system::error_code, Handler&&) -> on_error_handler<std::decay_t<Handler>>;
+
+template <class ListIterator, class Handler>
+class on_serve_queued_handler {
+    static_assert(std::is_invocable_v<Handler, ListIterator>);
+
+    ListIterator list_iterator;
+    Handler handler;
+
+public:
+    using executor_type = std::decay_t<decltype(asio::get_associated_executor(handler))>;
+
+    template <class HandlerT>
+    on_serve_queued_handler(ListIterator list_iterator, HandlerT&& handler)
+            : list_iterator(list_iterator),
+              handler(std::forward<HandlerT>(handler)) {
+        static_assert(std::is_same_v<std::decay_t<HandlerT>, Handler>, "HandlerT is not Handler");
+    }
+
+    void operator ()() {
+        return handler(list_iterator);
+    }
+
+    auto get_executor() const noexcept {
+        return asio::get_associated_executor(handler);
+    }
 };
 
 template <class ListIterator, class Handler>
-auto make_queued_handler(Handler&& handler) {
-    using result_type = queued_handler<ListIterator>;
-    return result_type(std::forward<Handler>(handler));
-}
+on_serve_queued_handler(ListIterator, Handler&&) -> on_serve_queued_handler<ListIterator, std::decay_t<Handler>>;
 
 template <class Value, class Mutex, class IoContext, class Queue>
 class pool_impl {
@@ -109,7 +192,6 @@ public:
     using storage_type = resource_pool::detail::storage<value_type>;
     using list_iterator = typename storage_type::cell_iterator;
     using queue_type = Queue;
-    using queued_handler = typename queue_type::value_type;
 
     pool_impl(std::size_t capacity,
               std::size_t queue_capacity,
@@ -210,42 +292,34 @@ template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::recycle(list_iterator res_it) {
     unique_lock lock(_mutex);
     io_context_t* io_context = nullptr;
-    queued_handler handler;
+    list_iterator_handler<list_iterator> handler;
     if (!_callbacks->pop(io_context, handler)) {
         storage_.recycle(res_it);
         return;
     }
     lock.unlock();
-    asio::post(*io_context,
-        make_on_list_iterator_handler(
-            boost::system::error_code(),
-            res_it,
-            std::move(handler)
-        ));
+    asio::post(*io_context, on_serve_queued_handler(res_it, std::move(handler)));
 }
 
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
     io_context_t* io_context = nullptr;
-    queued_handler handler;
+    list_iterator_handler<list_iterator> handler;
     if (!_callbacks->pop(io_context, handler)) {
         storage_.waste(res_it);
         return;
     }
     lock.unlock();
     res_it->value.reset();
-    asio::post(*io_context,
-        make_on_list_iterator_handler(
-            boost::system::error_code(),
-            res_it,
-            std::move(handler)
-        ));
+    asio::post(*io_context, on_serve_queued_handler(res_it, std::move(handler)));
 }
 
 template <class V, class M, class I, class Q>
 template <class Handler>
 void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, time_traits::duration wait_duration) {
+    static_assert(std::is_invocable_v<std::decay_t<Handler>, boost::system::error_code, list_iterator>);
+
     unique_lock lock(_mutex);
     if (_disabled) {
         lock.unlock();
@@ -277,23 +351,15 @@ void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, tim
             ));
         return;
     }
-    const bool pushed = _callbacks->push(
-        io_context,
-        make_queued_handler<list_iterator>(handler),
-        make_on_list_iterator_handler(
-            make_error_code(error::get_resource_timeout),
-            list_iterator(),
-            handler
-        ),
-        wait_duration
-    );
-    if (pushed)
+    list_iterator_handler<list_iterator> wrapped(std::forward<Handler>(handler));
+    const bool pushed = _callbacks->push(io_context, wait_duration, std::move(wrapped));
+    if (pushed) {
         return;
+    }
     asio::post(io_context,
-        make_on_list_iterator_handler(
+        on_error_handler(
             make_error_code(error::request_queue_overflow),
-            list_iterator(),
-            std::forward<Handler>(handler)
+            std::move(wrapped)
         ));
 }
 
@@ -303,14 +369,13 @@ void pool_impl<V, M, I, Q>::disable() {
     _disabled = true;
     while (true) {
         io_context_t* io_context;
-        queued_handler handler;
+        list_iterator_handler<list_iterator> handler;
         if (!_callbacks->pop(io_context, handler)) {
             break;
         }
         asio::dispatch(*io_context,
-            make_on_list_iterator_handler(
+            on_error_handler(
                 make_error_code(error::disabled),
-                list_iterator(),
                 std::move(handler)
             ));
     }
