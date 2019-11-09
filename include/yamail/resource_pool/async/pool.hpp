@@ -19,7 +19,7 @@ struct default_pool_queue {
     using idle = resource_pool::detail::idle<value_type>;
     using list = std::list<idle>;
     using list_iterator = typename list::iterator;
-    using type = detail::queue<detail::queued_handler<list_iterator>, mutex_t, io_context_t, time_traits::timer>;
+    using type = detail::queue<detail::list_iterator_handler<list_iterator>, mutex_t, io_context_t, time_traits::timer>;
 };
 
 template <class Value, class Mutex, class IoContext>

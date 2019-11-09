@@ -23,38 +23,37 @@ namespace detail {
 
 using clock = std::chrono::steady_clock;
 
+template <class Handler>
 class expired_handler {
+    Handler handler;
+
 public:
-    using executor_type = asio::executor;
+    using executor_type = std::decay_t<decltype(asio::get_associated_executor(handler))>;
 
     expired_handler() = default;
 
-    template <class Handler>
-    explicit expired_handler(Handler&& handler)
-        : executor(asio::get_associated_executor(handler)),
-          handler(std::forward<Handler>(handler)) {}
+    template <class HandlerT>
+    explicit expired_handler(HandlerT&& handler,
+            std::enable_if_t<!std::is_same_v<std::decay_t<HandlerT>, expired_handler>, void*> = nullptr)
+            : handler(std::forward<HandlerT>(handler)) {
+        static_assert(std::is_same_v<std::decay_t<HandlerT>, Handler>, "HandlerT is not Handler");
+    }
 
     void operator ()() {
-        handler();
+        handler(make_error_code(error::get_resource_timeout));
     }
 
     void operator ()() const {
-        handler();
+        handler(make_error_code(error::get_resource_timeout));
     }
 
     auto get_executor() const noexcept {
-        return executor;
+        return asio::get_associated_executor(handler);
     }
-
-    void reset() {
-        executor = asio::executor();
-        handler = std::function<void ()>();
-    }
-
-private:
-    asio::executor executor;
-    std::function<void ()> handler;
 };
+
+template <class Handler>
+expired_handler(Handler&&) -> expired_handler<std::decay_t<Handler>>;
 
 template <class Value, class Mutex, class IoContext, class Timer>
 class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoContext, Timer>> {
@@ -74,10 +73,8 @@ public:
     bool empty() const noexcept;
     const timer_t& timer(io_context_t& io_context);
 
-    template <class Handler>
-    bool push(io_context_t& io_context, const value_type& req, Handler&& req_expired,
-              time_traits::duration wait_duration);
-    bool pop(io_context_t*& io_context, value_type& req);
+    bool push(io_context_t& io_context, time_traits::duration wait_duration, value_type&& request);
+    bool pop(io_context_t*& io_context, value_type& request);
 
 private:
     using mutex_t = Mutex;
@@ -91,7 +88,6 @@ private:
 
         io_context_t* io_context;
         queue::value_type request;
-        expired_handler expired;
         list_it order_it;
         multimap_it expires_at_it;
 
@@ -133,9 +129,7 @@ const typename queue<V, M, I, T>::timer_t& queue<V, M, I, T>::timer(io_context_t
 }
 
 template <class V, class M, class I, class T>
-template <class Handler>
-bool queue<V, M, I, T>::push(io_context_t& io_context, const value_type& req_data, Handler&& req_expired,
-        time_traits::duration wait_duration) {
+bool queue<V, M, I, T>::push(io_context_t& io_context, time_traits::duration wait_duration, value_type&& request) {
     const lock_guard lock(_mutex);
     if (!fit_capacity()) {
         return false;
@@ -147,8 +141,7 @@ bool queue<V, M, I, T>::push(io_context_t& io_context, const value_type& req_dat
     _ordered_requests.splice(_ordered_requests.end(), _ordered_requests_pool, order_it);
     expiring_request& req = *order_it;
     req.io_context = std::addressof(io_context);
-    req.request = req_data;
-    req.expired = expired_handler(std::forward<Handler>(req_expired));
+    req.request = std::move(request);
     req.order_it = order_it;
     const auto expires_at = time_traits::add(time_traits::now(), wait_duration);
     req.expires_at_it = _expires_at_requests.insert(std::make_pair(expires_at, &req));
@@ -157,7 +150,7 @@ bool queue<V, M, I, T>::push(io_context_t& io_context, const value_type& req_dat
 }
 
 template <class V, class M, class I, class T>
-bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& value) {
+bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& request) {
     const lock_guard lock(_mutex);
     if (_ordered_requests.empty()) {
         return false;
@@ -165,8 +158,7 @@ bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& value) {
     const auto ordered_it = _ordered_requests.begin();
     expiring_request& req = *ordered_it;
     io_context = req.io_context;
-    value = std::move(req.request);
-    req.expired.reset();
+    request = std::move(req.request);
     _expires_at_requests.erase(req.expires_at_it);
     _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, ordered_it);
     update_timer();
@@ -183,7 +175,7 @@ void queue<V, M, I, T>::cancel(const boost::system::error_code& ec, time_traits:
     const auto end = _expires_at_requests.upper_bound(expires_at);
     std::for_each(begin, end, [&] (request_multimap_value& v) {
         const auto req = v.second;
-        asio::post(*req->io_context, std::move(req->expired));
+        asio::post(*req->io_context, expired_handler(std::move(req->request)));
         _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, req->order_it);
     });
     _expires_at_requests.erase(_expires_at_requests.begin(), end);
