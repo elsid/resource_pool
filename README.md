@@ -6,6 +6,12 @@
 Header only library purposed to create pool of some resources like keep-alive connections.
 Supports sync and async interfaces. Based on boost.
 
+## Dependencies
+
+* **CMake** >= 3.12
+* **GCC** or **Clang** C++ compilers with C++17 support.
+* **Boost** >= 1.66
+
 ## Build
 
 Project uses CMake. Build need only to run tests, examples and benchmarks:
