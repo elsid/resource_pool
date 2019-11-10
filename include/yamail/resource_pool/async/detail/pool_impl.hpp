@@ -61,6 +61,15 @@ auto make_on_list_iterator_handler(const boost::system::error_code& error, ListI
 }
 
 template <class ListIterator>
+class queued_handler;
+
+template <class T>
+struct is_queued_handler : std::false_type {};
+
+template <class T>
+struct is_queued_handler<queued_handler<T>> : std::true_type {};
+
+template <class ListIterator>
 class queued_handler {
 public:
     using executor_type = asio::executor;
@@ -68,7 +77,7 @@ public:
     queued_handler() = default;
 
     template <class Handler>
-    explicit queued_handler(Handler&& handler)
+    explicit queued_handler(Handler&& handler, std::enable_if_t<!is_queued_handler<std::decay_t<Handler>>::value, void*> = nullptr)
         : executor(asio::get_associated_executor(handler)),
           handler(std::forward<Handler>(handler)) {}
 
