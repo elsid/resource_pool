@@ -41,14 +41,15 @@ public:
 
     on_list_iterator_handler() = default;
 
-    on_list_iterator_handler(const boost::system::error_code& error, ListIterator list_iterator, Handler handler)
-        : error(std::move(error)),
+    template <class HandlerT>
+    on_list_iterator_handler(boost::system::error_code error, ListIterator list_iterator, HandlerT&& handler)
+        : error(error),
           list_iterator(list_iterator),
-          handler(std::move(handler)) {}
+          handler(std::forward<HandlerT>(handler)) {}
 
     template <class ... Args>
     void operator ()() {
-        return handler(std::move(error), std::move(list_iterator));
+        return handler(error, list_iterator);
     }
 
     auto get_executor() const noexcept {
@@ -57,10 +58,8 @@ public:
 };
 
 template <class ListIterator, class Handler>
-auto make_on_list_iterator_handler(const boost::system::error_code& error, ListIterator list_iterator, Handler&& handler) {
-    using result_type = on_list_iterator_handler<std::decay_t<ListIterator>, std::decay_t<Handler>>;
-    return result_type(error, list_iterator, std::forward<Handler>(handler));
-}
+on_list_iterator_handler(boost::system::error_code, ListIterator, Handler&&)
+    -> on_list_iterator_handler<ListIterator, std::decay_t<Handler>>;
 
 template <class ListIterator>
 struct base_list_iterator_handler_impl {
@@ -324,7 +323,7 @@ void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, tim
     if (_disabled) {
         lock.unlock();
         asio::dispatch(io_context,
-            make_on_list_iterator_handler(
+            on_list_iterator_handler(
                 make_error_code(error::disabled),
                 list_iterator(),
                 std::forward<Handler>(handler)
@@ -334,7 +333,7 @@ void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, tim
     if (const auto cell = storage_.lease()) {
         lock.unlock();
         asio::post(io_context,
-            make_on_list_iterator_handler(
+            on_list_iterator_handler(
                 boost::system::error_code(),
                 *cell,
                 std::forward<Handler>(handler)
@@ -344,7 +343,7 @@ void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, tim
     lock.unlock();
     if (wait_duration.count() == 0) {
         asio::post(io_context,
-            make_on_list_iterator_handler(
+            on_list_iterator_handler(
                 make_error_code(error::get_resource_timeout),
                 list_iterator(),
                 std::forward<Handler>(handler)
