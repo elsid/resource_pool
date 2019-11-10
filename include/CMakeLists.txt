@@ -1,7 +1,7 @@
 find_package(Boost 1.66 REQUIRED COMPONENTS system thread REQUIRED)
 
 add_library(resource_pool INTERFACE)
-target_compile_features(resource_pool INTERFACE cxx_std_14)
+target_compile_features(resource_pool INTERFACE cxx_std_17)
 target_include_directories(resource_pool
         INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
