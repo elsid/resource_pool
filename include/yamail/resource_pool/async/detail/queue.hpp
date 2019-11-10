@@ -105,7 +105,7 @@ private:
     timers_map _timers;
 
     bool fit_capacity() const { return _expires_at_requests.size() < _capacity; }
-    void cancel(const boost::system::error_code& ec, time_traits::time_point expires_at);
+    void cancel(boost::system::error_code ec, time_traits::time_point expires_at);
     void update_timer();
     timer_t& get_timer(io_context_t& io_context);
 };
@@ -166,7 +166,7 @@ bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& request) {
 }
 
 template <class V, class M, class I, class T>
-void queue<V, M, I, T>::cancel(const boost::system::error_code& ec, time_traits::time_point expires_at) {
+void queue<V, M, I, T>::cancel(boost::system::error_code ec, time_traits::time_point expires_at) {
     if (ec) {
         return;
     }
@@ -195,7 +195,7 @@ void queue<V, M, I, T>::update_timer() {
     auto& timer = get_timer(*earliest_expire->second->io_context);
     timer.expires_at(expires_at);
     std::weak_ptr<queue> weak(this->shared_from_this());
-    timer.async_wait([weak, expires_at] (const boost::system::error_code& ec) {
+    timer.async_wait([weak, expires_at] (boost::system::error_code ec) {
         if (const auto locked = weak.lock()) {
             locked->cancel(ec, expires_at);
         }

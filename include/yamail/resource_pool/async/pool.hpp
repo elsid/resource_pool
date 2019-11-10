@@ -130,7 +130,7 @@ private:
             static_assert(std::is_same<std::decay_t<HandlerT>, Handler>::value, "HandlerT is not Handler");
         }
 
-        void operator ()(const boost::system::error_code& ec, list_iterator res) {
+        void operator ()(boost::system::error_code ec, list_iterator res) {
             if (ec) {
                 handler(ec, handle());
             } else {
