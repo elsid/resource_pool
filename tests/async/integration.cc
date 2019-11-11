@@ -31,14 +31,14 @@ using boost::system::error_code;
 
 struct async_resource_pool_integration : Test {
     asio::io_context io;
-    std::atomic_flag coroutine_finished {};
-    std::atomic_flag coroutine1_finished {};
-    std::atomic_flag coroutine2_finished {};
-    std::atomic_flag coroutine3_finished {};
-    std::atomic_flag on_get_called {};
-    std::atomic_flag on_get1_called {};
-    std::atomic_flag on_get2_called {};
-    std::atomic_flag on_get3_called {};
+    std::atomic_flag coroutine_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag coroutine1_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag coroutine2_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag coroutine3_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get_called = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get1_called = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get2_called = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get3_called = ATOMIC_FLAG_INIT;
 };
 
 TEST_F(async_resource_pool_integration, first_get_auto_recycle_should_return_usable_empty_handle_to_resource) {
