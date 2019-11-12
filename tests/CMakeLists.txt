@@ -79,7 +79,6 @@ add_executable(resource_pool_test
 add_dependencies(resource_pool_test googletest)
 
 set(LIBRARIES
-    rt
     pthread
     gtest
     gmock

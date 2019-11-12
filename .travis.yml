@@ -1,7 +1,7 @@
 language: cpp
-os: linux
 sudo: true
 dist: xenial
+osx_image: xcode11
 cache:
   ccache: true
   directories:
@@ -35,13 +35,23 @@ before_script:
 
 matrix:
   include:
-  - name: clang 6 release
+  - name: osx
+    os: osx
+    install:
+    - brew update
+    - brew upgrade cmake
+    - brew install ccache
+    script:
+    - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
+  - name: linux clang 6 release
+    os: linux
     env:
     - CXX_COMPILER: clang++-6.0
     - BOOST_MINOR: 66
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
-  - name: gcc 7 debug+coverage
+  - name: linux gcc 7 debug+coverage
+    os: linux
     env:
     - CXX_COMPILER: g++-7
     - BOOST_MINOR: 66
@@ -49,7 +59,8 @@ matrix:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/coverage.sh
     after_success:
     - bash <(curl -s https://codecov.io/bash)
-  - name: clang 6 boost 1.70
+  - name: linux clang 6 boost 1.70
+    os: linux
     env:
     - CXX_COMPILER: clang++-6.0
     - BOOST_MINOR: 70
@@ -58,7 +69,8 @@ matrix:
   - name: conan auto detect
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
-  - name: clang 8 release
+  - name: linux clang 8 release
+    os: linux
     env:
     - CXX_COMPILER: clang++-8
     - BOOST_MINOR: 70

@@ -5,6 +5,7 @@
 #include <boost/asio/post.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 
+#include <array>
 #include <atomic>
 #include <condition_variable>
 #include <iomanip>
@@ -122,7 +123,7 @@ struct callback {
     }
 };
 
-constexpr std::array<benchmark_args, 17> benchmarks{{
+const std::array<benchmark_args, 17> benchmarks{{
     benchmark_args().sequences(1).threads(1).resources(1).queue_size(0), // 0
     benchmark_args().sequences(2).threads(1).resources(1).queue_size(1), // 1
     benchmark_args().sequences(2).threads(1).resources(2).queue_size(0), // 2
