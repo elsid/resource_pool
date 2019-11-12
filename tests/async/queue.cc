@@ -153,11 +153,10 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     on_async_wait(error_code(make_error_code(operation_canceled)));
 
     EXPECT_FALSE(queue->empty());
-    mocked_io_context* io_context;
-    request_queue::value_type result;
-    EXPECT_TRUE(queue->pop(io_context, result));
-    EXPECT_EQ(io_context, &io1);
-    EXPECT_EQ(result.impl, expired);
+    const auto result = queue->pop();
+    ASSERT_TRUE(result);
+    EXPECT_EQ(&result->io_context, &io1);
+    EXPECT_EQ(result->request.impl, expired);
 }
 
 TEST_F(async_request_queue, push_into_queue_with_null_capacity_should_return_error) {
@@ -171,9 +170,7 @@ TEST_F(async_request_queue, pop_from_empty_should_return_error) {
     request_queue_ptr queue = make_queue(1);
 
     EXPECT_TRUE(queue->empty());
-    mocked_io_context* io_context;
-    request_queue::value_type result;
-    EXPECT_FALSE(queue->pop(io_context, result));
+    EXPECT_FALSE(queue->pop());
 }
 
 TEST_F(async_request_queue, push_twice_with_different_io_contexts_then_pop_twice_should_return_both_requests) {
@@ -204,17 +201,15 @@ TEST_F(async_request_queue, push_twice_with_different_io_contexts_then_pop_twice
 
     ASSERT_FALSE(queue->empty());
 
-    mocked_io_context* io_context1;
-    request_queue::value_type result1;
-    EXPECT_TRUE(queue->pop(io_context1, result1));
-    EXPECT_EQ(io_context1, &io1);
-    EXPECT_EQ(result1.impl, expired1);
+    const auto result1 = queue->pop();
+    ASSERT_TRUE(result1);
+    EXPECT_EQ(&result1->io_context, &io1);
+    EXPECT_EQ(result1->request.impl, expired1);
 
-    mocked_io_context* io_context2;
-    request_queue::value_type result2;
-    EXPECT_TRUE(queue->pop(io_context2, result2));
-    EXPECT_EQ(io_context2, &io2);
-    EXPECT_EQ(result2.impl, expired2);
+    const auto result2 = queue->pop();
+    ASSERT_TRUE(result2);
+    EXPECT_EQ(&result2->io_context, &io2);
+    EXPECT_EQ(result2->request.impl, expired2);
 }
 
 TEST_F(async_request_queue, push_twice_with_different_io_contexts_where_second_expires_before_first_then_pop_twice_should_return_both_requests) {
@@ -245,17 +240,15 @@ TEST_F(async_request_queue, push_twice_with_different_io_contexts_where_second_e
 
     ASSERT_FALSE(queue->empty());
 
-    mocked_io_context* io_context1;
-    request_queue::value_type result1;
-    EXPECT_TRUE(queue->pop(io_context1, result1));
-    EXPECT_EQ(io_context1, &io1);
-    EXPECT_EQ(result1.impl, expired1);
+    const auto result1 = queue->pop();
+    ASSERT_TRUE(result1);
+    EXPECT_EQ(&result1->io_context, &io1);
+    EXPECT_EQ(result1->request.impl, expired1);
 
-    mocked_io_context* io_context2;
-    request_queue::value_type result2;
-    EXPECT_TRUE(queue->pop(io_context2, result2));
-    EXPECT_EQ(io_context2, &io2);
-    EXPECT_EQ(result2.impl, expired2);
+    const auto result2 = queue->pop();
+    ASSERT_TRUE(result2);
+    EXPECT_EQ(&result2->io_context, &io2);
+    EXPECT_EQ(result2->request.impl, expired2);
 }
 
 TEST_F(async_request_queue, push_twice_with_different_io_serivices_and_timeout_both_requests_then_queue_should_be_empty) {

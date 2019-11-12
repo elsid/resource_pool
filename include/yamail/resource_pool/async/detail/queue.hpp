@@ -55,12 +55,19 @@ public:
 template <class Handler>
 expired_handler(Handler&&) -> expired_handler<std::decay_t<Handler>>;
 
+template <class Value, class IoContext>
+struct queued_value {
+    Value request;
+    IoContext& io_context;
+};
+
 template <class Value, class Mutex, class IoContext, class Timer>
 class queue : public std::enable_shared_from_this<queue<Value, Mutex, IoContext, Timer>> {
 public:
     using value_type = Value;
     using io_context_t = IoContext;
     using timer_t = Timer;
+    using queued_value_t = queued_value<value_type, io_context_t>;
 
     queue(std::size_t capacity) : _capacity(capacity) {}
 
@@ -74,7 +81,7 @@ public:
     const timer_t& timer(io_context_t& io_context);
 
     bool push(io_context_t& io_context, time_traits::duration wait_duration, value_type&& request);
-    bool pop(io_context_t*& io_context, value_type& request);
+    boost::optional<queued_value_t> pop();
 
 private:
     using mutex_t = Mutex;
@@ -150,19 +157,18 @@ bool queue<V, M, I, T>::push(io_context_t& io_context, time_traits::duration wai
 }
 
 template <class V, class M, class I, class T>
-bool queue<V, M, I, T>::pop(io_context_t*& io_context, value_type& request) {
+boost::optional<typename queue<V, M, I, T>::queued_value_t> queue<V, M, I, T>::pop() {
     const lock_guard lock(_mutex);
     if (_ordered_requests.empty()) {
-        return false;
+        return {};
     }
     const auto ordered_it = _ordered_requests.begin();
     expiring_request& req = *ordered_it;
-    io_context = req.io_context;
-    request = std::move(req.request);
+    queued_value_t result {std::move(req.request), *req.io_context};
     _expires_at_requests.erase(req.expires_at_it);
     _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, ordered_it);
     update_timer();
-    return true;
+    return result;
 }
 
 template <class V, class M, class I, class T>
