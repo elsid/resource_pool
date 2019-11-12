@@ -76,7 +76,9 @@ add_executable(resource_pool_test
     async/integration.cc
 )
 
-add_dependencies(resource_pool_test googletest)
+if(TARGET googletest)
+    add_dependencies(resource_pool_test googletest)
+endif()
 
 set(LIBRARIES
     pthread
