@@ -66,9 +66,6 @@ matrix:
     - BOOST_MINOR: 70
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
-  - name: conan auto detect
-    script:
-    - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
   - name: linux clang 8 release
     os: linux
     env:
@@ -76,3 +73,6 @@ matrix:
     - BOOST_MINOR: 70
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
+  - name: conan auto detect
+    script:
+    - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
