@@ -11,9 +11,10 @@ using namespace yamail::resource_pool::async::detail;
 struct mocked_queue {
     using list_iterator = std::list<detail::idle<resource>>::iterator;
     using value_type = list_iterator_handler<list_iterator>;
+    using queued_value_t = queued_value<value_type, mocked_io_context>;
 
     MOCK_CONST_METHOD3(push, bool (mocked_io_context&, time_traits::duration, const value_type&));
-    MOCK_CONST_METHOD2(pop, bool (mocked_io_context*&, value_type&));
+    MOCK_CONST_METHOD0(pop, boost::optional<queued_value_t> ());
     MOCK_CONST_METHOD0(size, std::size_t ());
 
     mocked_queue(std::size_t) {}
@@ -21,6 +22,11 @@ struct mocked_queue {
 
 using resource_pool_impl = pool_impl<resource, std::mutex, mocked_io_context, mocked_queue>;
 using resource_ptr_list_iterator = resource_pool_impl::list_iterator;
+using queued_value_t = mocked_queue::queued_value_t;
+
+auto make_queued_value(mocked_queue::value_type&& request, mocked_io_context& io) {
+    return boost::optional<queued_value_t>(queued_value_t {std::move(request), io});
+}
 
 }
 
@@ -201,10 +207,6 @@ private:
     resource_pool_impl& pool;
 };
 
-ACTION_P(SetMoveArgReferee1, ref) {
-    arg1 = std::move(ref.get());
-}
-
 ACTION_P(SaveMoveArg2, ptr) {
     *ptr = std::move(const_cast<std::decay_t<decltype(arg2)>&>(arg2));
 }
@@ -227,7 +229,7 @@ TEST_F(async_resource_pool_impl, get_one_and_recycle_should_make_one_available_r
     resource_pool_impl pool(1, 0, time_traits::duration::max());
 
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
 
     pool.get(io, recycle_resource(pool));
     on_get();
@@ -239,7 +241,7 @@ TEST_F(async_resource_pool_impl, get_one_and_waste_should_make_no_available_reso
     resource_pool_impl pool(1, 0, time_traits::duration::max());
 
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
 
     pool.get(io, waste_resource(pool));
     on_get();
@@ -253,12 +255,12 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_make_one_available
     InSequence s;
 
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     pool.get(io, recycle_resource(pool));
     on_first_get();
 
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     pool.get(io, recycle_resource(pool), time_traits::duration(1));
     on_second_get();
 
@@ -275,9 +277,9 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_should_use_queue_and_make
     pool.get(io, recycle_resource(pool));
     pool.get(io, recycle_resource(pool), time_traits::duration(1));
 
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(DoAll(SetArgReferee<0>(&io), SetMoveArgReferee1(std::ref(on_get_res)), Return(true)));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(make_queued_value(std::move(on_get_res), io))));
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     on_first_get();
     on_second_get();
 
@@ -294,9 +296,9 @@ TEST_F(async_resource_pool_impl, get_twice_and_recycle_with_zero_idle_timeout_sh
     pool.get(io, recycle_resource(pool));
     pool.get(io, recycle_resource(pool), time_traits::duration(1));
 
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(DoAll(SetArgReferee<0>(&io), SetMoveArgReferee1(std::ref(on_get_res)), Return(true)));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(make_queued_value(std::move(on_get_res), io))));
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     on_first_get();
     on_second_get();
 
@@ -313,9 +315,9 @@ TEST_F(async_resource_pool_impl, get_twice_and_waste_then_get_should_use_queue) 
     pool.get(io, waste_resource(pool));
     pool.get(io, waste_resource(pool), time_traits::duration(1));
 
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(DoAll(SetArgReferee<0>(&io), SetMoveArgReferee1(std::ref(on_get_res)), Return(true)));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(make_queued_value(std::move(on_get_res), io))));
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     on_first_get();
     on_second_get();
 
@@ -347,7 +349,7 @@ TEST_F(async_resource_pool_impl, get_with_queue_zero_capacity_use_should_return_
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_first_get));
     EXPECT_CALL(pool.queue(), push(_, _, _)).WillOnce(Return(false));
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
 
     pool.get(io, recycle_resource(pool));
     pool.get(io, check_error(error::request_queue_overflow), time_traits::duration(1));
@@ -378,7 +380,7 @@ TEST_F(async_resource_pool_impl, get_with_queue_use_with_zero_wait_duration_shou
 
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_first_get));
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_second_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
 
     pool.get(io, recycle_resource(pool));
     pool.get(io, check_error(error::get_resource_timeout), time_traits::duration(0));
@@ -393,7 +395,7 @@ TEST_F(async_resource_pool_impl, get_after_disable_returns_error) {
 
     InSequence s;
 
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     EXPECT_CALL(executor, dispatch(_)).WillOnce(SaveArg<0>(&on_get));
 
     pool.disable();
@@ -411,10 +413,10 @@ TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
     pool.get(io, recycle_resource(pool));
     pool.get(io, check_error(error::disabled), time_traits::duration(1));
 
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(DoAll(SetArgReferee<0>(&io), SetMoveArgReferee1(std::ref(on_get_res)), Return(true)));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(make_queued_value(std::move(on_get_res), io))));
     EXPECT_CALL(executor, dispatch(_)).WillOnce(SaveArg<0>(&on_second_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     pool.disable();
     on_first_get();
     on_second_get();
@@ -467,7 +469,7 @@ TEST_F(async_resource_pool_impl, get_one_set_and_recycle_with_zero_idle_timeout_
     InSequence s;
 
     EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    EXPECT_CALL(pool.queue(), pop(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
     pool.get(io, set_and_recycle_resource(pool));
     on_first_get();
 

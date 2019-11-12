@@ -290,28 +290,26 @@ async::stats pool_impl<V, M, I, Q>::stats() const noexcept {
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::recycle(list_iterator res_it) {
     unique_lock lock(_mutex);
-    io_context_t* io_context = nullptr;
-    list_iterator_handler<list_iterator> handler;
-    if (!_callbacks->pop(io_context, handler)) {
+    auto queued = _callbacks->pop();
+    if (!queued) {
         storage_.recycle(res_it);
         return;
     }
     lock.unlock();
-    asio::post(*io_context, on_serve_queued_handler(res_it, std::move(handler)));
+    asio::post(queued->io_context, on_serve_queued_handler(res_it, std::move(queued->request)));
 }
 
 template <class V, class M, class I, class Q>
 void pool_impl<V, M, I, Q>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
-    io_context_t* io_context = nullptr;
-    list_iterator_handler<list_iterator> handler;
-    if (!_callbacks->pop(io_context, handler)) {
+    auto queued = _callbacks->pop();
+    if (!queued) {
         storage_.waste(res_it);
         return;
     }
     lock.unlock();
     res_it->value.reset();
-    asio::post(*io_context, on_serve_queued_handler(res_it, std::move(handler)));
+    asio::post(queued->io_context, on_serve_queued_handler(res_it, std::move(queued->request)));
 }
 
 template <class V, class M, class I, class Q>
@@ -367,15 +365,14 @@ void pool_impl<V, M, I, Q>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     while (true) {
-        io_context_t* io_context;
-        list_iterator_handler<list_iterator> handler;
-        if (!_callbacks->pop(io_context, handler)) {
+        auto queued = _callbacks->pop();
+        if (!queued) {
             break;
         }
-        asio::dispatch(*io_context,
+        asio::dispatch(queued->io_context,
             on_error_handler(
                 make_error_code(error::disabled),
-                std::move(handler)
+                std::move(queued->request)
             ));
     }
 }
