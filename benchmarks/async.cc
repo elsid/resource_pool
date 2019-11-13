@@ -3,7 +3,6 @@
 #include <benchmark/benchmark.h>
 
 #include <boost/asio/post.hpp>
-#include <boost/numeric/conversion/cast.hpp>
 
 #include <array>
 #include <atomic>
@@ -69,16 +68,27 @@ struct resource {
     std::int64_t value = 0;
 };
 
+struct stub_mutex {
+    stub_mutex() = default;
+    stub_mutex(const stub_mutex&) = delete;
+    void lock() {}
+    void unlock() {}
+};
+
+struct single_thread {};
+struct multi_thread {};
+
+template <class Threading>
 struct context {
     boost::asio::io_context io_context;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard = boost::asio::make_work_guard(io_context);
-    std::atomic_bool stop {false};
+    std::conditional_t<std::is_same_v<Threading, multi_thread>, std::atomic_bool, bool> stop {false};
     time_traits::duration timeout {std::chrono::milliseconds(100)};
     std::vector<std::chrono::steady_clock::duration> durations;
     std::mutex get_next_mutex;
     std::condition_variable get_next;
     std::unique_lock<std::mutex> get_next_lock {get_next_mutex};
-    std::atomic<std::int64_t> ready_count {0};
+    std::conditional_t<std::is_same_v<Threading, multi_thread>, std::atomic<std::int64_t>, std::int64_t> ready_count {0};
 
     void wait_next() {
         if (--ready_count < 0) {
@@ -88,7 +98,9 @@ struct context {
 
     void allow_next() {
         ++ready_count;
-        get_next.notify_one();
+        if constexpr (std::is_same_v<Threading, multi_thread>) {
+            get_next.notify_one();
+        }
     }
 
     void finish() {
@@ -97,11 +109,16 @@ struct context {
     }
 };
 
+template <class Threading>
 struct callback {
-    context& ctx;
-    async::pool<resource>& pool;
+    using mutex_t = std::conditional_t<std::is_same_v<Threading, multi_thread>, std::mutex, stub_mutex>;
+    using pool_t = async::pool<resource, mutex_t>;
+    using handle_t = typename pool_t::handle;
 
-    void operator ()(const boost::system::error_code& ec, async::pool<resource>::handle handle) {
+    context<Threading>& ctx;
+    pool_t& pool;
+
+    void operator ()(const boost::system::error_code& ec, handle_t handle) {
         impl(ec, std::move(handle));
         if (!ctx.stop) {
             pool.get_auto_waste(ctx.io_context, *this, ctx.timeout);
@@ -109,7 +126,7 @@ struct callback {
         ctx.allow_next();
     }
 
-    void impl(const boost::system::error_code& ec, async::pool<resource>::handle handle) {
+    void impl(const boost::system::error_code& ec, handle_t handle) {
         static thread_local std::minstd_rand generator(std::hash<std::thread::id>()(std::this_thread::get_id()));
         static std::uniform_real_distribution<> distrubution(0, 1);
         constexpr const double recycle_probability = 0.5;
@@ -145,42 +162,40 @@ const std::array<benchmark_args, 17> benchmarks{{
     benchmark_args().sequences(10000).threads(2).resources(10).queue_size(9990), // 16
 }};
 
-void get_auto_waste(benchmark::State& state) {
-    const auto& args = benchmarks[boost::numeric_cast<std::size_t>(state.range(0))];
-    context ctx;
-    std::vector<std::thread> workers;
-    for (std::size_t i = 0; i < args.threads(); ++i) {
-        workers.emplace_back(std::thread([&] { return ctx.io_context.run(); }));
-    }
-    async::pool<resource> pool(args.resources(), args.queue_size());
-    callback cb {ctx, pool};
+void get_auto_waste_callbacks_st(benchmark::State& state) {
+    const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
+    context<single_thread> ctx;
+    async::pool<resource, stub_mutex> pool(args.resources(), args.queue_size());
+    callback<single_thread> cb {ctx, pool};
     for (std::size_t i = 0; i < args.sequences(); ++i) {
         pool.get_auto_waste(ctx.io_context, cb, ctx.timeout);
     }
     while (state.KeepRunning()) {
-        ctx.wait_next();
+        const auto ready_count = ctx.ready_count;
+        do {
+            ctx.io_context.run_one();
+        } while (ready_count == ctx.ready_count);
     }
     ctx.finish();
-    std::for_each(workers.begin(), workers.end(), [] (auto& v) { v.join(); });
 }
 
 struct thread_context {
-    context impl;
+    context<multi_thread> impl;
     std::thread thread;
 
     thread_context()
         : thread([this] { this->impl.io_context.run(); }) {}
 };
 
-void get_auto_waste_io_context_per_thread(benchmark::State& state) {
-    const auto& args = benchmarks[boost::numeric_cast<std::size_t>(state.range(0))];
+void get_auto_waste_callbacks_mt(benchmark::State& state) {
+    const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
     std::vector<std::unique_ptr<thread_context>> threads;
     for (std::size_t i = 0; i < args.threads(); ++i) {
         threads.emplace_back(std::make_unique<thread_context>());
     }
     async::pool<resource> pool(args.resources(), args.queue_size());
     for (const auto& ctx : threads) {
-        callback cb {ctx->impl, pool};
+        callback<multi_thread> cb {ctx->impl, pool};
         for (std::size_t i = 0; i < args.sequences(); ++i) {
             pool.get_auto_waste(ctx->impl.io_context, cb, ctx->impl.timeout);
         }
@@ -192,8 +207,51 @@ void get_auto_waste_io_context_per_thread(benchmark::State& state) {
     std::for_each(threads.begin(), threads.end(), [] (const auto& ctx) { ctx->thread.join(); });
 }
 
-void get_auto_waste_io_context_per_thread_on_coroutines(benchmark::State& state) {
-    const auto& args = benchmarks[boost::numeric_cast<std::size_t>(state.range(0))];
+void get_auto_waste_callbacks(benchmark::State& state) {
+    const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
+    if (args.threads() > 1) {
+        get_auto_waste_callbacks_mt(state);
+    } else {
+        get_auto_waste_callbacks_st(state);
+    }
+}
+
+void get_auto_waste_coroutines_st(benchmark::State& state) {
+    const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
+    context<single_thread> ctx;
+    async::pool<resource, stub_mutex> pool(args.resources(), args.queue_size());
+    for (std::size_t i = 0; i < args.sequences(); ++i) {
+        boost::asio::spawn(ctx.io_context, [&] (boost::asio::yield_context yield) {
+            static thread_local std::minstd_rand generator(std::hash<std::thread::id>()(std::this_thread::get_id()));
+            std::uniform_real_distribution<> distrubution(0, 1);
+            constexpr const double recycle_probability = 0.5;
+            while (!ctx.stop) {
+                boost::system::error_code ec;
+                auto handle = pool.get_auto_waste(ctx.io_context, yield[ec], ctx.timeout);
+                if (!ec) {
+                    if (handle.empty()) {
+                        handle.reset(resource {});
+                    }
+                    benchmark::DoNotOptimize(++handle->value);
+                    if (distrubution(generator) < recycle_probability) {
+                        handle.recycle();
+                    }
+                    ctx.allow_next();
+                }
+            }
+        });
+    }
+    while (state.KeepRunning()) {
+        const auto ready_count = ctx.ready_count;
+        do {
+            ctx.io_context.run_one();
+        } while (ready_count == ctx.ready_count);
+    }
+    ctx.finish();
+}
+
+void get_auto_waste_coroutines_mt(benchmark::State& state) {
+    const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
     std::vector<std::unique_ptr<thread_context>> threads;
     for (std::size_t i = 0; i < args.threads(); ++i) {
         threads.emplace_back(std::make_unique<thread_context>());
@@ -229,6 +287,15 @@ void get_auto_waste_io_context_per_thread_on_coroutines(benchmark::State& state)
     std::for_each(threads.begin(), threads.end(), [] (const auto& ctx) { ctx->thread.join(); });
 }
 
+void get_auto_waste_coroutines(benchmark::State& state) {
+    const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
+    if (args.threads() > 1) {
+        get_auto_waste_coroutines_st(state);
+    } else {
+        get_auto_waste_coroutines_mt(state);
+    }
+}
+
 void all_benchmarks(benchmark::internal::Benchmark* b) {
     for (std::size_t n = 0; n < benchmarks.size(); ++n) {
         b->Arg(static_cast<int>(n));
@@ -237,8 +304,7 @@ void all_benchmarks(benchmark::internal::Benchmark* b) {
 
 }
 
-BENCHMARK(get_auto_waste)->Apply(all_benchmarks);
-BENCHMARK(get_auto_waste_io_context_per_thread)->Apply(all_benchmarks);
-BENCHMARK(get_auto_waste_io_context_per_thread_on_coroutines)->Apply(all_benchmarks);
+BENCHMARK(get_auto_waste_callbacks)->Apply(all_benchmarks);
+BENCHMARK(get_auto_waste_coroutines)->Apply(all_benchmarks);
 
 BENCHMARK_MAIN();
