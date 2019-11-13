@@ -39,16 +39,42 @@ struct timer {
     }
 };
 
-using request_queue = queue<request, std::mutex, mocked_io_context, timer>;
-using request_queue_ptr = std::shared_ptr<request_queue>;
-
 using boost::system::error_code;
 
 struct mocked_callback {
-    MOCK_CONST_METHOD0(call, void ());
+    MOCK_CONST_METHOD1(call, void (error_code));
 };
 
-using mocked_callback_ptr = std::shared_ptr<mocked_callback>;
+using mocked_callback_ptr = std::shared_ptr<const mocked_callback>;
+
+struct callback {
+    mocked_callback_ptr impl;
+
+    using result_type = void;
+
+    callback() = default;
+
+    callback(const callback&) = delete;
+
+    callback(callback&&) = default;
+
+    callback(const mocked_callback_ptr& impl) : impl(impl) {}
+
+    callback& operator =(const callback&) = delete;
+
+    callback& operator =(callback&&) = default;
+
+    result_type operator ()(error_code ec) const {
+        return impl->call(ec);
+    }
+
+    void reset() {
+        impl.reset();
+    }
+};
+
+using request_queue = queue<callback, std::mutex, mocked_io_context, timer>;
+using request_queue_ptr = std::shared_ptr<request_queue>;
 
 struct async_request_queue : Test {
     StrictMock<executor_gmock> executor1;
@@ -92,18 +118,6 @@ TEST_F(async_request_queue, create_ptr_then_call_shared_from_this_should_return_
     EXPECT_EQ(queue->shared_from_this(), queue);
 }
 
-class callback {
-public:
-    using result_type = void;
-
-    callback(const mocked_callback_ptr& impl) : impl(impl) {}
-
-    result_type operator ()() const { return impl->call(); }
-
-private:
-    mocked_callback_ptr impl;
-};
-
 TEST_F(async_request_queue, push_then_timeout_request_queue_should_be_empty) {
     request_queue_ptr queue = make_queue(1);
 
@@ -112,10 +126,10 @@ TEST_F(async_request_queue, push_then_timeout_request_queue_should_be_empty) {
     EXPECT_CALL(*queue->timer(io1).impl, expires_at(_)).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io1).impl, async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
     EXPECT_CALL(executor1, post(_)).WillOnce(InvokeArgument<0>());
-    EXPECT_CALL(*expired, call()).WillOnce(Return());
+    EXPECT_CALL(*expired, call(_)).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io1).impl, cancel()).WillOnce(Return());
 
-    ASSERT_TRUE(queue->push(io1, request {0}, callback(expired), time_traits::duration(0)));
+    ASSERT_TRUE(queue->push(io1, time_traits::duration(0), callback(expired)));
 
     on_async_wait(error_code());
 
@@ -130,10 +144,9 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     EXPECT_CALL(*queue->timer(io1).impl, expires_at(_)).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io1).impl, async_wait(_)).WillOnce(SaveArg<0>(&on_async_wait));
     EXPECT_CALL(*queue->timer(io1).impl, cancel()).WillOnce(Return());
-    EXPECT_CALL(*expired, call()).Times(0);
+    EXPECT_CALL(*expired, call(_)).Times(0);
 
-    request req {42};
-    EXPECT_TRUE(queue->push(io1, req, callback(expired), time_traits::duration(1)));
+    EXPECT_TRUE(queue->push(io1, time_traits::duration(1), callback(expired)));
 
     using namespace boost::system::errc;
 
@@ -144,13 +157,13 @@ TEST_F(async_request_queue, push_then_pop_should_return_request) {
     request_queue::value_type result;
     EXPECT_TRUE(queue->pop(io_context, result));
     EXPECT_EQ(io_context, &io1);
-    EXPECT_EQ(result.value, req.value);
+    EXPECT_EQ(result.impl, expired);
 }
 
 TEST_F(async_request_queue, push_into_queue_with_null_capacity_should_return_error) {
     request_queue_ptr queue = make_queue(0);
 
-    const bool result = queue->push(io1, request {0}, callback(expired), time_traits::duration(0));
+    const bool result = queue->push(io1, time_traits::duration(0), callback(expired));
     EXPECT_FALSE(result);
 }
 
@@ -181,14 +194,11 @@ TEST_F(async_request_queue, push_twice_with_different_io_contexts_then_pop_twice
     EXPECT_CALL(*queue->timer(io2).impl, async_wait(_)).InSequence(s).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io1).impl, cancel()).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io2).impl, cancel()).WillOnce(Return());
-    EXPECT_CALL(*expired1, call()).Times(0);
-    EXPECT_CALL(*expired2, call()).Times(0);
+    EXPECT_CALL(*expired1, call(_)).Times(0);
+    EXPECT_CALL(*expired2, call(_)).Times(0);
 
-    request req1 {42};
-    EXPECT_TRUE(queue->push(io1, req1, callback(expired1), time_traits::duration(1)));
-
-    request req2 {13};
-    EXPECT_TRUE(queue->push(io2, req2, callback(expired2), time_traits::duration(1)));
+    EXPECT_TRUE(queue->push(io1, time_traits::duration(1), callback(expired1)));
+    EXPECT_TRUE(queue->push(io2, time_traits::duration(1), callback(expired2)));
 
     using namespace boost::system::errc;
 
@@ -198,13 +208,13 @@ TEST_F(async_request_queue, push_twice_with_different_io_contexts_then_pop_twice
     request_queue::value_type result1;
     EXPECT_TRUE(queue->pop(io_context1, result1));
     EXPECT_EQ(io_context1, &io1);
-    EXPECT_EQ(result1.value, req1.value);
+    EXPECT_EQ(result1.impl, expired1);
 
     mocked_io_context* io_context2;
     request_queue::value_type result2;
     EXPECT_TRUE(queue->pop(io_context2, result2));
     EXPECT_EQ(io_context2, &io2);
-    EXPECT_EQ(result2.value, req2.value);
+    EXPECT_EQ(result2.impl, expired2);
 }
 
 TEST_F(async_request_queue, push_twice_with_different_io_contexts_where_second_expires_before_first_then_pop_twice_should_return_both_requests) {
@@ -225,14 +235,11 @@ TEST_F(async_request_queue, push_twice_with_different_io_contexts_where_second_e
     EXPECT_CALL(*queue->timer(io2).impl, async_wait(_)).InSequence(s).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io1).impl, cancel()).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io2).impl, cancel()).WillOnce(Return());
-    EXPECT_CALL(*expired1, call()).Times(0);
-    EXPECT_CALL(*expired2, call()).Times(0);
+    EXPECT_CALL(*expired1, call(_)).Times(0);
+    EXPECT_CALL(*expired2, call(_)).Times(0);
 
-    request req1 {42};
-    EXPECT_TRUE(queue->push(io1, req1, callback(expired1), time_traits::duration::max()));
-
-    request req2 {13};
-    EXPECT_TRUE(queue->push(io2, req2, callback(expired2), time_traits::duration::max() / 2));
+    EXPECT_TRUE(queue->push(io1, time_traits::duration::max(), callback(expired1)));
+    EXPECT_TRUE(queue->push(io2, time_traits::duration::max() / 2, callback(expired2)));
 
     using namespace boost::system::errc;
 
@@ -242,13 +249,13 @@ TEST_F(async_request_queue, push_twice_with_different_io_contexts_where_second_e
     request_queue::value_type result1;
     EXPECT_TRUE(queue->pop(io_context1, result1));
     EXPECT_EQ(io_context1, &io1);
-    EXPECT_EQ(result1.value, req1.value);
+    EXPECT_EQ(result1.impl, expired1);
 
     mocked_io_context* io_context2;
     request_queue::value_type result2;
     EXPECT_TRUE(queue->pop(io_context2, result2));
     EXPECT_EQ(io_context2, &io2);
-    EXPECT_EQ(result2.value, req2.value);
+    EXPECT_EQ(result2.impl, expired2);
 }
 
 TEST_F(async_request_queue, push_twice_with_different_io_serivices_and_timeout_both_requests_then_queue_should_be_empty) {
@@ -268,16 +275,16 @@ TEST_F(async_request_queue, push_twice_with_different_io_serivices_and_timeout_b
     EXPECT_CALL(*queue->timer(io1).impl, expires_at(_)).InSequence(s).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io1).impl, async_wait(_)).InSequence(s).WillOnce(SaveArg<0>(&on_async_wait1));
     EXPECT_CALL(executor1, post(_)).InSequence(s).WillOnce(InvokeArgument<0>());
-    EXPECT_CALL(*expired1, call()).InSequence(s).WillOnce(Return());
+    EXPECT_CALL(*expired1, call(_)).InSequence(s).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io2).impl, expires_at(_)).InSequence(s).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io2).impl, async_wait(_)).InSequence(s).WillOnce(SaveArg<0>(&on_async_wait2));
     EXPECT_CALL(executor2, post(_)).InSequence(s).WillOnce(InvokeArgument<0>());
-    EXPECT_CALL(*expired2, call()).InSequence(s).WillOnce(Return());
+    EXPECT_CALL(*expired2, call(_)).InSequence(s).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io1).impl, cancel()).WillOnce(Return());
     EXPECT_CALL(*queue->timer(io2).impl, cancel()).WillOnce(Return());
 
-    ASSERT_TRUE(queue->push(io1, request {42}, callback(expired1), time_traits::duration(0)));
-    ASSERT_TRUE(queue->push(io2, request {13}, callback(expired2), time_traits::duration(0)));
+    ASSERT_TRUE(queue->push(io1, time_traits::duration(0), callback(expired1)));
+    ASSERT_TRUE(queue->push(io2, time_traits::duration(0), callback(expired2)));
 
     on_async_wait1(error_code());
     on_async_wait2(error_code());

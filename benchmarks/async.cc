@@ -65,14 +65,15 @@ private:
     std::size_t queue_size_ = 0;
 };
 
-struct resource {};
+struct resource {
+    std::int64_t value = 0;
+};
 
 struct context {
     boost::asio::io_context io_context;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard = boost::asio::make_work_guard(io_context);
     std::atomic_bool stop {false};
     time_traits::duration timeout {std::chrono::milliseconds(100)};
-    double recycle_probability {0};
     std::vector<std::chrono::steady_clock::duration> durations;
     std::mutex get_next_mutex;
     std::condition_variable get_next;
@@ -116,6 +117,7 @@ struct callback {
             if (handle.empty()) {
                 handle.reset(resource {});
             }
+            benchmark::DoNotOptimize(++handle->value);
             if (distrubution(generator) < recycle_probability) {
                 handle.recycle();
             }
@@ -210,6 +212,7 @@ void get_auto_waste_io_context_per_thread_on_coroutines(benchmark::State& state)
                         if (handle.empty()) {
                             handle.reset(resource {});
                         }
+                        benchmark::DoNotOptimize(++handle->value);
                         if (distrubution(generator) < recycle_probability) {
                             handle.recycle();
                         }

@@ -31,14 +31,14 @@ using boost::system::error_code;
 
 struct async_resource_pool_integration : Test {
     asio::io_context io;
-    std::atomic_flag coroutine_finished {};
-    std::atomic_flag coroutine1_finished {};
-    std::atomic_flag coroutine2_finished {};
-    std::atomic_flag coroutine3_finished {};
-    std::atomic_flag on_get_called {};
-    std::atomic_flag on_get1_called {};
-    std::atomic_flag on_get2_called {};
-    std::atomic_flag on_get3_called {};
+    std::atomic_flag coroutine_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag coroutine1_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag coroutine2_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag coroutine3_finished = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get_called = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get1_called = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get2_called = ATOMIC_FLAG_INIT;
+    std::atomic_flag on_get3_called = ATOMIC_FLAG_INIT;
 };
 
 TEST_F(async_resource_pool_integration, first_get_auto_recycle_should_return_usable_empty_handle_to_resource) {
@@ -432,6 +432,61 @@ TEST_F(async_resource_pool_integration, enqueue_pending_request_on_timeout_shoul
     EXPECT_TRUE(on_get1_called.test_and_set());
     EXPECT_TRUE(on_get2_called.test_and_set());
     EXPECT_TRUE(coroutine_finished.test_and_set());
+}
+
+TEST_F(async_resource_pool_integration, pending_request_should_get_empty_handle_after_waste) {
+    resource_pool pool(1, 1);
+
+    const auto on_get = [&] (error_code ec, auto handle) {
+        ASSERT_FALSE(on_get_called.test_and_set());
+
+        EXPECT_FALSE(ec);
+        EXPECT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.empty());
+    };
+
+    asio::spawn(io, [&] (asio::yield_context yield) {
+        auto handle = pool.get_auto_waste(io, yield);
+        ASSERT_FALSE(handle.unusable());
+        EXPECT_TRUE(handle.empty());
+        handle.reset(resource {42});
+
+        pool.get_auto_recycle(io, on_get, time_traits::duration::max());
+
+        ASSERT_FALSE(coroutine_finished.test_and_set());
+    });
+
+    io.run();
+
+    EXPECT_TRUE(on_get_called.test_and_set());
+    EXPECT_TRUE(coroutine_finished.test_and_set());
+}
+
+struct move_only_handler {
+    std::atomic_flag* called = nullptr;
+
+    move_only_handler() = default;
+    move_only_handler(std::atomic_flag* called) : called(called) {}
+    move_only_handler(const move_only_handler&) = delete;
+    move_only_handler(move_only_handler&&) = default;
+
+    void operator ()(error_code, resource_pool::handle) {
+        ASSERT_FALSE(called->test_and_set());
+    }
+};
+
+TEST_F(async_resource_pool_integration, get_auto_recycle_should_support_move_only_handler) {
+    resource_pool pool(1, 1);
+    pool.get_auto_recycle(io, move_only_handler(std::addressof(on_get_called)));
+    io.run();
+    EXPECT_TRUE(on_get_called.test_and_set());
+}
+
+TEST_F(async_resource_pool_integration, get_auto_waste_should_support_move_only_handler) {
+    resource_pool pool(1, 1);
+    pool.get_auto_waste(io, move_only_handler(std::addressof(on_get_called)));
+    io.run();
+    EXPECT_TRUE(on_get_called.test_and_set());
 }
 
 }
