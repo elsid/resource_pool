@@ -34,13 +34,13 @@ Include as subdirectory into your CMake project or copy folder include.
 
 ### Handle
 
-The handle contains iterator to ```boost::optional``` of resource value in pool.
+The handle contains iterator to ```std::optional``` of resource value in pool.
 Declared as type [handle](include/yamail/resource_pool/handle.hpp#L11-L56).
 Constructs with one of strategies that uses in destructor:
 * waste -- resets iterator if handle is usable.
 * recycle -- returns iterator to pool if handle is usable.
 
-Pool contains slots for resources that means handle iterator may refers to empty ```boost::optional```.
+Pool contains slots for resources that means handle iterator may refers to empty ```std::optional```.
 Client always must check value before using by method:
 ```c++
 bool empty() const;
@@ -93,7 +93,7 @@ template <class Value
 class pool;
 ```
 
-Pool holds ```boost::optional``` of resource type.
+Pool holds ```std::optional``` of resource type.
 
 Example:
 ```c++
@@ -161,7 +161,7 @@ template <class Value,
 class pool;
 ```
 
-Pool holds ```boost::optional``` of resource type.
+Pool holds ```std::optional``` of resource type.
 
 Example:
 ```c++

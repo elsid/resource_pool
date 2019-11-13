@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <list>
+#include <optional>
 
 namespace yamail {
 namespace resource_pool {
@@ -36,7 +37,7 @@ public:
 
     inline storage_stats stats() const;
 
-    inline boost::optional<cell_iterator> lease();
+    inline std::optional<cell_iterator> lease();
 
     inline void recycle(cell_iterator cell);
 
@@ -91,7 +92,7 @@ storage_stats storage<T>::stats() const {
 }
 
 template <class T>
-boost::optional<typename storage<T>::cell_iterator> storage<T>::lease() {
+std::optional<typename storage<T>::cell_iterator> storage<T>::lease() {
     const auto now = time_traits::now();
     while (!available_.empty()) {
         const auto candidate = available_.begin();

@@ -3,9 +3,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <boost/optional.hpp>
-
 #include <list>
+#include <optional>
 
 namespace {
 

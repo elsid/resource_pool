@@ -5,9 +5,8 @@
 #include <yamail/resource_pool/detail/storage.hpp>
 #include <yamail/resource_pool/error.hpp>
 
-#include <boost/optional.hpp>
-
 #include <memory>
+#include <optional>
 
 namespace yamail {
 namespace resource_pool {
@@ -36,7 +35,7 @@ public:
     handle& operator =(handle&& other);
 
     bool unusable() const noexcept { return !static_cast<bool>(_resource_it); }
-    bool empty() const noexcept { return unusable() || !_resource_it.get()->value; }
+    bool empty() const noexcept { return unusable() || !_resource_it.value()->value; }
     value_type& get();
     const value_type& get() const;
     value_type *operator ->() { return &get(); }
@@ -51,7 +50,7 @@ public:
 private:
     std::shared_ptr<detail::pool_returns<value_type>> _pool_impl;
     strategy _use_strategy;
-    boost::optional<list_iterator> _resource_it;
+    std::optional<list_iterator> _resource_it;
 
     void assert_not_empty() const;
     void assert_not_unusable() const;
@@ -62,7 +61,7 @@ handle<P>::handle(handle&& other)
     : _pool_impl(other._pool_impl),
       _use_strategy(other._use_strategy),
       _resource_it(other._resource_it) {
-    other._resource_it = boost::none;
+    other._resource_it = std::nullopt;
     other._pool_impl.reset();
 }
 
@@ -81,7 +80,7 @@ handle<P>& handle<P>::operator =(handle&& other) {
     _pool_impl = other._pool_impl;
     _use_strategy = other._use_strategy;
     _resource_it = other._resource_it;
-    other._resource_it = boost::none;
+    other._resource_it = std::nullopt;
     other._pool_impl.reset();
     return *this;
 }
@@ -89,33 +88,33 @@ handle<P>& handle<P>::operator =(handle&& other) {
 template <class P>
 typename handle<P>::value_type& handle<P>::get() {
     assert_not_empty();
-    return *_resource_it.get()->value;
+    return *_resource_it.value()->value;
 }
 
 template <class P>
 const typename handle<P>::value_type& handle<P>::get() const {
     assert_not_empty();
-    return *_resource_it.get()->value;
+    return *_resource_it.value()->value;
 }
 
 template <class P>
 void handle<P>::recycle() {
     assert_not_unusable();
-    _pool_impl->recycle(_resource_it.get());
-    _resource_it = boost::none;
+    _pool_impl->recycle(_resource_it.value());
+    _resource_it = std::nullopt;
 }
 
 template <class P>
 void handle<P>::waste() {
     assert_not_unusable();
-    _pool_impl->waste(_resource_it.get());
-    _resource_it = boost::none;
+    _pool_impl->waste(_resource_it.value());
+    _resource_it = std::nullopt;
 }
 
 template <class P>
 void handle<P>::reset(value_type &&res) {
     assert_not_unusable();
-    _resource_it.get()->value = std::move(res);
+    _resource_it.value()->value = std::move(res);
 }
 
 template <class P>
