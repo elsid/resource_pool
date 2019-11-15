@@ -18,11 +18,15 @@ class pool {
 public:
     using value_type = Value;
     using pool_impl = Impl;
-    using handle = resource_pool::handle<pool_impl>;
+    using handle = resource_pool::handle<value_type>;
     using get_result = std::pair<boost::system::error_code, handle>;
 
     pool(std::size_t capacity, time_traits::duration idle_timeout = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(capacity, idle_timeout))
+    {}
+
+    pool(std::shared_ptr<pool_impl> impl)
+            : _impl(std::move(impl))
     {}
 
     pool(const pool&) = delete;
@@ -42,8 +46,6 @@ public:
     std::size_t available() const { return _impl->available(); }
     std::size_t used() const { return _impl->used(); }
     sync::stats stats() const { return _impl->stats(); }
-
-    const pool_impl& impl() const { return *_impl; }
 
     get_result get_auto_waste(time_traits::duration wait_duration = time_traits::duration(0)) {
         return get_handle(&handle::waste, wait_duration);
