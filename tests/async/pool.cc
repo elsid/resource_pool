@@ -8,7 +8,9 @@ using namespace tests;
 using namespace yamail::resource_pool;
 using namespace yamail::resource_pool::async;
 
-struct mocked_pool_impl {
+using yamail::resource_pool::detail::pool_returns;
+
+struct mocked_pool_impl : pool_returns<resource> {
     using value_type = resource;
     using idle = yamail::resource_pool::detail::idle<value_type>;
     using list = std::list<idle>;
@@ -20,15 +22,13 @@ struct mocked_pool_impl {
     MOCK_CONST_METHOD0(available, std::size_t ());
     MOCK_CONST_METHOD0(used, std::size_t ());
     MOCK_CONST_METHOD0(stats, async::stats ());
-    MOCK_CONST_METHOD3(get, void (mocked_io_context&, const callback&, time_traits::duration));
-    MOCK_CONST_METHOD1(recycle, void (list_iterator));
-    MOCK_CONST_METHOD1(waste, void (list_iterator));
-    MOCK_CONST_METHOD0(disable, void ());
-
-    mocked_pool_impl(std::size_t, std::size_t, time_traits::duration) {}
+    MOCK_METHOD3(get, void (mocked_io_context&, const callback&, time_traits::duration));
+    MOCK_METHOD1(recycle, void (list_iterator));
+    MOCK_METHOD1(waste, void (list_iterator));
+    MOCK_METHOD0(disable, void ());
 };
 
-using resource_pool = pool<resource, std::mutex, mocked_io_context, mocked_pool_impl>;
+using resource_pool = pool<resource, std::mutex, mocked_io_context, StrictMock<mocked_pool_impl>>;
 
 using boost::system::error_code;
 
@@ -44,74 +44,75 @@ struct async_resource_pool : Test {
         : resources(1), resource_iterator(resources.begin()) {}
 };
 
-TEST_F(async_resource_pool, create_without_mocks_should_succeed) {
-    boost::asio::io_context io;
-    pool<resource>(1, 1);
-}
-
 TEST_F(async_resource_pool, call_capacity_should_call_impl_capacity) {
-    const resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    const resource_pool pool(pool_impl);
 
     InSequence s;
 
-    EXPECT_CALL(pool.impl(), capacity()).WillOnce(Return(0));
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, capacity()).WillOnce(Return(0));
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.capacity();
 }
 
 TEST_F(async_resource_pool, call_size_should_call_impl_size) {
-    const resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    const resource_pool pool(pool_impl);
 
     InSequence s;
 
-    EXPECT_CALL(pool.impl(), size()).WillOnce(Return(0));
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, size()).WillOnce(Return(0));
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.size();
 }
 
 TEST_F(async_resource_pool, call_available_should_call_impl_available) {
-    const resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    const resource_pool pool(pool_impl);
 
     InSequence s;
 
-    EXPECT_CALL(pool.impl(), available()).WillOnce(Return(0));
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, available()).WillOnce(Return(0));
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.available();
 }
 
 TEST_F(async_resource_pool, call_used_should_call_impl_used) {
-    const resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    const resource_pool pool(pool_impl);
 
     InSequence s;
 
-    EXPECT_CALL(pool.impl(), used()).WillOnce(Return(0));
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, used()).WillOnce(Return(0));
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.used();
 }
 
 TEST_F(async_resource_pool, call_stats_should_call_impl_stats) {
-    const resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    const resource_pool pool(pool_impl);
 
     InSequence s;
 
-    EXPECT_CALL(pool.impl(), stats()).WillOnce(Return(async::stats {0, 0, 0, 0}));
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, stats()).WillOnce(Return(async::stats {0, 0, 0, 0}));
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.stats();
 }
 
 TEST_F(async_resource_pool, move_than_dtor_should_call_disable_only_for_destination) {
-    resource_pool src(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool src(pool_impl);
 
-    EXPECT_CALL(src.impl(), disable()).Times(0);
+    EXPECT_CALL(*pool_impl, disable()).Times(0);
 
     const auto dst = std::move(src);
 
-    EXPECT_CALL(dst.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 }
 
 class check_error {
@@ -133,22 +134,24 @@ struct check_no_error : check_error {
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_should_call_recycle) {
-    resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool pool(pool_impl);
 
-    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
-    EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
+    EXPECT_CALL(*pool_impl, recycle(_)).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.get_auto_recycle(io, check_no_error());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_should_call_waste) {
-    resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool pool(pool_impl);
 
-    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
-    EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
+    EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.get_auto_waste(io, check_no_error());
     on_get(error_code(), resource_iterator);
@@ -163,22 +166,24 @@ struct recycle_resource {
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_recycle_should_call_recycle_once) {
-    resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool pool(pool_impl);
 
-    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
-    EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
+    EXPECT_CALL(*pool_impl, recycle(_)).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.get_auto_recycle(io, recycle_resource());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_and_recycle_should_call_recycle_once) {
-    resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool pool(pool_impl);
 
-    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
-    EXPECT_CALL(pool.impl(), recycle(_)).WillOnce(Return());
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
+    EXPECT_CALL(*pool_impl, recycle(_)).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.get_auto_waste(io, recycle_resource());
     on_get(error_code(), resource_iterator);
@@ -193,34 +198,37 @@ struct waste_resource {
 };
 
 TEST_F(async_resource_pool, get_auto_recylce_handle_and_waste_should_call_waste_once) {
-    resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool pool(pool_impl);
 
-    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
-    EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
+    EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.get_auto_recycle(io, waste_resource());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_auto_waste_handle_and_waste_should_call_waste_once) {
-    resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool pool(pool_impl);
 
-    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
-    EXPECT_CALL(pool.impl(), waste(_)).WillOnce(Return());
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
+    EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.get_auto_waste(io, waste_resource());
     on_get(error_code(), resource_iterator);
 }
 
 TEST_F(async_resource_pool, get_from_pool_returns_error_should_not_call_waste_or_recycle) {
-    resource_pool pool(0, 0);
+    const auto pool_impl = std::make_shared<StrictMock<mocked_pool_impl>>();
+    resource_pool pool(pool_impl);
 
-    EXPECT_CALL(pool.impl(), get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
-    EXPECT_CALL(pool.impl(), waste(_)).Times(0);
-    EXPECT_CALL(pool.impl(), recycle(_)).Times(0);
-    EXPECT_CALL(pool.impl(), disable()).WillOnce(Return());
+    EXPECT_CALL(*pool_impl, get(_, _, _)).WillOnce(SaveArg<1>(&on_get));
+    EXPECT_CALL(*pool_impl, waste(_)).Times(0);
+    EXPECT_CALL(*pool_impl, recycle(_)).Times(0);
+    EXPECT_CALL(*pool_impl, disable()).WillOnce(Return());
 
     pool.get_auto_waste(io, check_error(error::get_resource_timeout));
     on_get(make_error_code(error::get_resource_timeout), mocked_pool_impl::list_iterator());

@@ -11,6 +11,9 @@ namespace {
 
 using namespace testing;
 
+using yamail::resource_pool::time_traits;
+using yamail::resource_pool::detail::pool_returns;
+
 struct handle_test : Test {};
 
 struct resource {
@@ -23,27 +26,20 @@ struct resource {
     resource& operator =(resource &&) = default;
 };
 
-struct idle {
-    boost::optional<resource> value;
+using list_iterator = yamail::resource_pool::detail::cell_iterator<resource>;
+
+struct pool_impl_mock : pool_returns<resource> {
+    MOCK_METHOD1(recycle, void (list_iterator));
+    MOCK_METHOD1(waste, void (list_iterator));
 };
 
-struct pool {
-    struct pool_impl {
-        using value_type = resource;
-        using list_iterator = std::list<idle>::iterator;
-
-        MOCK_METHOD1(waste, void (list_iterator));
-    };
-
-    using list_iterator = pool_impl::list_iterator;
-};
-
-using resource_handle = yamail::resource_pool::handle<pool::pool_impl>;
+using idle = yamail::resource_pool::detail::idle<resource>;
+using resource_handle = yamail::resource_pool::handle<resource>;
 
 TEST(handle_test, construct_usable_should_be_not_unusable) {
     std::list<idle> resources;
-    resources.emplace_back(idle());
-    const auto pool_impl = std::make_shared<pool::pool_impl>();
+    resources.emplace_back();
+    const auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_FALSE(handle.unusable());
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
@@ -51,8 +47,8 @@ TEST(handle_test, construct_usable_should_be_not_unusable) {
 
 TEST(handle_test, construct_usable_and_move_then_destination_should_contain_value) {
     std::list<idle> resources;
-    resources.emplace_back(idle());
-    const auto pool_impl = std::make_shared<pool::pool_impl>();
+    resources.emplace_back();
+    const auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     const resource_handle dst = std::move(src);
     EXPECT_FALSE(dst.unusable());
@@ -61,8 +57,8 @@ TEST(handle_test, construct_usable_and_move_then_destination_should_contain_valu
 
 TEST(handle_test, construct_usable_and_move_over_assign_then_destination_should_contain_value) {
     std::list<idle> resources;
-    resources.emplace_back(idle());
-    const auto pool_impl = std::make_shared<pool::pool_impl>();
+    resources.emplace_back();
+    const auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     resource_handle src(pool_impl, &resource_handle::waste, resources.begin());
     resource_handle dst;
     dst = std::move(src);
@@ -72,8 +68,8 @@ TEST(handle_test, construct_usable_and_move_over_assign_then_destination_should_
 
 TEST(handle_test, construct_usable_then_get_should_return_value) {
     std::list<idle> resources;
-    resources.emplace_back(idle {resource(42)});
-    auto pool_impl = std::make_shared<pool::pool_impl>();
+    resources.emplace_back(resource(42), time_traits::time_point());
+    auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_EQ(42, handle->value);
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
@@ -81,8 +77,8 @@ TEST(handle_test, construct_usable_then_get_should_return_value) {
 
 TEST(handle_test, construct_usable_then_get_const_should_return_value) {
     std::list<idle> resources;
-    resources.emplace_back(idle {resource(42)});
-    auto pool_impl = std::make_shared<pool::pool_impl>();
+    resources.emplace_back(resource(42), time_traits::time_point());
+    auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_EQ(42, handle->value);
     EXPECT_CALL(*pool_impl, waste(_)).WillOnce(Return());
@@ -90,7 +86,7 @@ TEST(handle_test, construct_usable_then_get_const_should_return_value) {
 
 TEST(handle_test, move_to_usable_should_release_replaced_resource) {
     std::list<idle> resources(2);
-    const auto pool_impl = std::make_shared<pool::pool_impl>();
+    const auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     const auto src_res = resources.begin();
     const auto dst_res = std::next(resources.begin());
     resource_handle src(pool_impl, &resource_handle::waste, src_res);

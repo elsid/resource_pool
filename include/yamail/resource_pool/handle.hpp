@@ -1,6 +1,8 @@
 #ifndef YAMAIL_RESOURCE_POOL_HANDLE_HPP
 #define YAMAIL_RESOURCE_POOL_HANDLE_HPP
 
+#include <yamail/resource_pool/detail/pool_returns.hpp>
+#include <yamail/resource_pool/detail/storage.hpp>
 #include <yamail/resource_pool/error.hpp>
 
 #include <boost/optional.hpp>
@@ -10,23 +12,22 @@
 namespace yamail {
 namespace resource_pool {
 
-template <class PoolImpl>
+template <class T>
 class handle {
 public:
-    using pool_impl = PoolImpl;
-    using value_type = typename pool_impl::value_type;
+    using value_type = T;
     using strategy = void (handle::*)();
-    using pool_impl_ptr = std::shared_ptr<pool_impl>;
-    using list_iterator = typename pool_impl::list_iterator;
+    using list_iterator = detail::cell_iterator<value_type>;
 
     handle() = default;
     handle(const handle& other) = delete;
     handle(handle&& other);
 
-    handle(const pool_impl_ptr& pool_impl,
+    handle(std::shared_ptr<detail::pool_returns<value_type>> pool_impl,
            strategy use_strategy,
            list_iterator resource_it)
-            : _pool_impl(pool_impl), _use_strategy(use_strategy),
+            : _pool_impl(std::move(pool_impl)),
+              _use_strategy(use_strategy),
               _resource_it(resource_it) {}
 
     ~handle();
@@ -48,7 +49,7 @@ public:
     void reset(value_type&& res);
 
 private:
-    pool_impl_ptr _pool_impl;
+    std::shared_ptr<detail::pool_returns<value_type>> _pool_impl;
     strategy _use_strategy;
     boost::optional<list_iterator> _resource_it;
 

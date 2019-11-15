@@ -41,7 +41,7 @@ public:
     using value_type = Value;
     using io_context_t = IoContext;
     using pool_impl = Impl;
-    using handle = resource_pool::handle<pool_impl>;
+    using handle = resource_pool::handle<value_type>;
 
     pool(std::size_t capacity,
          std::size_t queue_capacity,
@@ -70,6 +70,9 @@ public:
                 first, last,
                 queue_capacity,
                 idle_timeout)) {}
+
+    pool(std::shared_ptr<pool_impl> impl)
+            : _impl(std::move(impl)) {}
 
     pool(const pool&) = delete;
     pool(pool&&) = default;
