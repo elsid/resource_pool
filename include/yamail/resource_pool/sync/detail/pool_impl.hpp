@@ -5,6 +5,7 @@
 #include <yamail/resource_pool/time_traits.hpp>
 #include <yamail/resource_pool/detail/idle.hpp>
 #include <yamail/resource_pool/detail/storage.hpp>
+#include <yamail/resource_pool/detail/pool_returns.hpp>
 
 #include <condition_variable>
 #include <list>
@@ -22,8 +23,10 @@ struct stats {
 
 namespace detail {
 
+using resource_pool::detail::pool_returns;
+
 template <class Value, class Mutex, class ConditionVariable>
-class pool_impl {
+class pool_impl : public pool_returns<Value> {
 public:
     using value_type = Value;
     using condition_variable = ConditionVariable;
@@ -47,8 +50,8 @@ public:
     const condition_variable& has_capacity() const { return _has_capacity; }
 
     get_result get(time_traits::duration wait_duration = time_traits::duration(0));
-    void recycle(list_iterator res_it);
-    void waste(list_iterator res_it);
+    void recycle(list_iterator res_it) final;
+    void waste(list_iterator res_it) final;
     void disable();
 
     static std::size_t assert_capacity(std::size_t value);

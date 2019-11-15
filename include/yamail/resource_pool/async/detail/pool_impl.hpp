@@ -4,6 +4,7 @@
 #include <yamail/resource_pool/error.hpp>
 #include <yamail/resource_pool/detail/idle.hpp>
 #include <yamail/resource_pool/detail/storage.hpp>
+#include <yamail/resource_pool/detail/pool_returns.hpp>
 #include <yamail/resource_pool/async/detail/queue.hpp>
 
 #include <boost/asio/dispatch.hpp>
@@ -30,6 +31,7 @@ namespace asio = boost::asio;
 
 using resource_pool::detail::cell_iterator;
 using resource_pool::detail::cell_value;
+using resource_pool::detail::pool_returns;
 
 template <class T, class Handler>
 class on_list_iterator_handler {
@@ -185,7 +187,7 @@ on_serve_queued_handler(ListIterator, Handler&&)
     -> on_serve_queued_handler<cell_value<ListIterator>, std::decay_t<Handler>>;
 
 template <class Value, class Mutex, class IoContext, class Queue>
-class pool_impl {
+class pool_impl : public pool_returns<Value> {
 public:
     using value_type = Value;
     using io_context_t = IoContext;
@@ -236,8 +238,8 @@ public:
 
     template <class Handler>
     void get(io_context_t& io_context, Handler&& handler, time_traits::duration wait_duration = time_traits::duration(0));
-    void recycle(list_iterator res_it);
-    void waste(list_iterator res_it);
+    void recycle(list_iterator res_it) final;
+    void waste(list_iterator res_it) final;
     void disable();
 
     static std::size_t assert_capacity(std::size_t value);
