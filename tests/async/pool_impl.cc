@@ -10,7 +10,7 @@ using namespace yamail::resource_pool::async::detail;
 
 struct mocked_queue {
     using list_iterator = std::list<detail::idle<resource>>::iterator;
-    using value_type = list_iterator_handler<list_iterator>;
+    using value_type = list_iterator_handler<resource>;
     using queued_value_t = queued_value<value_type, mocked_io_context>;
 
     MOCK_CONST_METHOD3(push, bool (mocked_io_context&, time_traits::duration, const value_type&));

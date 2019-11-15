@@ -50,6 +50,12 @@ private:
 };
 
 template <class T>
+using cell_iterator = typename storage<T>::cell_iterator;
+
+template <class CellIterator>
+using cell_value = typename CellIterator::value_type::value_type;
+
+template <class T>
 storage<T>::storage(std::size_t capacity, time_traits::duration idle_timeout)
         : idle_timeout_(idle_timeout),
           wasted_(capacity) {
