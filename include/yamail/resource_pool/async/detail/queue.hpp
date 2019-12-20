@@ -168,7 +168,7 @@ boost::optional<typename queue<V, M, I, T>::queued_value_t> queue<V, M, I, T>::p
     _expires_at_requests.erase(req.expires_at_it);
     _ordered_requests_pool.splice(_ordered_requests_pool.begin(), _ordered_requests, ordered_it);
     update_timer();
-    return result;
+    return { std::move(result) };
 }
 
 template <class V, class M, class I, class T>
