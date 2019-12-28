@@ -22,7 +22,7 @@ class ResourcePool(ConanFile):
     exports_sources = 'include/*', 'CMakeLists.txt', 'resource_poolConfig.cmake', 'LICENCE', 'AUTHORS'
 
     generators = 'cmake_paths'
-    requires = 'boost/1.70.0@conan/stable'
+    requires = 'boost/1.71.0@conan/stable'
 
     def _configure_cmake(self):
         cmake = CMake(self)
