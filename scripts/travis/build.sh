@@ -1,5 +1,6 @@
 #!/bin/bash -ex
 
+ccache -s
 cmake \
     -D CMAKE_BUILD_TYPE=Release \
     -D CMAKE_CXX_COMPILER=${CXX_COMPILER} \
@@ -15,3 +16,4 @@ examples/async_pool
 examples/async_strand
 examples/coro_pool
 examples/sync_pool
+ccache -s
