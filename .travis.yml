@@ -16,7 +16,8 @@ addons:
     - clang-6.0
     - clang-8
     - g++-7
-    - python-pip
+    - python3-pip
+    - python3-setuptools
     - libcurl4-openssl-dev
     - libelf-dev
     - libdw-dev

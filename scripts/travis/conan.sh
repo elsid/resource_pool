@@ -1,9 +1,9 @@
 #!/bin/bash -ex
 
-pip install --user virtualenv
+pip3 install --user virtualenv
 virtualenv conan-temp
 . conan-temp/bin/activate
-pip install conan
+pip3 install conan
 conan profile new --detect default
 
 export CC=/usr/bin/clang-8
