@@ -34,6 +34,12 @@ before_script:
 
 matrix:
   include:
+  - name: conan auto detect
+    os: linux
+    dist: xenial
+    script:
+    - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
+
   - name: osx
     os: osx
     osx_image: xcode10
@@ -41,15 +47,6 @@ matrix:
     - brew update
     - brew upgrade cmake
     - brew install ccache
-    script:
-    - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
-
-  - name: linux clang 6 release
-    os: linux
-    dist: xenial
-    env:
-    - CXX_COMPILER: clang++-6.0
-    - BOOST_MINOR: 66
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
 
@@ -63,6 +60,15 @@ matrix:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/coverage.sh
     after_success:
     - bash <(curl -s https://codecov.io/bash)
+
+  - name: linux clang 6 release
+    os: linux
+    dist: xenial
+    env:
+    - CXX_COMPILER: clang++-6.0
+    - BOOST_MINOR: 66
+    script:
+    - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
 
   - name: linux clang 6 boost 1.70
     os: linux
@@ -81,9 +87,3 @@ matrix:
     - BOOST_MINOR: 70
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
-
-  - name: conan auto detect
-    os: linux
-    dist: xenial
-    script:
-    - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
