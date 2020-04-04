@@ -100,13 +100,19 @@ Example:
 using fstream_pool = pool<std::fstream>;
 ```
 
-Object constructing requires capacity of pool:
+Object construction requires pool capacity:
 ```c++
 pool(
     std::size_t capacity,
-    time_traits::duration idle_timeout = time_traits::duration::max()
+    time_traits::duration idle_timeout = time_traits::duration::max(),
+    time_traits::duration lifespan = time_traits::duration::max()
 );
 ```
+
+* `idle_timeout` defines maximum time interval to keep unused resource in the pool.
+  Check for elapsed time happens on resource allocation.
+* `lifespan` defines maximum time interval to keep resource.
+  Check for elapsed time happens on resource allocation and recycle.
 
 Example:
 ```c++
@@ -168,15 +174,21 @@ Example:
 using fstream_pool = pool<std::fstream>;
 ```
 
-Object constructing requires reference to io service, capacity of pool, queue capacity:
+Object construction requires reference to io service, capacity of pool, queue capacity:
 ```c++
 pool(
     io_context_t& io_context,
     std::size_t capacity,
     std::size_t queue_capacity,
-    time_traits::duration idle_timeout = time_traits::duration::max()
+    time_traits::duration idle_timeout = time_traits::duration::max(),
+    time_traits::duration lifespan = time_traits::duration::max()
 );
 ```
+
+* `idle_timeout` defines maximum time interval to keep unused resource in the pool.
+  Check for elapsed time happens on resource allocation.
+* `lifespan` defines maximum time interval to keep resource.
+  Check for elapsed time happens on resource allocation and recycle.
 
 Example:
 ```c++

@@ -21,8 +21,10 @@ public:
     using handle = resource_pool::handle<value_type>;
     using get_result = std::pair<boost::system::error_code, handle>;
 
-    pool(std::size_t capacity, time_traits::duration idle_timeout = time_traits::duration::max())
-            : _impl(std::make_shared<pool_impl>(capacity, idle_timeout))
+    pool(std::size_t capacity,
+         time_traits::duration idle_timeout = time_traits::duration::max(),
+         time_traits::duration lifespan = time_traits::duration::max())
+            : _impl(std::make_shared<pool_impl>(capacity, idle_timeout, lifespan))
     {}
 
     pool(std::shared_ptr<pool_impl> impl)

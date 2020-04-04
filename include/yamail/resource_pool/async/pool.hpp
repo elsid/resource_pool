@@ -45,31 +45,37 @@ public:
 
     pool(std::size_t capacity,
          std::size_t queue_capacity,
-         time_traits::duration idle_timeout = time_traits::duration::max())
+         time_traits::duration idle_timeout = time_traits::duration::max(),
+         time_traits::duration lifespan = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(
                 capacity,
                 queue_capacity,
-                idle_timeout)) {}
+                idle_timeout,
+                lifespan)) {}
 
     template <class Generator>
     pool(Generator&& gen_value,
          std::size_t capacity,
          std::size_t queue_capacity,
-         time_traits::duration idle_timeout = time_traits::duration::max())
+         time_traits::duration idle_timeout = time_traits::duration::max(),
+         time_traits::duration lifespan = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(
                 std::forward<Generator>(gen_value),
                 capacity,
                 queue_capacity,
-                idle_timeout)) {}
+                idle_timeout,
+                lifespan)) {}
 
     template <class Iter>
     pool(Iter first, Iter last,
          std::size_t queue_capacity,
-         time_traits::duration idle_timeout = time_traits::duration::max())
+         time_traits::duration idle_timeout = time_traits::duration::max(),
+         time_traits::duration lifespan = time_traits::duration::max())
             : _impl(std::make_shared<pool_impl>(
                 first, last,
                 queue_capacity,
-                idle_timeout)) {}
+                idle_timeout,
+                lifespan)) {}
 
     pool(std::shared_ptr<pool_impl> impl)
             : _impl(std::move(impl)) {}

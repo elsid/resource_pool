@@ -198,8 +198,9 @@ public:
 
     pool_impl(std::size_t capacity,
               std::size_t queue_capacity,
-              time_traits::duration idle_timeout)
-            : storage_(assert_capacity(capacity), idle_timeout),
+              time_traits::duration idle_timeout,
+              time_traits::duration lifespan)
+            : storage_(assert_capacity(capacity), idle_timeout, lifespan),
               _capacity(capacity),
               _callbacks(std::make_shared<queue_type>(queue_capacity)) {
     }
@@ -208,8 +209,9 @@ public:
     pool_impl(Generator&& gen_value,
               std::size_t capacity,
               std::size_t queue_capacity,
-              time_traits::duration idle_timeout)
-            : storage_(std::forward<Generator>(gen_value), assert_capacity(capacity), idle_timeout),
+              time_traits::duration idle_timeout,
+              time_traits::duration lifespan)
+            : storage_(std::forward<Generator>(gen_value), assert_capacity(capacity), idle_timeout, lifespan),
               _capacity(assert_capacity(capacity)),
               _callbacks(std::make_shared<queue_type>(queue_capacity)) {
     }
@@ -217,11 +219,13 @@ public:
     template <class Iter>
     pool_impl(Iter first, Iter last,
               std::size_t queue_capacity,
-              time_traits::duration idle_timeout)
+              time_traits::duration idle_timeout,
+              time_traits::duration lifespan)
             : pool_impl([&]{ return std::move(*first++); },
                     static_cast<std::size_t>(std::distance(first, last)),
                     queue_capacity,
-                    idle_timeout) {
+                    idle_timeout,
+                    lifespan) {
     }
 
     pool_impl(const pool_impl&) = delete;
