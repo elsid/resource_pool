@@ -68,7 +68,7 @@ TEST(handle_test, construct_usable_and_move_over_assign_then_destination_should_
 
 TEST(handle_test, construct_usable_then_get_should_return_value) {
     std::list<idle> resources;
-    resources.emplace_back(resource(42), time_traits::time_point());
+    resources.emplace_back(resource(42), time_traits::time_point(), time_traits::time_point());
     auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_EQ(42, handle->value);
@@ -77,7 +77,7 @@ TEST(handle_test, construct_usable_then_get_should_return_value) {
 
 TEST(handle_test, construct_usable_then_get_const_should_return_value) {
     std::list<idle> resources;
-    resources.emplace_back(resource(42), time_traits::time_point());
+    resources.emplace_back(resource(42), time_traits::time_point(), time_traits::time_point());
     auto pool_impl = std::make_shared<StrictMock<pool_impl_mock>>();
     const resource_handle handle(pool_impl, &resource_handle::waste, resources.begin());
     EXPECT_EQ(42, handle->value);

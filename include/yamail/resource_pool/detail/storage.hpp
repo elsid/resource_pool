@@ -22,13 +22,13 @@ class storage {
 public:
     using cell_iterator = typename std::list<idle<T>>::iterator;
 
-    inline storage(std::size_t capacity, time_traits::duration idle_timeout);
+    inline storage(std::size_t capacity, time_traits::duration idle_timeout, time_traits::duration lifespan);
 
     template <class Generator>
-    inline storage(Generator&& generator, std::size_t capacity, time_traits::duration idle_timeout);
+    inline storage(Generator&& generator, std::size_t capacity, time_traits::duration idle_timeout, time_traits::duration lifespan);
 
     template <class InputIterator>
-    inline storage(InputIterator begin, InputIterator end, time_traits::duration idle_timeout);
+    inline storage(InputIterator begin, InputIterator end, time_traits::duration idle_timeout, time_traits::duration lifespan);
 
     storage(const storage& other) = delete;
 
@@ -44,6 +44,7 @@ public:
 
 private:
     time_traits::duration idle_timeout_;
+    time_traits::duration lifespan_;
     std::list<idle<T>> available_;
     std::list<idle<T>> used_;
     std::list<idle<T>> wasted_;
@@ -56,28 +57,31 @@ template <class CellIterator>
 using cell_value = typename CellIterator::value_type::value_type;
 
 template <class T>
-storage<T>::storage(std::size_t capacity, time_traits::duration idle_timeout)
+storage<T>::storage(std::size_t capacity, time_traits::duration idle_timeout, time_traits::duration lifespan)
         : idle_timeout_(idle_timeout),
+          lifespan_(lifespan),
           wasted_(capacity) {
 }
 
 template <class T>
 template <class Generator>
-storage<T>::storage(Generator&& generator, std::size_t capacity, time_traits::duration idle_timeout)
-        : idle_timeout_(idle_timeout) {
-    const auto drop_time = time_traits::add(time_traits::now(), idle_timeout_);
+storage<T>::storage(Generator&& generator, std::size_t capacity, time_traits::duration idle_timeout, time_traits::duration lifespan)
+        : idle_timeout_(idle_timeout), lifespan_(lifespan) {
+    const auto now = time_traits::now();
+    const auto drop_time = std::min(time_traits::add(now, idle_timeout_), time_traits::add(now, lifespan_));
     for (std::size_t i = 0; i < capacity; ++i) {
-        available_.emplace_back(generator(), drop_time);
+        available_.emplace_back(generator(), drop_time, now);
     }
 }
 
 template <class T>
 template <class InputIterator>
-storage<T>::storage(InputIterator begin, InputIterator end, time_traits::duration idle_timeout)
-        : idle_timeout_(idle_timeout) {
-    const auto drop_time = time_traits::add(time_traits::now(), idle_timeout_);
+storage<T>::storage(InputIterator begin, InputIterator end, time_traits::duration idle_timeout, time_traits::duration lifespan)
+        : idle_timeout_(idle_timeout), lifespan_(lifespan) {
+    const auto now = time_traits::now();
+    const auto drop_time = std::min(time_traits::add(now, idle_timeout_), time_traits::add(now, lifespan_));
     std::for_each(begin, end, [&] (auto&& v) {
-        available_.emplace_back(std::forward<decltype(v)>(v), drop_time);
+        available_.emplace_back(std::forward<decltype(v)>(v), drop_time, now);
     });
 }
 
@@ -112,7 +116,12 @@ boost::optional<typename storage<T>::cell_iterator> storage<T>::lease() {
 
 template <class T>
 void storage<T>::recycle(typename storage<T>::cell_iterator cell) {
-    cell->drop_time = time_traits::add(time_traits::now(), idle_timeout_);
+    const auto now = time_traits::now();
+    const auto life_end = time_traits::add(cell->reset_time, lifespan_);
+    if (life_end <= now) {
+        return waste(cell);
+    }
+    cell->drop_time = std::min(time_traits::add(now, idle_timeout_), life_end);
     available_.splice(available_.end(), used_, cell);
 }
 

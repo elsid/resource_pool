@@ -35,8 +35,8 @@ public:
     using list_iterator = typename storage_type::cell_iterator;
     using get_result = std::pair<boost::system::error_code, list_iterator>;
 
-    pool_impl(std::size_t capacity, time_traits::duration idle_timeout)
-            : storage_(assert_capacity(capacity), idle_timeout),
+    pool_impl(std::size_t capacity, time_traits::duration idle_timeout, time_traits::duration lifespan)
+            : storage_(assert_capacity(capacity), idle_timeout, lifespan),
               _capacity(capacity),
               _disabled(false) {
     }

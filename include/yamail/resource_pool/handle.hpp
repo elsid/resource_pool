@@ -116,6 +116,7 @@ template <class P>
 void handle<P>::reset(value_type &&res) {
     assert_not_unusable();
     _resource_it.get()->value = std::move(res);
+    _resource_it.get()->reset_time = time_traits::now();
 }
 
 template <class P>

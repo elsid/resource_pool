@@ -15,11 +15,12 @@ struct idle {
 
     boost::optional<value_type> value;
     time_traits::time_point drop_time;
+    time_traits::time_point reset_time;
 
     idle(time_traits::time_point drop_time = time_traits::time_point::max())
         : drop_time(drop_time) {}
-    idle(value_type&& value, time_traits::time_point drop_time)
-        : value(std::move(value)), drop_time(drop_time) {}
+    idle(value_type&& value, time_traits::time_point drop_time, time_traits::time_point reset_time)
+        : value(std::move(value)), drop_time(drop_time), reset_time(reset_time) {}
 };
 
 } // namespace detail
