@@ -116,6 +116,10 @@ public:
         return init.result.get();
     }
 
+    void invalidate() {
+        _impl->invalidate();
+    }
+
 private:
     using list_iterator = typename pool_impl::list_iterator;
 

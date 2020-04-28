@@ -16,6 +16,7 @@ struct idle {
     boost::optional<value_type> value;
     time_traits::time_point drop_time;
     time_traits::time_point reset_time;
+    bool waste_on_recycle = false;
 
     idle(time_traits::time_point drop_time = time_traits::time_point::max())
         : drop_time(drop_time) {}
