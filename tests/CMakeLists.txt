@@ -29,7 +29,7 @@ if(NOT TARGET googletest AND (NOT GTEST_FOUND OR NOT GMOCK_FOUND))
     ExternalProject_Add(
         googletest
         GIT_REPOSITORY ${GOOGLETEST_REPOSITORY}
-        GIT_TAG release-1.8.0
+        GIT_TAG release-1.10.0
         TIMEOUT 1
         CONFIGURE_COMMAND cmake
             -DCMAKE_BUILD_TYPE=Release
