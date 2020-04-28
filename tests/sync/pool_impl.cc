@@ -219,4 +219,28 @@ TEST(sync_resource_pool_impl, should_waste_resource_when_lifespan_ends) {
     EXPECT_EQ(pool_impl.available(), 0u);
 }
 
+TEST(sync_resource_pool_impl, should_waste_used_resource_after_refresh) {
+    resource_pool_impl pool_impl(1, time_traits::duration::max(), time_traits::duration::max());
+
+    EXPECT_CALL(pool_impl.has_capacity(), notify_one()).WillOnce(Return());
+
+    const get_result first_res = pool_impl.get();
+    EXPECT_EQ(first_res.first, boost::system::error_code());
+    first_res.second->value = resource {};
+    first_res.second->reset_time = time_traits::now();
+    EXPECT_TRUE(first_res.second->value);
+    pool_impl.refresh();
+    pool_impl.recycle(first_res.second);
+
+    EXPECT_EQ(pool_impl.available(), 0u);
+}
+
+TEST(sync_resource_pool_impl, should_waste_available_resource_after_refresh) {
+    resource_pool_impl pool([]{ return resource{}; }, 1, time_traits::duration::max(), time_traits::duration::max());
+
+    pool.refresh();
+
+    EXPECT_EQ(pool.available(), 0u);
+}
+
 }

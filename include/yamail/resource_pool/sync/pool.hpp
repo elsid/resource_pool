@@ -57,6 +57,10 @@ public:
         return get_handle(&handle::recycle, wait_duration);
     }
 
+    void refresh() {
+        _impl->refresh();
+    }
+
 private:
     using strategy = typename handle::strategy;
     using pool_impl_ptr = std::shared_ptr<pool_impl>;

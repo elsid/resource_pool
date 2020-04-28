@@ -37,8 +37,16 @@ public:
 
     pool_impl(std::size_t capacity, time_traits::duration idle_timeout, time_traits::duration lifespan)
             : storage_(assert_capacity(capacity), idle_timeout, lifespan),
-              _capacity(capacity),
-              _disabled(false) {
+              _capacity(capacity) {
+    }
+
+    template <class Generator>
+    pool_impl(Generator&& gen_value,
+              std::size_t capacity,
+              time_traits::duration idle_timeout,
+              time_traits::duration lifespan)
+            : storage_(std::forward<Generator>(gen_value), assert_capacity(capacity), idle_timeout, lifespan),
+              _capacity(capacity) {
     }
 
     std::size_t capacity() const { return _capacity; }
@@ -53,6 +61,7 @@ public:
     void recycle(list_iterator res_it) final;
     void waste(list_iterator res_it) final;
     void disable();
+    void refresh();
 
     static std::size_t assert_capacity(std::size_t value);
 
@@ -65,7 +74,7 @@ private:
     storage_type storage_;
     const std::size_t _capacity;
     condition_variable _has_capacity;
-    bool _disabled;
+    bool _disabled = false;
 
     bool wait_for(unique_lock& lock, time_traits::duration wait_duration);
 };
@@ -143,6 +152,12 @@ typename pool_impl<T, M, C>::get_result pool_impl<T, M, C>::get(time_traits::dur
                                   list_iterator());
         }
     }
+}
+
+template <class T, class M, class C>
+void pool_impl<T, M, C>::refresh() {
+    const lock_guard lock(_mutex);
+    storage_.refresh();
 }
 
 template <class T, class M, class C>

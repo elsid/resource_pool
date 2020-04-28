@@ -42,6 +42,8 @@ public:
 
     inline void waste(cell_iterator cell);
 
+    inline void refresh();
+
 private:
     time_traits::duration idle_timeout_;
     time_traits::duration lifespan_;
@@ -116,6 +118,9 @@ boost::optional<typename storage<T>::cell_iterator> storage<T>::lease() {
 
 template <class T>
 void storage<T>::recycle(typename storage<T>::cell_iterator cell) {
+    if (cell->waste_on_recycle) {
+        return waste(cell);
+    }
     const auto now = time_traits::now();
     const auto life_end = time_traits::add(cell->reset_time, lifespan_);
     if (life_end <= now) {
@@ -129,6 +134,17 @@ template <class T>
 void storage<T>::waste(typename storage<T>::cell_iterator cell) {
     cell->value.reset();
     wasted_.splice(wasted_.end(), used_, cell);
+}
+
+template <class T>
+void storage<T>::refresh() {
+    for (auto& cell : available_) {
+        cell.value.reset();
+    }
+    wasted_.splice(wasted_.end(), available_, available_.begin(), available_.end());
+    for (auto& cell : used_) {
+        cell.waste_on_recycle = true;
+    }
 }
 
 } // namespace detail

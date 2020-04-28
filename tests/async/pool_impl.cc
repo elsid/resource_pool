@@ -494,4 +494,29 @@ TEST_F(async_resource_pool_impl, should_waste_resource_when_lifespan_ends) {
     on_second_get();
 }
 
+TEST_F(async_resource_pool_impl, should_waste_used_resource_after_refresh) {
+    resource_pool_impl pool(1, 0, time_traits::duration::max(), time_traits::duration::max());
+
+    InSequence s;
+
+    EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_first_get));
+    EXPECT_CALL(pool.queue(), pop()).WillOnce(Return(ByMove(boost::none)));
+    pool.get(io, set_and_recycle_resource(pool));
+    on_first_get();
+
+    pool.refresh();
+
+    EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_second_get));
+    pool.get(io, assert_empty(), time_traits::duration(1));
+    on_second_get();
+}
+
+TEST_F(async_resource_pool_impl, should_waste_available_resource_after_refresh) {
+    resource_pool_impl pool([]{ return resource{}; }, 1, 0, time_traits::duration::max(), time_traits::duration::max());
+
+    pool.refresh();
+
+    EXPECT_EQ(pool.available(), 0u);
+}
+
 }

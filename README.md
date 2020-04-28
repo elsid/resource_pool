@@ -153,6 +153,15 @@ if (h.empty()) {
 use_resource(h.get());
 ```
 
+#### Refresh pool
+
+Following method allows to force all available and used handles to be wasted:
+```c++
+void refresh();
+```
+
+All currently available but not used handles will be wasted. All currently used handles will be wasted on return to the pool.
+
 ### Asynchronous pool
 
 Based on ```boost::asio::io_context```. Uses async queue with deadline timer to store waiting resources requests.
@@ -276,6 +285,15 @@ boost::asio::spawn(io, [&](boost::asio::yield_context yield) {
     use_resource(h.get());
 }
 ```
+
+#### Refresh pool
+
+Following method allows to force all available and used handles to be wasted:
+```c++
+void refresh();
+```
+
+All currently available but not used handles will be wasted. All currently used handles will be wasted on return to the pool.
 
 ## Examples
 
