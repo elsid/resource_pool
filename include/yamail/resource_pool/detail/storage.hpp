@@ -45,6 +45,8 @@ public:
 
     inline bool is_valid(const_cell_iterator cell) const;
 
+    inline void invalidate();
+
 private:
     time_traits::duration idle_timeout_;
     time_traits::duration lifespan_;
@@ -111,6 +113,7 @@ boost::optional<typename storage<T>::cell_iterator> storage<T>::lease() {
     }
     if (!wasted_.empty()) {
         const auto result = wasted_.begin();
+        result->waste_on_recycle = false;
         used_.splice(used_.end(), wasted_, result);
         return result;
     }
@@ -119,6 +122,9 @@ boost::optional<typename storage<T>::cell_iterator> storage<T>::lease() {
 
 template <class T>
 void storage<T>::recycle(typename storage<T>::cell_iterator cell) {
+    if (cell->waste_on_recycle) {
+        return waste(cell);
+    }
     const auto now = time_traits::now();
     const auto life_end = time_traits::add(cell->reset_time, lifespan_);
     if (life_end <= now) {
@@ -136,12 +142,26 @@ void storage<T>::waste(typename storage<T>::cell_iterator cell) {
 
 template <class T>
 bool storage<T>::is_valid(typename storage<T>::const_cell_iterator cell) const {
+    if (cell->waste_on_recycle) {
+        return false;
+    }
     const auto now = time_traits::now();
     const auto life_end = time_traits::add(cell->reset_time, lifespan_);
     if (life_end <= now) {
         return false;
     }
     return true;
+}
+
+template <class T>
+void storage<T>::invalidate() {
+    for (auto& cell : available_) {
+        cell.value.reset();
+    }
+    wasted_.splice(wasted_.end(), available_, available_.begin(), available_.end());
+    for (auto& cell : used_) {
+        cell.waste_on_recycle = true;
+    }
 }
 
 } // namespace detail

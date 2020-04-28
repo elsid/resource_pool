@@ -221,4 +221,71 @@ TEST(sync_resource_pool_impl, should_waste_resource_when_lifespan_ends) {
     EXPECT_EQ(pool_impl.available(), 0u);
 }
 
+TEST(sync_resource_pool_impl, should_waste_used_resource_after_invalidate) {
+    resource_pool_impl pool(1, time_traits::duration::max(), time_traits::duration::max());
+
+    EXPECT_CALL(pool.has_capacity(), notify_one()).WillOnce(Return());
+
+    const get_result res = pool.get();
+    EXPECT_EQ(res.first, boost::system::error_code());
+    res.second->value = resource {};
+    res.second->reset_time = time_traits::now();
+    pool.invalidate();
+    pool.recycle(res.second);
+
+    EXPECT_EQ(pool.available(), 0u);
+}
+
+TEST(sync_resource_pool_impl, should_waste_available_resource_after_invalidate) {
+    resource_pool_impl pool([]{ return resource{}; }, 1, time_traits::duration::max(), time_traits::duration::max());
+
+    pool.invalidate();
+
+    EXPECT_EQ(pool.available(), 0u);
+}
+
+TEST(sync_resource_pool_impl, should_restore_wasted_cell) {
+    resource_pool_impl pool([]{ return resource{}; }, 1, time_traits::duration::max(), time_traits::duration::max());
+
+    pool.invalidate();
+
+    InSequence s;
+
+    EXPECT_CALL(pool.has_capacity(), notify_one()).WillOnce(Return());
+    EXPECT_CALL(pool.has_capacity(), notify_one()).WillOnce(Return());
+
+    const get_result first_res = pool.get();
+    EXPECT_EQ(first_res.first, boost::system::error_code());
+    first_res.second->value = resource {};
+    first_res.second->reset_time = time_traits::now();
+    pool.recycle(first_res.second);
+
+    EXPECT_EQ(pool.available(), 1u);
+
+    const get_result second_res = pool.get();
+    EXPECT_EQ(second_res.first, boost::system::error_code());
+    EXPECT_TRUE(second_res.second->value);
+    pool.recycle(second_res.second);
+}
+
+TEST(sync_resource_pool_impl, should_waste_used_resource_after_invalidate_when_other_client_is_waiting) {
+    resource_pool_impl pool(1, time_traits::duration::max(), time_traits::duration::max());
+    const get_result& first_res = pool.get();
+    pool.invalidate();
+
+    EXPECT_EQ(first_res.first, boost::system::error_code());
+    first_res.second->value = resource {};
+    first_res.second->reset_time = time_traits::now();
+
+    InSequence s;
+
+    EXPECT_CALL(pool.has_capacity(), wait_for(_, _)).WillOnce(Invoke(recycle_resource(pool, first_res.second)));
+    EXPECT_CALL(pool.has_capacity(), notify_one()).WillOnce(Return());
+
+    const get_result& second_res = pool.get();
+
+    EXPECT_FALSE(second_res.first);
+    EXPECT_EQ(second_res.second, first_res.second);
+}
+
 }

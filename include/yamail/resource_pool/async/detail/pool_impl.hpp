@@ -245,6 +245,7 @@ public:
     void recycle(list_iterator res_it) final;
     void waste(list_iterator res_it) final;
     void disable();
+    void invalidate();
 
     static std::size_t assert_capacity(std::size_t value);
 
@@ -387,6 +388,12 @@ void pool_impl<V, M, I, Q>::disable() {
                 std::move(queued->request)
             ));
     }
+}
+
+template <class V, class M, class I, class Q>
+void pool_impl<V, M, I, Q>::invalidate() {
+    const lock_guard lock(_mutex);
+    storage_.invalidate();
 }
 
 template <class V, class M, class I, class Q>
