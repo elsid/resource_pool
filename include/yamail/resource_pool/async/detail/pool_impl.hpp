@@ -186,17 +186,17 @@ template <class ListIterator, class Handler>
 on_serve_queued_handler(ListIterator, Handler&&)
     -> on_serve_queued_handler<cell_value<ListIterator>, std::decay_t<Handler>>;
 
-template <class Value, class Mutex, class IoContext, class Queue>
-class pool_impl : public pool_returns<Value> {
+template <class Value, class Mutex, class IoContext, class Queue, class ... Features>
+class base_pool_impl : public pool_returns<Value> {
 public:
     using value_type = Value;
     using io_context_t = IoContext;
     using idle = resource_pool::detail::idle<value_type>;
-    using storage_type = resource_pool::detail::storage<value_type>;
+    using storage_type = resource_pool::detail::storage<value_type, Features ...>;
     using list_iterator = typename storage_type::cell_iterator;
     using queue_type = Queue;
 
-    pool_impl(std::size_t capacity,
+    base_pool_impl(std::size_t capacity,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout,
               time_traits::duration lifespan)
@@ -206,7 +206,7 @@ public:
     }
 
     template <class Generator>
-    pool_impl(Generator&& gen_value,
+    base_pool_impl(Generator&& gen_value,
               std::size_t capacity,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout,
@@ -217,20 +217,20 @@ public:
     }
 
     template <class Iter>
-    pool_impl(Iter first, Iter last,
+    base_pool_impl(Iter first, Iter last,
               std::size_t queue_capacity,
               time_traits::duration idle_timeout,
               time_traits::duration lifespan)
-            : pool_impl([&]{ return std::move(*first++); },
+            : base_pool_impl([&]{ return std::move(*first++); },
                     static_cast<std::size_t>(std::distance(first, last)),
                     queue_capacity,
                     idle_timeout,
                     lifespan) {
     }
 
-    pool_impl(const pool_impl&) = delete;
+    base_pool_impl(const base_pool_impl&) = delete;
 
-    pool_impl(pool_impl&&) = delete;
+    base_pool_impl(base_pool_impl&&) = delete;
 
     std::size_t capacity() const noexcept { return _capacity; }
     std::size_t size() const noexcept;
@@ -261,8 +261,16 @@ private:
     bool _disabled = false;
 };
 
-template <class V, class M, class I, class Q>
-std::size_t pool_impl<V, M, I, Q>::size() const noexcept {
+template <class Value, class Mutex, class IoContext, class Queue, class ... Features>
+using pool_impl = base_pool_impl<
+    Value, Mutex, IoContext, Queue,
+    features::enable_idle_timeout,
+    features::enable_lifespan,
+    features::enable_refresh
+>;
+
+template <class V, class M, class I, class Q, class ... F>
+std::size_t base_pool_impl<V, M, I, Q, F ...>::size() const noexcept {
     const auto stats = [&] {
         const lock_guard lock(_mutex);
         return storage_.stats();
@@ -270,20 +278,20 @@ std::size_t pool_impl<V, M, I, Q>::size() const noexcept {
     return stats.available + stats.used;
 }
 
-template <class V, class M, class I, class Q>
-std::size_t pool_impl<V, M, I, Q>::available() const noexcept {
+template <class V, class M, class I, class Q, class ... F>
+std::size_t base_pool_impl<V, M, I, Q, F ...>::available() const noexcept {
     const lock_guard lock(_mutex);
     return storage_.stats().available;
 }
 
-template <class V, class M, class I, class Q>
-std::size_t pool_impl<V, M, I, Q>::used() const noexcept {
+template <class V, class M, class I, class Q, class ... F>
+std::size_t base_pool_impl<V, M, I, Q, F ...>::used() const noexcept {
     const lock_guard lock(_mutex);
     return storage_.stats().used;
 }
 
-template <class V, class M, class I, class Q>
-async::stats pool_impl<V, M, I, Q>::stats() const noexcept {
+template <class V, class M, class I, class Q, class ... F>
+async::stats base_pool_impl<V, M, I, Q, F ...>::stats() const noexcept {
     const auto stats = [&] {
         const lock_guard lock(_mutex);
         return storage_.stats();
@@ -296,8 +304,8 @@ async::stats pool_impl<V, M, I, Q>::stats() const noexcept {
     return result;
 }
 
-template <class V, class M, class I, class Q>
-void pool_impl<V, M, I, Q>::recycle(list_iterator res_it) {
+template <class V, class M, class I, class Q, class ... F>
+void base_pool_impl<V, M, I, Q, F ...>::recycle(list_iterator res_it) {
     unique_lock lock(_mutex);
     auto queued = _callbacks->pop();
     if (!queued) {
@@ -308,8 +316,8 @@ void pool_impl<V, M, I, Q>::recycle(list_iterator res_it) {
     asio::post(queued->io_context, on_serve_queued_handler(res_it, std::move(queued->request)));
 }
 
-template <class V, class M, class I, class Q>
-void pool_impl<V, M, I, Q>::waste(list_iterator res_it) {
+template <class V, class M, class I, class Q, class ... F>
+void base_pool_impl<V, M, I, Q, F ...>::waste(list_iterator res_it) {
     unique_lock lock(_mutex);
     auto queued = _callbacks->pop();
     if (!queued) {
@@ -321,9 +329,9 @@ void pool_impl<V, M, I, Q>::waste(list_iterator res_it) {
     asio::post(queued->io_context, on_serve_queued_handler(res_it, std::move(queued->request)));
 }
 
-template <class V, class M, class I, class Q>
+template <class V, class M, class I, class Q, class ... F>
 template <class Handler>
-void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, time_traits::duration wait_duration) {
+void base_pool_impl<V, M, I, Q, F ...>::get(io_context_t& io_context, Handler&& handler, time_traits::duration wait_duration) {
     static_assert(std::is_invocable_v<std::decay_t<Handler>, boost::system::error_code, list_iterator>);
 
     unique_lock lock(_mutex);
@@ -369,8 +377,8 @@ void pool_impl<V, M, I, Q>::get(io_context_t& io_context, Handler&& handler, tim
         ));
 }
 
-template <class V, class M, class I, class Q>
-void pool_impl<V, M, I, Q>::disable() {
+template <class V, class M, class I, class Q, class ... F>
+void base_pool_impl<V, M, I, Q, F ...>::disable() {
     const lock_guard lock(_mutex);
     _disabled = true;
     while (true) {
@@ -386,14 +394,14 @@ void pool_impl<V, M, I, Q>::disable() {
     }
 }
 
-template <class V, class M, class I, class Q>
-void pool_impl<V, M, I, Q>::refresh() {
+template <class V, class M, class I, class Q, class ... F>
+void base_pool_impl<V, M, I, Q, F ...>::refresh() {
     const lock_guard lock(_mutex);
     storage_.refresh();
 }
 
-template <class V, class M, class I, class Q>
-std::size_t pool_impl<V, M, I, Q>::assert_capacity(std::size_t value) {
+template <class V, class M, class I, class Q, class ... F>
+std::size_t base_pool_impl<V, M, I, Q, F ...>::assert_capacity(std::size_t value) {
     if (value == 0) {
         throw error::zero_pool_capacity();
     }

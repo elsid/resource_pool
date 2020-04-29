@@ -1,6 +1,7 @@
 #ifndef YAMAIL_RESOURCE_POOL_DETAIL_IDLE_HPP
 #define YAMAIL_RESOURCE_POOL_DETAIL_IDLE_HPP
 
+#include <yamail/resource_pool/features.hpp>
 #include <yamail/resource_pool/time_traits.hpp>
 
 #include <boost/optional.hpp>

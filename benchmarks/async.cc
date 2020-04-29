@@ -68,6 +68,19 @@ struct resource {
     std::int64_t value = 0;
 };
 
+template <class Mutex = std::mutex>
+using benchmark_pool = async::pool<
+    resource,
+    Mutex,
+    boost::asio::io_context,
+    async::detail::pool_impl<
+        resource,
+        Mutex,
+        boost::asio::io_context,
+        typename async::default_pool_queue<resource, Mutex, boost::asio::io_context>::type
+    >
+>;
+
 struct stub_mutex {
     stub_mutex() = default;
     stub_mutex(const stub_mutex&) = delete;
@@ -112,7 +125,7 @@ struct context {
 template <class Threading>
 struct callback {
     using mutex_t = std::conditional_t<std::is_same_v<Threading, multi_thread>, std::mutex, stub_mutex>;
-    using pool_t = async::pool<resource, mutex_t>;
+    using pool_t = benchmark_pool<mutex_t>;
     using handle_t = typename pool_t::handle;
 
     context<Threading>& ctx;
@@ -165,7 +178,7 @@ const std::array<benchmark_args, 17> benchmarks{{
 void get_auto_waste_callbacks_st(benchmark::State& state) {
     const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
     context<single_thread> ctx;
-    async::pool<resource, stub_mutex> pool(args.resources(), args.queue_size());
+    benchmark_pool<stub_mutex> pool(args.resources(), args.queue_size());
     callback<single_thread> cb {ctx, pool};
     for (std::size_t i = 0; i < args.sequences(); ++i) {
         pool.get_auto_waste(ctx.io_context, cb, ctx.timeout);
@@ -193,7 +206,7 @@ void get_auto_waste_callbacks_mt(benchmark::State& state) {
     for (std::size_t i = 0; i < args.threads(); ++i) {
         threads.emplace_back(std::make_unique<thread_context>());
     }
-    async::pool<resource> pool(args.resources(), args.queue_size());
+    benchmark_pool<> pool(args.resources(), args.queue_size());
     for (const auto& ctx : threads) {
         callback<multi_thread> cb {ctx->impl, pool};
         for (std::size_t i = 0; i < args.sequences(); ++i) {
@@ -219,7 +232,7 @@ void get_auto_waste_callbacks(benchmark::State& state) {
 void get_auto_waste_coroutines_st(benchmark::State& state) {
     const auto& args = benchmarks[static_cast<std::size_t>(state.range(0))];
     context<single_thread> ctx;
-    async::pool<resource, stub_mutex> pool(args.resources(), args.queue_size());
+    benchmark_pool<stub_mutex> pool(args.resources(), args.queue_size());
     for (std::size_t i = 0; i < args.sequences(); ++i) {
         boost::asio::spawn(ctx.io_context, [&] (boost::asio::yield_context yield) {
             static thread_local std::minstd_rand generator(std::hash<std::thread::id>()(std::this_thread::get_id()));
@@ -256,7 +269,7 @@ void get_auto_waste_coroutines_mt(benchmark::State& state) {
     for (std::size_t i = 0; i < args.threads(); ++i) {
         threads.emplace_back(std::make_unique<thread_context>());
     }
-    async::pool<resource> pool(args.resources(), args.queue_size());
+    benchmark_pool<> pool(args.resources(), args.queue_size());
     for (const auto& ctx : threads) {
         for (std::size_t i = 0; i < args.sequences(); ++i) {
             boost::asio::spawn(ctx->impl.io_context, [&] (boost::asio::yield_context yield) {
