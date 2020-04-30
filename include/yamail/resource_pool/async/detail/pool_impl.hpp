@@ -303,7 +303,11 @@ void pool_impl<V, M, I, Q>::recycle(list_iterator res_it) {
         storage_.recycle(res_it);
         return;
     }
+    const auto valid = storage_.is_valid(res_it);
     lock.unlock();
+    if (!valid) {
+        res_it->value.reset();
+    }
     asio::post(queued->io_context, on_serve_queued_handler(res_it, std::move(queued->request)));
 }
 

@@ -21,6 +21,7 @@ template <class T>
 class storage {
 public:
     using cell_iterator = typename std::list<idle<T>>::iterator;
+    using const_cell_iterator = typename std::list<idle<T>>::iterator;
 
     inline storage(std::size_t capacity, time_traits::duration idle_timeout, time_traits::duration lifespan);
 
@@ -41,6 +42,8 @@ public:
     inline void recycle(cell_iterator cell);
 
     inline void waste(cell_iterator cell);
+
+    inline bool is_valid(const_cell_iterator cell) const;
 
 private:
     time_traits::duration idle_timeout_;
@@ -129,6 +132,16 @@ template <class T>
 void storage<T>::waste(typename storage<T>::cell_iterator cell) {
     cell->value.reset();
     wasted_.splice(wasted_.end(), used_, cell);
+}
+
+template <class T>
+bool storage<T>::is_valid(typename storage<T>::const_cell_iterator cell) const {
+    const auto now = time_traits::now();
+    const auto life_end = time_traits::add(cell->reset_time, lifespan_);
+    if (life_end <= now) {
+        return false;
+    }
+    return true;
 }
 
 } // namespace detail
