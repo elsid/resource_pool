@@ -123,6 +123,8 @@ TEST(sync_resource_pool_impl, get_from_pool_and_wait_then_after_recycle_should_a
     const get_result& first_res = pool.get();
 
     EXPECT_EQ(first_res.first, boost::system::error_code());
+    first_res.second->value = resource {};
+    first_res.second->reset_time = time_traits::now();
 
     InSequence s;
 
