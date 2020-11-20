@@ -433,26 +433,6 @@ TEST_F(async_resource_pool_impl, get_recycled_after_disable_returns_error) {
     on_second_get();
 }
 
-struct custom_exception : public std::runtime_error {
-    using std::runtime_error::runtime_error;
-};
-
-struct throw_exception {
-    void operator ()(const error_code&, resource_ptr_list_iterator) const {
-        throw custom_exception("custom_exception");
-    }
-};
-
-TEST_F(async_resource_pool_impl, get_and_throw_exception_on_handle_should_pass_exception) {
-    resource_pool_impl pool(1, 0, time_traits::duration::max(), time_traits::duration::max());
-
-    InSequence s;
-
-    EXPECT_CALL(executor, post(_)).WillOnce(SaveArg<0>(&on_first_get));
-    pool.get(io, throw_exception());
-    EXPECT_THROW(on_first_get(), custom_exception);
-}
-
 class set_and_recycle_resource {
 public:
     set_and_recycle_resource(resource_pool_impl& pool) : pool(pool) {}
