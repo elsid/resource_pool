@@ -10,6 +10,7 @@ target_link_libraries(resource_pool INTERFACE Boost::system Boost::thread Boost:
 target_compile_definitions(resource_pool
         INTERFACE
         -DBOOST_COROUTINES_NO_DEPRECATION_WARNING
+        -DBOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
         )
 add_library(elsid::resource_pool ALIAS resource_pool)
 
