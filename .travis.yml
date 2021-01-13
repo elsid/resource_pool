@@ -36,7 +36,14 @@ matrix:
   include:
   - name: conan auto detect
     os: linux
-    dist: xenial
+    dist: bionic
+    addons:
+      apt:
+        packages:
+          - clang-10
+    env:
+      - CXX_COMPILER: clang++-10
+      - BOOST_MINOR: 74
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/conan.sh
 

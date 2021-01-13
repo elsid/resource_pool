@@ -6,8 +6,8 @@ virtualenv conan-temp
 pip3 install conan
 conan profile new --detect default
 
-export CC=/usr/bin/clang-8
-export CXX=/usr/bin/clang++-8
+export CC=/usr/bin/clang-10
+export CXX=/usr/bin/clang++-10
 
 conan profile update settings.compiler=clang default
 conan profile update settings.compiler.version=8 default

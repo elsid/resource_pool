@@ -3,7 +3,7 @@ from conans import ConanFile, CMake
 
 class ResourcePoolTestConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake_paths"
+    generators = "cmake_find_package"
 
     def build(self):
         cmake = CMake(self)
