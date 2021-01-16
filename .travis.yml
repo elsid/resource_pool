@@ -41,6 +41,8 @@ matrix:
       apt:
         packages:
           - clang-10
+          - python3
+          - python3-pip
     env:
       - CXX_COMPILER: clang++-10
       - BOOST_MINOR: 74
