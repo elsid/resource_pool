@@ -10,7 +10,7 @@ export CC=/usr/bin/clang-10
 export CXX=/usr/bin/clang++-10
 
 conan profile update settings.compiler=clang default
-conan profile update settings.compiler.version=8 default
+conan profile update settings.compiler.version=10 default
 conan profile update settings.compiler.libcxx=libstdc++11 default
 
 cd "${TRAVIS_BUILD_DIR}"
