@@ -2,6 +2,8 @@
 
 #include <yamail/resource_pool/async/detail/pool_impl.hpp>
 
+#include <boost/optional/optional_io.hpp>
+
 namespace {
 
 using namespace tests;
@@ -26,6 +28,15 @@ using queued_value_t = mocked_queue::queued_value_t;
 
 auto make_queued_value(mocked_queue::value_type&& request, mocked_io_context& io) {
     return boost::optional<queued_value_t>(queued_value_t {std::move(request), io});
+}
+
+}
+
+namespace yamail::resource_pool::async::detail {
+
+template <class V, class I>
+inline std::ostream& operator <<(std::ostream& stream, const queued_value<V, I>&) {
+    return stream;
 }
 
 }
