@@ -88,11 +88,15 @@ matrix:
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
 
-  - name: linux clang 8 release
+  - name: linux clang 10 release
     os: linux
-    dist: xenial
+    dist: focal
+    addons:
+      apt:
+        packages:
+        - clang-10
     env:
-    - CXX_COMPILER: clang++-8
-    - BOOST_MINOR: 70
+    - CXX_COMPILER: clang++-10
+    - BOOST_MINOR: 74
     script:
     - ${TRAVIS_BUILD_DIR}/scripts/travis/build.sh
