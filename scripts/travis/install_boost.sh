@@ -3,7 +3,7 @@
 if [ -z "$BOOST_MINOR" ]; then
     echo "No version selected; skipping boost install..."
 else
-    wget -O "boost_1_${BOOST_MINOR}_0.tar.gz" "https://dl.bintray.com/boostorg/release/1.${BOOST_MINOR}.0/source/boost_1_${BOOST_MINOR}_0.tar.gz"
+    wget -O "boost_1_${BOOST_MINOR}_0.tar.gz" "https://boostorg.jfrog.io/artifactory/main/release/1.${BOOST_MINOR}.0/source/boost_1_${BOOST_MINOR}_0.tar.gz"
     tar xzf "boost_1_${BOOST_MINOR}_0.tar.gz"
     cd "boost_1_${BOOST_MINOR}_0"
     ./bootstrap.sh --with-libraries=system,thread,context,coroutine,atomic,date_time
