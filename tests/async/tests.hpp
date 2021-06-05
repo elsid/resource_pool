@@ -79,18 +79,18 @@ struct mocked_executor {
         return impl->on_work_finished();
     }
 
-    template <class Function>
-    void dispatch(Function&& f, std::allocator<void>) const {
+    template <class Function, class Allocator>
+    void dispatch(Function&& f, Allocator&&) const {
         return impl->dispatch(wrap_shared(std::forward<Function>(f)));
     }
 
-    template <class Function>
-    void post(Function&& f, std::allocator<void>) const {
+    template <class Function, class Allocator>
+    void post(Function&& f, Allocator&&) const {
         return impl->post(wrap_shared(std::forward<Function>(f)));
     }
 
-    template <class Function>
-    void defer(Function&& f, std::allocator<void>) const {
+    template <class Function, class Allocator>
+    void defer(Function&& f, Allocator&&) const {
         return impl->defer(wrap_shared(std::forward<Function>(f)));
     }
 
