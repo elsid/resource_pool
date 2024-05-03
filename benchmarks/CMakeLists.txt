@@ -6,55 +6,28 @@ include_directories(SYSTEM ${RESOURCE_POOL_DEPENDENCY_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 find_package(Boost COMPONENTS coroutine context REQUIRED)
-find_package(benchmark)
 
-if(NOT TARGET google_benchmark AND NOT benchmark_FOUND)
-    include(ExternalProject)
+if(RESOURCE_POOL_USE_SYSTEM_BENCHMARK)
+    find_package(benchmark)
+else()
+    set(BENCHMARK_ENABLE_TESTING OFF)
+    set(BENCHMARK_ENABLE_INSTALL OFF)
+    set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
 
-    set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/external)
-
-    if(NOT GOOGLE_BENCHMARK_REPOSITORY)
-        if(NOT DEFINED ENV{GOOGLE_BENCHMARK_REPOSITORY})
-            set(GOOGLE_BENCHMARK_REPOSITORY https://github.com/google/benchmark.git)
-        else()
-            set(GOOGLE_BENCHMARK_REPOSITORY $ENV{GOOGLE_BENCHMARK_REPOSITORY})
-        endif()
-    endif()
-
-    ExternalProject_Add(
-        google_benchmark
-        GIT_REPOSITORY ${GOOGLE_BENCHMARK_REPOSITORY}
-        TIMEOUT 1
-        CONFIGURE_COMMAND cmake -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_GTEST_TESTS=OFF ../google_benchmark
-        INSTALL_COMMAND ""
-        UPDATE_COMMAND ""
-        LOG_DOWNLOAD ON
-        LOG_CONFIGURE ON
-        LOG_BUILD ON
+    include(FetchContent)
+    FetchContent_Declare(benchmark
+        URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.zip
+        URL_HASH SHA512=d73587ad9c49338749e1d117a6f8c7ff9c603a91a2ffa91a7355c7df7dea82710b9a810d34ddfef20973ecdc77092ec10fb2b4e4cc8d2e7810cbed79617b3828
+        SOURCE_DIR fetched/benchmark
     )
-
-    ExternalProject_Get_Property(google_benchmark source_dir)
-    include_directories(SYSTEM ${source_dir}/include)
-
-    ExternalProject_Get_Property(google_benchmark binary_dir)
-    link_directories(${binary_dir}/src)
-endif()
-
-if(benchmark_FOUND)
-    include_directories(SYSTEM ${benchmark_INCLUDE_DIRS})
-    get_filename_component(_BENCHMARK_LIB_DIR ${benchmark_LIBRARIES} PATH)
-    link_directories(${_BENCHMARK_LIB_DIR})
+    FetchContent_MakeAvailable(benchmark)
 endif()
 
 add_executable(resource_pool_benchmark_async async.cc)
 
-if(TARGET google_benchmark)
-    add_dependencies(resource_pool_benchmark_async google_benchmark)
-endif()
-
 set(LIBRARIES
     pthread
-    benchmark
+    benchmark::benchmark
     Boost::coroutine
     Boost::context
     elsid::resource_pool

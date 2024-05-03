@@ -1,0 +1,124 @@
+name: Build
+on: push
+jobs:
+  build:
+    strategy:
+      matrix:
+        build_type:
+        - Release
+        - Debug
+
+        deps:
+        - os: ubuntu-20.04
+          compiler: g++-7
+          compiler_package: g++-7
+          boost: '1.67'
+
+        - os: ubuntu-20.04
+          compiler: clang++-7
+          compiler_package: clang-7
+          boost: '1.67'
+
+        - os: ubuntu-22.04
+          compiler: g++-11
+          compiler_package: g++-11
+          boost: '1.74'
+
+        - os: ubuntu-22.04
+          compiler: clang++-15
+          compiler_package: clang-15
+          boost: '1.74'
+
+    name: ${{ matrix.build_type }} ${{ matrix.deps.compiler }} boost ${{ matrix.deps.boost }} ${{ matrix.deps.os }}
+    runs-on: ${{ matrix.deps.os }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Update apt cache
+      run: sudo apt-get update
+
+    - name: Install apt packages for dependencies
+      run: >
+        sudo apt-get install -y --no-install-recommends
+        ccache
+        cmake
+        libboost-atomic${{ matrix.deps.boost }}-dev
+        libboost-context${{ matrix.deps.boost }}-dev
+        libboost-coroutine${{ matrix.deps.boost }}-dev
+        libboost-date-time${{ matrix.deps.boost }}-dev
+        libboost-thread${{ matrix.deps.boost }}-dev
+        ninja-build
+        ${{ matrix.deps.compiler_package }}
+
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1
+      with:
+        key: ${{ matrix.deps.os }}-${{ matrix.deps.compiler }}-${{ matrix.deps.boost }}-${{ matrix.build_type }}-v1
+        max-size: 1G
+
+    - name: Configure
+      run: >
+        cmake
+        -B build
+        -S .
+        -G Ninja
+        -D CMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -D CMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
+        -D CMAKE_CXX_COMPILER=${{ matrix.deps.compiler }}
+        -D CMAKE_CXX_COMPILER_LAUNCHER=ccache
+        -D RESOURCE_POOL_BUILD_TESTS=ON
+        -D RESOURCE_POOL_BUILD_EXAMPLES=ON
+        -D RESOURCE_POOL_BUILD_BENCHMARKS=ON
+        -D RESOURCE_POOL_USE_SYSTEM_GOOGLETEST=OFF
+        -D RESOURCE_POOL_USE_SYSTEM_BENCHMARK=OFF
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Install
+      run: cmake --install build
+
+    - name: Run tests
+      run: build/tests/resource_pool_test
+
+    - name: Run benchmark
+      run: build/benchmarks/resource_pool_benchmark_async
+
+    - name: Run async_pool example
+      run: build/examples/async_pool
+
+    - name: Run async_strand example
+      run: build/examples/async_strand
+
+    - name: Run coro_pool example
+      run: build/examples/coro_pool
+
+    - name: Run sync_pool example
+      run: build/examples/sync_pool
+
+  test_conan_package:
+    name: Test conan package
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Update apt cache
+      run: sudo apt-get update
+
+    - name: Install apt packages for dependencies
+      run: >
+        sudo apt-get install -y --no-install-recommends
+        clang-15
+        cmake
+        libboost-atomic1.74-dev
+        libboost-context1.74-dev
+        libboost-coroutine1.74-dev
+        libboost-date-time1.74-dev
+        libboost-thread1.74-dev
+        python3
+        python3-pip
+
+    - name: Create depending package
+      run: scripts/ci/conan.sh

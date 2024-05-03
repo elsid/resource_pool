@@ -10,58 +10,21 @@ include_directories(SYSTEM ${RESOURCE_POOL_DEPENDENCY_INCLUDE_DIRS})
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-find_package(GTest)
-find_package(GMock)
-
-if(NOT TARGET googletest AND (NOT GTEST_FOUND OR NOT GMOCK_FOUND))
-    include(ExternalProject)
-
-    set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/external)
-
-    if(NOT GOOGLETEST_REPOSITORY)
-        if(NOT DEFINED ENV{GOOGLETEST_REPOSITORY})
-            set(GOOGLETEST_REPOSITORY https://github.com/google/googletest.git)
-        else()
-            set(GOOGLETEST_REPOSITORY $ENV{GOOGLETEST_REPOSITORY})
-        endif()
-    endif()
-
-    ExternalProject_Add(
-        googletest
-        GIT_REPOSITORY ${GOOGLETEST_REPOSITORY}
-        GIT_TAG release-1.10.0
-        TIMEOUT 1
-        CONFIGURE_COMMAND cmake
-            -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
-            -DCMAKE_INSTALL_LIBDIR=${CMAKE_CURRENT_BINARY_DIR}/lib
-            ../googletest
-        UPDATE_COMMAND ""
-        LOG_DOWNLOAD ON
-        LOG_CONFIGURE ON
-        LOG_BUILD ON
-    )
-endif()
-
-if (GTEST_FOUND AND GMOCK_FOUND)
-    include_directories(SYSTEM ${GTEST_INCLUDE_DIRS})
-    include_directories(SYSTEM ${GMOCK_INCLUDE_DIRS})
-    get_filename_component(_GOOGLETEST_LIB_DIR ${GMOCK_MAIN_LIBRARY} PATH)
+if(RESOURCE_POOL_USE_SYSTEM_GOOGLETEST)
+    find_package(GTest)
+    find_package(GMock)
 else()
-    include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/include)
+    include(FetchContent)
+    FetchContent_Declare(googletest
+        URL https://github.com/google/googletest/archive/refs/tags/release-1.12.1.zip
+        URL_HASH SHA512=1479ea2f3172c622c0ca305f5b2bc45a42941221ec0ac7865e6d6d020ec4d008d952fc64e01a4c5138d7bed4148cf75596f25bb9e9044a98bbbf5662053ea11c
+        SOURCE_DIR fetched/googletest
+    )
+    FetchContent_MakeAvailable(googletest)
 
-    set(_GOOGLETEST_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/lib)
-
-    set(GTEST_LIBRARIES ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gtest.a)
-    set(GTEST_MAIN_LIBRARY ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gtest_main.a)
-    set(GTEST_BOTH_LIBRARIES "${GTEST_LIBRARIES};${GTEST_MAIN_LIBRARY}")
-
-    set(GMOCK_LIBRARIES ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gmock.a)
-    set(GMOCK_MAIN_LIBRARY ${_GOOGLETEST_LIB_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gmock_main.a)
-    set(GMOCK_BOTH_LIBRARIES "${GMOCK_LIBRARIES};${GMOCK_MAIN_LIBRARY}")
+    add_library(GTest::GTest ALIAS gtest)
+    add_library(GMock::GMock ALIAS gmock)
 endif()
-
-link_directories(${_GOOGLETEST_LIB_DIR})
 
 add_executable(resource_pool_test
     main.cc
@@ -76,14 +39,10 @@ add_executable(resource_pool_test
     async/integration.cc
 )
 
-if(TARGET googletest)
-    add_dependencies(resource_pool_test googletest)
-endif()
-
 set(LIBRARIES
     pthread
-    gtest
-    gmock
+    GTest::GTest
+    GMock::GMock
     Boost::coroutine
     Boost::context
     elsid::resource_pool
