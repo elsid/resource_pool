@@ -1,19 +1,21 @@
 #!/bin/bash -ex
 
+DIR="${PWD}"
+
 pip3 install --user virtualenv
 virtualenv conan-temp
 . conan-temp/bin/activate
-pip3 install conan
+pip3 install conan==1.64.0
 conan profile new --detect default
 
-export CC=/usr/bin/clang-10
-export CXX=/usr/bin/clang++-10
+export CC=/usr/bin/clang-15
+export CXX=/usr/bin/clang++-15
 
 conan profile update settings.compiler=clang default
-conan profile update settings.compiler.version=10 default
+conan profile update settings.compiler.version=15 default
 conan profile update settings.compiler.libcxx=libstdc++11 default
 
-cd "${TRAVIS_BUILD_DIR}"
+cd "${DIR}"
 
 PKG_REPO="elsid/testing"
 conan export . "${PKG_REPO}"
